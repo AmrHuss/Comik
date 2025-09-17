@@ -484,7 +484,7 @@ function initializePage() {
             handleDetailPage();
             break;
         case 'reader':
-            // Reader page initialization is handled by the page itself
+            handleReaderPage();
             break;
         default:
             console.warn(`Unknown page type: ${page}`);
@@ -520,6 +520,143 @@ function initializeEventListeners() {
             hideSearchResults();
         }
     });
+    
+    // Mobile menu functionality
+    const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+    const navMenu = document.querySelector('.nav-menu');
+    
+    if (mobileMenuToggle && navMenu) {
+        mobileMenuToggle.addEventListener('click', () => {
+            mobileMenuToggle.classList.toggle('active');
+            navMenu.classList.toggle('active');
+        });
+        
+        // Close mobile menu when clicking on a link
+        navMenu.addEventListener('click', (e) => {
+            if (e.target.classList.contains('nav-link')) {
+                mobileMenuToggle.classList.remove('active');
+                navMenu.classList.remove('active');
+            }
+        });
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!mobileMenuToggle.contains(e.target) && !navMenu.contains(e.target)) {
+                mobileMenuToggle.classList.remove('active');
+                navMenu.classList.remove('active');
+            }
+        });
+    }
+}
+
+// --- Chapter Navigation Functions ---
+
+/**
+ * Handle reader page initialization with chapter navigation
+ */
+async function handleReaderPage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const chapterUrl = urlParams.get('url');
+    const container = document.getElementById('reader-content');
+    const prevBtn = document.getElementById('prev-chapter-btn');
+    const nextBtn = document.getElementById('next-chapter-btn');
+    const chapterTitle = document.getElementById('reader-title');
+    
+    if (!chapterUrl) {
+        showErrorState(container, 'No chapter URL provided.');
+        return;
+    }
+    
+    if (!container) {
+        console.error('Reader content container not found');
+        return;
+    }
+    
+    showLoadingState(container, 'Loading chapter...');
+    
+    try {
+        const result = await makeApiRequest(`${API_BASE_URL}/chapter-details?url=${encodeURIComponent(chapterUrl)}`);
+        
+        // Display chapter images
+        displayChapterImages(result.images, container);
+        
+        // Update navigation buttons
+        updateChapterNavigation(prevBtn, nextBtn, result.prev_chapter_url, result.next_chapter_url);
+        
+        // Update chapter title with progress info
+        if (chapterTitle) {
+            const progress = `Chapter ${result.current_chapter_index + 1} of ${result.total_chapters}`;
+            chapterTitle.textContent = progress;
+        }
+        
+    } catch (error) {
+        console.error('Error loading chapter details:', error);
+        showErrorState(container, `Failed to load chapter: ${error.message}`, true);
+    }
+}
+
+/**
+ * Display chapter images in the reader
+ */
+function displayChapterImages(images, container) {
+    if (!container) return;
+    
+    if (!images || images.length === 0) {
+        showEmptyState(container, 'No chapter images found.');
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    images.forEach((imageUrl, index) => {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = `Chapter page ${index + 1}`;
+        img.className = 'reader-image';
+        img.loading = 'lazy';
+        
+        // Add error handling for images
+        img.onerror = function() {
+            this.style.display = 'none';
+            const placeholder = document.createElement('div');
+            placeholder.className = 'image-placeholder';
+            placeholder.innerHTML = `<span>📄</span><p>Page ${index + 1}</p>`;
+            this.parentNode.insertBefore(placeholder, this.nextSibling);
+        };
+        
+        container.appendChild(img);
+    });
+}
+
+/**
+ * Update chapter navigation buttons
+ */
+function updateChapterNavigation(prevBtn, nextBtn, prevUrl, nextUrl) {
+    if (prevBtn) {
+        if (prevUrl) {
+            prevBtn.disabled = false;
+            prevBtn.onclick = () => {
+                window.location.href = `reader.html?url=${encodeURIComponent(prevUrl)}`;
+            };
+            prevBtn.textContent = '← Previous';
+        } else {
+            prevBtn.disabled = true;
+            prevBtn.textContent = '← First';
+        }
+    }
+    
+    if (nextBtn) {
+        if (nextUrl) {
+            nextBtn.disabled = false;
+            nextBtn.onclick = () => {
+                window.location.href = `reader.html?url=${encodeURIComponent(nextUrl)}`;
+            };
+            nextBtn.textContent = 'Next →';
+        } else {
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Last →';
+        }
+    }
 }
 
 // --- Global Functions (for external use) ---

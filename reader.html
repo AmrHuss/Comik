@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ManhwaVerse Reader</title>
-    <meta name="description" content="Read manhwa and webtoons at ManhwaVerse. Premium reading experience with high-quality images.">
+    <meta name="description" content="Read manhwa and webtoons at ManhwaVerse. Premium reading experience with high-quality images and chapter navigation.">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,104 +13,11 @@
     
     <!-- CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
-    
-    <style>
-        .reader-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: var(--primary-bg);
-            min-height: 100vh;
-        }
-        
-        .reader-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .reader-title {
-            font-size: var(--font-size-2xl);
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        
-        .reader-controls {
-            display: flex;
-            gap: 1rem;
-        }
-        
-        .reader-btn {
-            background: var(--accent-color);
-            color: var(--text-primary);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-lg);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all var(--transition-fast);
-        }
-        
-        .reader-btn:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-        }
-        
-        .reader-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        .chapter-image {
-            width: 100%;
-            height: auto;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
-            transition: transform var(--transition-normal);
-        }
-        
-        .chapter-image:hover {
-            transform: scale(1.02);
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-secondary);
-        }
-        
-        .error {
-            text-align: center;
-            padding: 2rem;
-            color: #dc2626;
-            background: rgba(220, 38, 38, 0.1);
-            border-radius: var(--radius-lg);
-            margin: 2rem 0;
-        }
-        
-        .back-btn {
-            background: var(--card-bg);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-lg);
-            text-decoration: none;
-            font-weight: 500;
-            transition: all var(--transition-fast);
-        }
-        
-        .back-btn:hover {
-            background: var(--accent-color);
-            color: var(--text-primary);
-            border-color: var(--accent-color);
-        }
-    </style>
 </head>
 <body data-page="reader">
+    <!-- Skip Link for Accessibility -->
+    <a href="#reader-content" class="skip-link">Skip to main content</a>
+
     <!-- Header & Navigation -->
     <header class="header">
         <nav class="navbar">
@@ -138,51 +44,50 @@
                 </ul>
                 
                 <!-- Search Bar -->
-                <div class="nav-search">
-                    <div class="search-container">
-                        <input type="text" placeholder="Search for a series..." class="search-input">
-                        <button class="search-btn" aria-label="Search">
+                <div class="search-container">
+                    <form class="search-form" id="search-form">
+                        <input type="text" id="search-input" placeholder="Search for a series..." class="search-input" aria-label="Search for manhwa">
+                        <button type="submit" class="search-btn" aria-label="Search">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="11" cy="11" r="8"></circle>
                                 <path d="m21 21-4.35-4.35"></path>
                             </svg>
                         </button>
-                    </div>
+                    </form>
                 </div>
                 
                 <!-- Login Button -->
-                <div class="nav-auth">
-                    <button class="login-btn">Login</button>
-                </div>
+                <button class="login-btn">Login</button>
                 
                 <!-- Mobile Menu Toggle -->
-                <div class="mobile-menu-toggle">
+                <button class="mobile-menu-toggle" aria-label="Toggle mobile menu">
                     <span class="hamburger"></span>
                     <span class="hamburger"></span>
                     <span class="hamburger"></span>
-                </div>
+                </button>
             </div>
         </nav>
     </header>
 
     <!-- Reader Content -->
     <main class="main-content">
-        <div class="reader-container">
-            <div class="reader-header">
-                <div>
-                    <a href="index.html" class="back-btn">â† Back to Home</a>
-                </div>
-                <h1 class="reader-title" id="chapter-title">Loading Chapter...</h1>
-                <div class="reader-controls">
-                    <button class="reader-btn" id="prev-btn" disabled>Previous</button>
-                    <button class="reader-btn" id="next-btn" disabled>Next</button>
+        <!-- Reader Header with Navigation -->
+        <div class="reader-header">
+            <div class="reader-controls">
+                <a href="javascript:history.back()" class="nav-btn">← Back</a>
+                <h1 class="reader-title" id="reader-title">Loading Chapter...</h1>
+                <div class="reader-nav">
+                    <button class="nav-btn" id="prev-chapter-btn" disabled>← Previous</button>
+                    <button class="nav-btn" id="next-chapter-btn" disabled>Next →</button>
                 </div>
             </div>
-            
-            <div class="reader-content" id="reader-content">
-                <div class="loading">
-                    <p>Loading chapter images...</p>
-                </div>
+        </div>
+        
+        <!-- Chapter Images Container -->
+        <div class="reader-content" id="reader-content">
+            <div class="loading-container">
+                <div class="loading-spinner"></div>
+                <p class="loading-message">Loading chapter images...</p>
             </div>
         </div>
     </main>
@@ -242,68 +147,12 @@
             </div>
             
             <div class="footer-bottom">
-                <p class="copyright">Â© 2025 ManhwaVerse. All Rights Reserved.</p>
+                <p class="copyright">© 2025 ManhwaVerse. All Rights Reserved.</p>
             </div>
         </div>
     </footer>
 
     <!-- JavaScript -->
     <script src="assets/js/main.js"></script>
-    <script>
-        // Reader-specific JavaScript
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const chapterUrl = urlParams.get('url');
-            
-            if (chapterUrl) {
-                loadChapter(chapterUrl);
-            } else {
-                showError('No chapter URL provided');
-            }
-        });
-        
-        async function loadChapter(chapterUrl) {
-            const readerContent = document.getElementById('reader-content');
-            const chapterTitle = document.getElementById('chapter-title');
-            
-            try {
-                // Show loading state
-                readerContent.innerHTML = '<div class="loading"><p>Loading chapter images...</p></div>';
-                
-                // Load chapter images from API
-                const images = await loadChapterImages(chapterUrl);
-                
-                if (images.length > 0) {
-                    // Update title
-                    chapterTitle.textContent = `Chapter - ${images.length} pages`;
-                    
-                    // Clear loading and show images
-                    readerContent.innerHTML = '';
-                    
-                    images.forEach((imageUrl, index) => {
-                        const img = document.createElement('img');
-                        img.src = imageUrl;
-                        img.alt = `Page ${index + 1}`;
-                        img.className = 'chapter-image';
-                        img.loading = 'lazy';
-                        readerContent.appendChild(img);
-                    });
-                    
-                    console.log(`Loaded ${images.length} chapter images`);
-                } else {
-                    showError('No chapter images found');
-                }
-                
-            } catch (error) {
-                console.error('Error loading chapter:', error);
-                showError('Failed to load chapter. Please try again later.');
-            }
-        }
-        
-        function showError(message) {
-            const readerContent = document.getElementById('reader-content');
-            readerContent.innerHTML = `<div class="error"><p>${message}</p></div>`;
-        }
-    </script>
 </body>
 </html>

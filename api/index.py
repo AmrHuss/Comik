@@ -501,6 +501,138 @@ def get_chapter_images():
             'error': 'An unexpected error occurred while fetching chapter images'
         }), 500
 
+@app.route('/api/chapter-details', methods=['GET'])
+def get_chapter_details():
+    """Get chapter images and navigation info for reader page."""
+    chapter_url = request.args.get('url', '').strip()
+    
+    if not chapter_url:
+        return jsonify({
+            'success': False, 
+            'error': 'Chapter URL is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching chapter details for: {chapter_url}")
+        
+        # First, get the manga detail page to find all chapters
+        # Extract manga URL from chapter URL
+        manga_url = chapter_url.rsplit('/', 1)[0]  # Remove last part (chapter name)
+        if '/chapter-' in manga_url:
+            manga_url = manga_url.rsplit('/chapter-', 1)[0]
+        
+        logger.info(f"Extracted manga URL: {manga_url}")
+        
+        # Get manga details to find all chapters
+        manga_details = scrape_manga_details(manga_url)
+        if not manga_details or not manga_details.get('chapters'):
+            return jsonify({
+                'success': False, 
+                'error': 'Could not find manga chapters'
+            }), 404
+        
+        chapters = manga_details['chapters']
+        logger.info(f"Found {len(chapters)} chapters for manga")
+        
+        # Find current chapter index
+        current_chapter_index = None
+        for i, chapter in enumerate(chapters):
+            if chapter['url'] == chapter_url:
+                current_chapter_index = i
+                break
+        
+        if current_chapter_index is None:
+            return jsonify({
+                'success': False, 
+                'error': 'Current chapter not found in manga chapters'
+            }), 404
+        
+        # Get previous and next chapter URLs
+        prev_chapter_url = None
+        next_chapter_url = None
+        
+        if current_chapter_index > 0:
+            prev_chapter_url = chapters[current_chapter_index - 1]['url']
+        
+        if current_chapter_index < len(chapters) - 1:
+            next_chapter_url = chapters[current_chapter_index + 1]['url']
+        
+        # Get current chapter images
+        response = make_request(chapter_url)
+        if not response:
+            return jsonify({
+                'success': False, 
+                'error': 'Failed to fetch chapter page'
+            }), 500
+        
+        soup = BeautifulSoup(response.content, 'lxml')
+        
+        # Find the reader area with multiple possible selectors
+        reader_area = None
+        reader_selectors = [
+            '#readerarea',
+            '.reading-content',
+            '.reader-area',
+            '#reading-content',
+            '.chapter-content'
+        ]
+        
+        for selector in reader_selectors:
+            reader_area = soup.select_one(selector)
+            if reader_area:
+                logger.info(f"Found reader area with selector: {selector}")
+                break
+        
+        if not reader_area:
+            logger.warning(f"Could not find reader area in chapter: {chapter_url}")
+            return jsonify({
+                'success': False, 
+                'error': 'Could not find the reader area on the chapter page'
+            }), 404
+        
+        # Extract all images from the reader area
+        images = reader_area.select('img')
+        logger.info(f"Found {len(images)} images in reader area")
+        
+        image_urls = []
+        for img in images:
+            src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+            if src:
+                src = src.strip()
+                # Filter for valid chapter images (not ads or trackers)
+                if (src and 
+                    ('asurascans.imagemanga.online' in src or 
+                     'asurascans.com' in src or
+                     'manga' in src.lower()) and
+                    not any(ad in src.lower() for ad in ['ad', 'banner', 'tracker', 'pixel'])):
+                    image_urls.append(src)
+        
+        if not image_urls:
+            logger.warning(f"No valid chapter images found in: {chapter_url}")
+            return jsonify({
+                'success': False, 
+                'error': 'No valid chapter images found in the reader area'
+            }), 404
+        
+        logger.info(f"Successfully extracted {len(image_urls)} chapter images")
+        
+        return jsonify({
+            'success': True,
+            'images': image_urls,
+            'prev_chapter_url': prev_chapter_url,
+            'next_chapter_url': next_chapter_url,
+            'current_chapter_index': current_chapter_index,
+            'total_chapters': len(chapters)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/chapter-details for {chapter_url}: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False, 
+            'error': 'An unexpected error occurred while fetching chapter details'
+        }), 500
+
 @app.route('/api', methods=['GET'])
 def api_root():
     """API root endpoint for health checks."""
@@ -512,7 +644,8 @@ def api_root():
             '/api/genre',
             '/api/search', 
             '/api/manga-details',
-            '/api/chapter'
+            '/api/chapter',
+            '/api/chapter-details'
         ]
     })
 
