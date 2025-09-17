@@ -1,14 +1,16 @@
+# --- Filename: api/index.py ---
+
 import logging
 import requests
 from urllib.parse import urljoin, quote
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# This 'app' object is what Vercel will use
+# This 'app' object is what Vercel will instantiate
 app = Flask(__name__)
 CORS(app)
 
@@ -38,7 +40,7 @@ def parse_manga_cards_from_soup(soup):
 
 def scrape_manga_details(detail_url):
     try:
-        response = requests.get(detail_url, headers=get_headers(), timeout=15)
+        response = requests.get(detail_url, headers=get_headers(), timeout=9) # 9 second timeout for Vercel
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'lxml')
         info_container = soup.select_one('div.main-info')
@@ -60,35 +62,36 @@ def scrape_manga_details(detail_url):
                     'url': link['href']
                 })
         return {'title': title, 'cover_image': cover_image, 'description': description, 'rating': rating, 'status': status, 'genres': genres, 'chapters': chapters}
-    except Exception as e:
-        logger.error(f"Failed to scrape details for {detail_url}: {e}")
+    except Exception:
         return None
 
-# --- API Endpoints ---
-@app.route('/api/manga-details', methods=['GET'])
-def get_manga_details(request): # Vercel may pass the request object
-    detail_url = request.args.get('url')
-    if not detail_url: return jsonify({'success': False, 'error': 'Manga detail URL is required.'}), 400
-    manga_details = scrape_manga_details(detail_url)
-    if manga_details: return jsonify({'success': True, 'data': manga_details})
-    return jsonify({'success': False, 'error': 'Could not scrape details.'}), 404
+# --- VERCEL-FRIENDLY API ENDPOINTS ---
+# Notice the routes no longer start with /api/. Vercel handles that part.
 
-@app.route('/api/popular', methods=['GET'])
-def get_popular_manga(request):
+@app.route('/popular', methods=['GET'])
+def get_popular_manga():
     try:
-        response = requests.get(BASE_URL, headers=get_headers(), timeout=15)
+        response = requests.get(BASE_URL, headers=get_headers(), timeout=9)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'lxml')
         manga_data = parse_manga_cards_from_soup(soup)
         return jsonify({'success': True, 'count': len(manga_data), 'data': manga_data})
     except Exception: return jsonify({'success': False, 'error': 'Failed to scrape homepage.'}), 500
 
-@app.route('/api/chapter', methods=['GET'])
-def get_chapter_images(request):
+@app.route('/manga-details', methods=['GET'])
+def get_manga_details():
+    detail_url = request.args.get('url')
+    if not detail_url: return jsonify({'success': False, 'error': 'Manga detail URL is required.'}), 400
+    manga_details = scrape_manga_details(detail_url)
+    if manga_details: return jsonify({'success': True, 'data': manga_details})
+    return jsonify({'success': False, 'error': 'Could not scrape details.'}), 404
+
+@app.route('/chapter', methods=['GET'])
+def get_chapter_images():
     chapter_url = request.args.get('url')
-    if not chapter_url: return jsonify({'success': False, 'error': 'Chapter URL parameter is required.'}), 400
+    if not chapter_url: return jsonify({'success': False, 'error': 'Chapter URL is required.'}), 400
     try:
-        response = requests.get(chapter_url, headers=get_headers(), timeout=15)
+        response = requests.get(chapter_url, headers=get_headers(), timeout=9)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'lxml')
         reader_area = soup.select_one('#readerarea, .reading-content')
@@ -98,4 +101,38 @@ def get_chapter_images(request):
         return jsonify({'success': True, 'count': len(image_urls), 'data': image_urls})
     except Exception: return jsonify({'success': False, 'error': 'An unexpected error occurred.'}), 500
 
-# The Flask app object is what Vercel will run. No need for __main__ block.
+@app.route('/genre', methods=['GET'])
+def get_genre_manga():
+    genre_name = request.args.get('name')
+    if not genre_name: return jsonify({'success': False, 'error': 'Genre name is required.'}), 400
+    genre_url = f"{BASE_URL}genres/{genre_name}/"
+    try:
+        response = requests.get(genre_url, headers=get_headers(), timeout=9)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'lxml')
+        manga_data = parse_manga_cards_from_soup(soup)
+        if not manga_data: return jsonify({'success': False, 'error': f'No manga found for genre: {genre_name}.'}), 404
+        return jsonify({'success': True, 'count': len(manga_data), 'data': manga_data})
+    except Exception: return jsonify({'success': False, 'error': 'Internal server error.'}), 500
+
+@app.route('/search', methods=['GET'])
+def search_manga():
+    query = request.args.get('query')
+    if not query: return jsonify({'success': False, 'error': 'Query is required.'}), 400
+    search_url = f"{BASE_URL}?s={quote(query)}"
+    try:
+        response = requests.get(search_url, headers=get_headers(), timeout=9)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'lxml')
+        manga_data = parse_manga_cards_from_soup(soup)
+        return jsonify({'success': True, 'count': len(manga_data), 'data': manga_data})
+    except Exception: return jsonify({'success': False, 'error': 'Search failed.'}), 500
+
+# This is a catch-all for the root of the API
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    # This function ensures that any request to /api/ or /api/some-undefined-route
+    # will still be handled by Flask, preventing the Vercel 404.
+    # We can just return a simple message.
+    return jsonify({'message': 'Flask is running, but this specific path has no endpoint.', 'path': f'/{path}'})
