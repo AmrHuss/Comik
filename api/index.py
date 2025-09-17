@@ -515,49 +515,7 @@ def get_chapter_details():
     try:
         logger.info(f"Fetching chapter details for: {chapter_url}")
         
-        # First, get the manga detail page to find all chapters
-        # Extract manga URL from chapter URL
-        manga_url = chapter_url.rsplit('/', 1)[0]  # Remove last part (chapter name)
-        if '/chapter-' in manga_url:
-            manga_url = manga_url.rsplit('/chapter-', 1)[0]
-        
-        logger.info(f"Extracted manga URL: {manga_url}")
-        
-        # Get manga details to find all chapters
-        manga_details = scrape_manga_details(manga_url)
-        if not manga_details or not manga_details.get('chapters'):
-            return jsonify({
-                'success': False, 
-                'error': 'Could not find manga chapters'
-            }), 404
-        
-        chapters = manga_details['chapters']
-        logger.info(f"Found {len(chapters)} chapters for manga")
-        
-        # Find current chapter index
-        current_chapter_index = None
-        for i, chapter in enumerate(chapters):
-            if chapter['url'] == chapter_url:
-                current_chapter_index = i
-                break
-        
-        if current_chapter_index is None:
-            return jsonify({
-                'success': False, 
-                'error': 'Current chapter not found in manga chapters'
-            }), 404
-        
-        # Get previous and next chapter URLs
-        prev_chapter_url = None
-        next_chapter_url = None
-        
-        if current_chapter_index > 0:
-            prev_chapter_url = chapters[current_chapter_index - 1]['url']
-        
-        if current_chapter_index < len(chapters) - 1:
-            next_chapter_url = chapters[current_chapter_index + 1]['url']
-        
-        # Get current chapter images
+        # First, try to get chapter images using the existing /api/chapter logic
         response = make_request(chapter_url)
         if not response:
             return jsonify({
@@ -616,13 +574,15 @@ def get_chapter_details():
         
         logger.info(f"Successfully extracted {len(image_urls)} chapter images")
         
+        # For now, return just the images without navigation
+        # Navigation can be added later when the basic functionality works
         return jsonify({
             'success': True,
             'images': image_urls,
-            'prev_chapter_url': prev_chapter_url,
-            'next_chapter_url': next_chapter_url,
-            'current_chapter_index': current_chapter_index,
-            'total_chapters': len(chapters)
+            'prev_chapter_url': None,
+            'next_chapter_url': None,
+            'current_chapter_index': 0,
+            'total_chapters': 1
         })
         
     except Exception as e:

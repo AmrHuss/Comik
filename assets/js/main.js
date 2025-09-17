@@ -575,22 +575,42 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        const result = await makeApiRequest(`${API_BASE_URL}/chapter-details?url=${encodeURIComponent(chapterUrl)}`);
-        
-        // Display chapter images
-        displayChapterImages(result.images, container);
-        
-        // Update navigation buttons
-        updateChapterNavigation(prevBtn, nextBtn, result.prev_chapter_url, result.next_chapter_url);
-        
-        // Update chapter title with progress info
-        if (chapterTitle) {
-            const progress = `Chapter ${result.current_chapter_index + 1} of ${result.total_chapters}`;
-            chapterTitle.textContent = progress;
+        // Try the new chapter-details endpoint first
+        try {
+            const result = await makeApiRequest(`${API_BASE_URL}/chapter-details?url=${encodeURIComponent(chapterUrl)}`);
+            
+            // Display chapter images
+            displayChapterImages(result.images, container);
+            
+            // Update navigation buttons
+            updateChapterNavigation(prevBtn, nextBtn, result.prev_chapter_url, result.next_chapter_url);
+            
+            // Update chapter title with progress info
+            if (chapterTitle) {
+                const progress = `Chapter ${result.current_chapter_index + 1} of ${result.total_chapters}`;
+                chapterTitle.textContent = progress;
+            }
+            
+        } catch (chapterDetailsError) {
+            console.warn('Chapter-details endpoint failed, falling back to chapter endpoint:', chapterDetailsError);
+            
+            // Fallback to the old chapter endpoint
+            const result = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
+            
+            // Display chapter images
+            displayChapterImages(result.data, container);
+            
+            // Disable navigation buttons since we don't have navigation data
+            updateChapterNavigation(prevBtn, nextBtn, null, null);
+            
+            // Update chapter title
+            if (chapterTitle) {
+                chapterTitle.textContent = `Chapter - ${result.data.length} pages`;
+            }
         }
         
     } catch (error) {
-        console.error('Error loading chapter details:', error);
+        console.error('Error loading chapter:', error);
         showErrorState(container, `Failed to load chapter: ${error.message}`, true);
     }
 }
