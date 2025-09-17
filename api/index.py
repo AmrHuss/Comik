@@ -1,22 +1,14 @@
 #!/usr/bin/env python3
 """
-ManhwaVerse Flask API - Production Version for Vercel Deployment
-================================================================
+ManhwaVerse Flask API - Vercel Production Ready
+===============================================
 
-A comprehensive Flask API for scraping manhwa data from Asura Scans.
-This version is optimized for Vercel serverless deployment with proper
-error handling, logging, and all required endpoints.
-
-Endpoints:
-- /api/popular - Get popular manga from homepage
-- /api/genre - Get manga by genre
-- /api/search - Search manga by query
-- /api/manga-details - Get detailed manga information
-- /api/chapter - Get chapter images (RESTORED FUNCTIONALITY)
+A complete Flask API for scraping manhwa data from Asura Scans.
+Optimized for Vercel serverless deployment with modern configuration.
 
 Author: ManhwaVerse Development Team
 Date: 2025
-Version: Production v1.0
+Version: Vercel Production v1.0
 """
 
 import logging
@@ -44,12 +36,7 @@ REQUEST_TIMEOUT = 15
 MAX_RETRIES = 3
 
 def get_headers():
-    """
-    Get standardized headers for HTTP requests.
-    
-    Returns:
-        dict: Headers dictionary with User-Agent and other necessary headers
-    """
+    """Get standardized headers for HTTP requests."""
     return {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -60,16 +47,7 @@ def get_headers():
     }
 
 def make_request(url, retries=MAX_RETRIES):
-    """
-    Make HTTP request with retry logic and proper error handling.
-    
-    Args:
-        url (str): URL to request
-        retries (int): Number of retry attempts
-        
-    Returns:
-        requests.Response: Response object or None if all retries failed
-    """
+    """Make HTTP request with retry logic and proper error handling."""
     for attempt in range(retries):
         try:
             response = requests.get(
@@ -88,18 +66,7 @@ def make_request(url, retries=MAX_RETRIES):
     return None
 
 def parse_manga_cards_from_soup(soup):
-    """
-    Parse manga cards from BeautifulSoup object.
-    
-    This function extracts manga information from various container types
-    found on Asura Scans pages, handling different layouts gracefully.
-    
-    Args:
-        soup (BeautifulSoup): Parsed HTML content
-        
-    Returns:
-        list: List of manga dictionaries with title, cover_url, detail_url, latest_chapter
-    """
+    """Parse manga cards from BeautifulSoup object."""
     manga_list = []
     
     # Try different container selectors based on page type
@@ -209,15 +176,7 @@ def parse_manga_cards_from_soup(soup):
     return unique_manga
 
 def scrape_manga_details(detail_url):
-    """
-    Scrape detailed information for a specific manga.
-    
-    Args:
-        detail_url (str): URL of the manga detail page
-        
-    Returns:
-        dict or None: Manga details dictionary or None if scraping failed
-    """
+    """Scrape detailed information for a specific manga."""
     try:
         response = make_request(detail_url)
         if not response:
@@ -298,16 +257,11 @@ def scrape_manga_details(detail_url):
         logger.error(traceback.format_exc())
         return None
 
-# --- API Endpoints ---
+# --- API Endpoints (All prefixed with /api/) ---
 
 @app.route('/api/popular', methods=['GET'])
 def get_popular_manga():
-    """
-    Get popular manga from the homepage.
-    
-    Returns:
-        JSON response with success status and manga data
-    """
+    """Get popular manga from the homepage."""
     try:
         logger.info("Fetching popular manga from homepage")
         response = make_request(BASE_URL)
@@ -343,15 +297,7 @@ def get_popular_manga():
 
 @app.route('/api/genre', methods=['GET'])
 def get_genre_manga():
-    """
-    Get manga by genre.
-    
-    Query Parameters:
-        name (str): Genre name (e.g., 'action', 'romance')
-        
-    Returns:
-        JSON response with success status and manga data
-    """
+    """Get manga by genre."""
     genre_name = request.args.get('name', '').strip().lower()
     
     if not genre_name:
@@ -397,15 +343,7 @@ def get_genre_manga():
 
 @app.route('/api/search', methods=['GET'])
 def search_manga():
-    """
-    Search manga by query.
-    
-    Query Parameters:
-        query (str): Search query
-        
-    Returns:
-        JSON response with success status and search results
-    """
+    """Search manga by query."""
     query = request.args.get('query', '').strip()
     
     if not query:
@@ -445,15 +383,7 @@ def search_manga():
 
 @app.route('/api/manga-details', methods=['GET'])
 def get_manga_details():
-    """
-    Get detailed information for a specific manga.
-    
-    Query Parameters:
-        url (str): URL of the manga detail page
-        
-    Returns:
-        JSON response with success status and manga details
-    """
+    """Get detailed information for a specific manga."""
     detail_url = request.args.get('url', '').strip()
     
     if not detail_url:
@@ -487,18 +417,7 @@ def get_manga_details():
 
 @app.route('/api/chapter', methods=['GET'])
 def get_chapter_images():
-    """
-    Get chapter images from a chapter URL.
-    
-    This endpoint takes a direct chapter URL and extracts all the images
-    from the reader area. This is the RESTORED chapter loading functionality.
-    
-    Query Parameters:
-        url (str): Direct URL to the chapter page
-        
-    Returns:
-        JSON response with success status and array of image URLs
-    """
+    """Get chapter images from a chapter URL."""
     chapter_url = request.args.get('url', '').strip()
     
     if not chapter_url:
@@ -584,12 +503,7 @@ def get_chapter_images():
 
 @app.route('/api', methods=['GET'])
 def api_root():
-    """
-    API root endpoint for health checks.
-    
-    Returns:
-        JSON response with API information
-    """
+    """API root endpoint for health checks."""
     return jsonify({
         'message': 'ManhwaVerse API is running',
         'version': '1.0.0',
@@ -601,16 +515,6 @@ def api_root():
             '/api/chapter'
         ]
     })
-
-@app.route('/', methods=['GET'])
-def root():
-    """
-    Root endpoint redirect to API info.
-    
-    Returns:
-        JSON response with API information
-    """
-    return api_root()
 
 # Error handlers
 @app.errorhandler(404)
@@ -627,15 +531,5 @@ def internal_error(error):
         'error': 'Internal server error'
     }), 500
 
-# This is required for Vercel - the app variable must be available
-# Vercel will automatically detect and use this Flask app
-
-# Local development server (only runs when script is executed directly)
-if __name__ == '__main__':
-    print("Starting ManhwaVerse API server...")
-    print("API will be available at: http://127.0.0.1:5000")
-    print("Test endpoints:")
-    print("  - http://127.0.0.1:5000/api")
-    print("  - http://127.0.0.1:5000/api/popular")
-    print("Press Ctrl+C to stop the server")
-    app.run(debug=True, host='127.0.0.1', port=5000)
+# Vercel requires the app variable to be available
+# No if __name__ == '__main__' block needed for Vercel

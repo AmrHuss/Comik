@@ -1,21 +1,13 @@
 /**
- * ManhwaVerse Frontend Logic - Production Version
- * ================================================
+ * ManhwaVerse Frontend Logic - Vercel Production Ready
+ * ====================================================
  * 
  * A comprehensive JavaScript module for the ManhwaVerse website.
- * This version includes proper error handling, loading states, and
- * modular functions for better maintainability.
- * 
- * Features:
- * - Dynamic content loading for all pages
- * - Search functionality with live results
- * - Chapter image loading for reader
- * - Error handling and user feedback
- * - Responsive UI updates
+ * Optimized for Vercel deployment with correct API endpoints.
  * 
  * Author: ManhwaVerse Development Team
  * Date: 2025
- * Version: Production v1.0
+ * Version: Vercel Production v1.0
  */
 
 // --- Configuration ---
@@ -36,9 +28,6 @@ const AppState = {
 
 /**
  * Debounce function to limit API calls during search
- * @param {Function} func - Function to debounce
- * @param {number} delay - Delay in milliseconds
- * @returns {Function} Debounced function
  */
 function debounce(func, delay) {
     let timeoutId;
@@ -50,8 +39,6 @@ function debounce(func, delay) {
 
 /**
  * Show loading state in a container
- * @param {HTMLElement} container - Container to show loading in
- * @param {string} message - Loading message
  */
 function showLoadingState(container, message = 'Loading...') {
     if (!container) return;
@@ -65,9 +52,6 @@ function showLoadingState(container, message = 'Loading...') {
 
 /**
  * Show error state in a container
- * @param {HTMLElement} container - Container to show error in
- * @param {string} message - Error message
- * @param {boolean} retry - Whether to show retry button
  */
 function showErrorState(container, message, retry = false) {
     if (!container) return;
@@ -83,8 +67,6 @@ function showErrorState(container, message, retry = false) {
 
 /**
  * Show empty state in a container
- * @param {HTMLElement} container - Container to show empty state in
- * @param {string} message - Empty state message
  */
 function showEmptyState(container, message = 'No content found.') {
     if (!container) return;
@@ -98,9 +80,6 @@ function showEmptyState(container, message = 'No content found.') {
 
 /**
  * Make API request with proper error handling
- * @param {string} url - API endpoint URL
- * @param {Object} options - Fetch options
- * @returns {Promise<Object>} API response data
  */
 async function makeApiRequest(url, options = {}) {
     const controller = new AbortController();
@@ -140,8 +119,6 @@ async function makeApiRequest(url, options = {}) {
 
 /**
  * Create a manga card element
- * @param {Object} manga - Manga data object
- * @returns {HTMLElement} Manga card element
  */
 function createMangaCard(manga) {
     const cardLink = document.createElement('a');
@@ -177,8 +154,6 @@ function createMangaCard(manga) {
 
 /**
  * Create a search result item
- * @param {Object} manga - Manga data object
- * @returns {HTMLElement} Search result element
  */
 function createSearchResultItem(manga) {
     const item = document.createElement('a');
@@ -193,8 +168,6 @@ function createSearchResultItem(manga) {
 
 /**
  * Display manga grid in a container
- * @param {HTMLElement} container - Container to display manga in
- * @param {Array} mangaList - Array of manga data
  */
 function displayMangaGrid(container, mangaList) {
     if (!container) return;
@@ -213,8 +186,6 @@ function displayMangaGrid(container, mangaList) {
 
 /**
  * Display search results in dropdown
- * @param {HTMLElement} container - Search results container
- * @param {Array} results - Array of search results
  */
 function displaySearchResults(container, results) {
     if (!container) return;
@@ -236,9 +207,6 @@ function displaySearchResults(container, results) {
 
 /**
  * Load and display manga data for a specific page
- * @param {string} apiUrl - API endpoint URL
- * @param {string} gridSelector - CSS selector for manga grid
- * @param {string} pageTitle - Page title to display
  */
 async function loadAndDisplayManga(apiUrl, gridSelector, pageTitle) {
     const grid = document.querySelector(gridSelector);
@@ -358,7 +326,6 @@ async function handleDetailPage() {
 
 /**
  * Display manga details on detail page
- * @param {Object} data - Manga details data
  */
 function displayMangaDetails(data) {
     const container = document.getElementById('detail-container');
@@ -406,7 +373,6 @@ function displayMangaDetails(data) {
 
 /**
  * Handle search form submission
- * @param {Event} event - Form submit event
  */
 function handleSearchSubmit(event) {
     event.preventDefault();
@@ -420,7 +386,6 @@ function handleSearchSubmit(event) {
 
 /**
  * Handle live search input
- * @param {Event} event - Input event
  */
 async function handleLiveSearch(event) {
     const query = event.target.value.trim();
@@ -451,7 +416,6 @@ async function handleLiveSearch(event) {
 
 /**
  * Create search results container if it doesn't exist
- * @returns {HTMLElement} Search results container
  */
 function createSearchResultsContainer() {
     const searchContainer = document.querySelector('.search-container');
@@ -481,8 +445,6 @@ function hideSearchResults() {
 
 /**
  * Load chapter images for reader page
- * @param {string} chapterUrl - URL of the chapter to load
- * @returns {Promise<Array>} Array of image URLs
  */
 async function loadChapterImages(chapterUrl) {
     try {
@@ -529,8 +491,6 @@ function initializePage() {
     }
 }
 
-// --- Event Listeners ---
-
 /**
  * Initialize all event listeners
  */
@@ -566,9 +526,6 @@ function initializeEventListeners() {
 
 /**
  * Global function for reader page to load chapter images
- * This is called by the reader.html page
- * @param {string} chapterUrl - URL of the chapter to load
- * @returns {Promise<Array>} Array of image URLs
  */
 window.loadChapterImages = loadChapterImages;
 
