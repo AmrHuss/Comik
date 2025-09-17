@@ -3,14 +3,12 @@
 import logging
 import requests
 from urllib.parse import urljoin, quote
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
-# This 'app' object is what Vercel will instantiate
 app = Flask(__name__)
 CORS(app)
 
@@ -40,7 +38,7 @@ def parse_manga_cards_from_soup(soup):
 
 def scrape_manga_details(detail_url):
     try:
-        response = requests.get(detail_url, headers=get_headers(), timeout=9) # 9 second timeout for Vercel
+        response = requests.get(detail_url, headers=get_headers(), timeout=9)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'lxml')
         info_container = soup.select_one('div.main-info')
@@ -62,13 +60,10 @@ def scrape_manga_details(detail_url):
                     'url': link['href']
                 })
         return {'title': title, 'cover_image': cover_image, 'description': description, 'rating': rating, 'status': status, 'genres': genres, 'chapters': chapters}
-    except Exception:
-        return None
+    except Exception: return None
 
-# --- VERCEL-FRIENDLY API ENDPOINTS ---
-# Notice the routes no longer start with /api/. Vercel handles that part.
-
-@app.route('/popular', methods=['GET'])
+# --- API Endpoints with Correct Prefixes ---
+@app.route('/api/popular', methods=['GET'])
 def get_popular_manga():
     try:
         response = requests.get(BASE_URL, headers=get_headers(), timeout=9)
@@ -78,7 +73,7 @@ def get_popular_manga():
         return jsonify({'success': True, 'count': len(manga_data), 'data': manga_data})
     except Exception: return jsonify({'success': False, 'error': 'Failed to scrape homepage.'}), 500
 
-@app.route('/manga-details', methods=['GET'])
+@app.route('/api/manga-details', methods=['GET'])
 def get_manga_details():
     detail_url = request.args.get('url')
     if not detail_url: return jsonify({'success': False, 'error': 'Manga detail URL is required.'}), 400
@@ -86,7 +81,7 @@ def get_manga_details():
     if manga_details: return jsonify({'success': True, 'data': manga_details})
     return jsonify({'success': False, 'error': 'Could not scrape details.'}), 404
 
-@app.route('/chapter', methods=['GET'])
+@app.route('/api/chapter', methods=['GET'])
 def get_chapter_images():
     chapter_url = request.args.get('url')
     if not chapter_url: return jsonify({'success': False, 'error': 'Chapter URL is required.'}), 400
@@ -101,7 +96,7 @@ def get_chapter_images():
         return jsonify({'success': True, 'count': len(image_urls), 'data': image_urls})
     except Exception: return jsonify({'success': False, 'error': 'An unexpected error occurred.'}), 500
 
-@app.route('/genre', methods=['GET'])
+@app.route('/api/genre', methods=['GET'])
 def get_genre_manga():
     genre_name = request.args.get('name')
     if not genre_name: return jsonify({'success': False, 'error': 'Genre name is required.'}), 400
@@ -115,7 +110,7 @@ def get_genre_manga():
         return jsonify({'success': True, 'count': len(manga_data), 'data': manga_data})
     except Exception: return jsonify({'success': False, 'error': 'Internal server error.'}), 500
 
-@app.route('/search', methods=['GET'])
+@app.route('/api/search', methods=['GET'])
 def search_manga():
     query = request.args.get('query')
     if not query: return jsonify({'success': False, 'error': 'Query is required.'}), 400
@@ -128,11 +123,7 @@ def search_manga():
         return jsonify({'success': True, 'count': len(manga_data), 'data': manga_data})
     except Exception: return jsonify({'success': False, 'error': 'Search failed.'}), 500
 
-# This is a catch-all for the root of the API
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    # This function ensures that any request to /api/ or /api/some-undefined-route
-    # will still be handled by Flask, preventing the Vercel 404.
-    # We can just return a simple message.
-    return jsonify({'message': 'Flask is running, but this specific path has no endpoint.', 'path': f'/{path}'})
+# Vercel needs a root handler for the /api/index.py file itself
+@app.route('/api', methods=['GET'])
+def api_root():
+    return jsonify({'message': 'Welcome to the ManhwaVerse API root.'})

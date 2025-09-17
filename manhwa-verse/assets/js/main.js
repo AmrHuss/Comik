@@ -1,40 +1,24 @@
 /**
  * ManhwaVerse Frontend Logic (v12 - Definitive Version)
- * ======================================================
- * This is the complete, final script that powers the entire front-end.
- *
- * Features:
- * - Dedicated logic for all pages (home, popular, genres, etc.).
- * - Fully functional live search with a results dropdown.
- * - Complete handling for the manga detail page.
- * - Complete handling for the manga list/results page.
- * - Robust API fetching with clear loading and error states.
  */
-const API_BASE_URL = '/api';
+const API_BASE_URL = '/api'; // This is correct for Vercel
 
 // --- Universal Event Listeners ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Attach live search handler to the search input on all pages
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
         searchInput.addEventListener('input', debounce(handleLiveSearch, 300));
     }
-    
-    // Attach search form handler to redirect to a results page on submit
     const searchForm = document.getElementById('search-form');
     if (searchForm) {
         searchForm.addEventListener('submit', handleSearchSubmit);
     }
-
-    // Hide search results dropdown when clicking anywhere else on the page
     document.addEventListener('click', (e) => {
         const searchContainer = document.querySelector('.search-container');
         if (searchContainer && !searchContainer.contains(e.target)) {
             hideSearchResults();
         }
     });
-
-    // Run the specific logic for the current page
     initializePage();
 });
 
@@ -42,16 +26,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializePage() {
     const page = document.body.dataset.page;
     console.log(`Initializing page: ${page}`);
-
     switch (page) {
         case 'home':
             loadHomepageContent();
             break;
         case 'popular':
-            loadAndDisplayManga(`${API_BASE_URL}/api/popular`, '.manhwa-grid', 'Popular Manhwa');
+            loadAndDisplayManga(`${API_BASE_URL}/popular`, '.manhwa-grid', 'Popular Manhwa');
             break;
         case 'new-releases':
-            loadAndDisplayManga(`${API_BASE_URL}/api/popular`, '.manhwa-grid', 'New Releases');
+            loadAndDisplayManga(`${API_BASE_URL}/popular`, '.manhwa-grid', 'New Releases');
             break;
         case 'mangalist':
             handleMangaListPage();
@@ -63,28 +46,23 @@ function initializePage() {
 }
 
 // --- Specific Page Handlers ---
-
 async function loadHomepageContent() {
     const trendingGrid = document.querySelector('.trending-grid');
     const updatesGrid = document.querySelector('.updates-grid');
-    if (!trendingGrid || !updatesGrid) return;
+    if (!trendingGrid && !updatesGrid) return;
     
-    trendingGrid.innerHTML = '<p class="loading-message">Loading Trending...</p>';
-    updatesGrid.innerHTML = '<p class="loading-message">Loading Updates...</p>';
+    if (trendingGrid) trendingGrid.innerHTML = '<p class="loading-message">Loading Trending...</p>';
+    if (updatesGrid) updatesGrid.innerHTML = '<p class="loading-message">Loading Updates...</p>';
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/popular`);
+        const response = await fetch(`${API_BASE_URL}/popular`);
         const result = await response.json();
         if (!result.success) throw new Error(result.error);
-
-        // Populate Trending: a slice of the full list
-        displayMangaGrid(trendingGrid, result.data.slice(0, 6));
-
-        // Populate Latest Updates: the full list
-        displayMangaGrid(updatesGrid, result.data);
+        if (trendingGrid) displayMangaGrid(trendingGrid, result.data.slice(0, 6));
+        if (updatesGrid) displayMangaGrid(updatesGrid, result.data);
     } catch (error) {
-        trendingGrid.innerHTML = '<p class="error-message">Could not load trending manga.</p>';
-        updatesGrid.innerHTML = '<p class="error-message">Could not load latest updates.</p>';
+        if (trendingGrid) trendingGrid.innerHTML = '<p class="error-message">Could not load trending manga.</p>';
+        if (updatesGrid) updatesGrid.innerHTML = '<p class="error-message">Could not load latest updates.</p>';
     }
 }
 
@@ -92,12 +70,11 @@ async function handleMangaListPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const genre = urlParams.get('genre');
     const searchQuery = urlParams.get('search');
-
     if (genre) {
         const genreTitle = genre.charAt(0).toUpperCase() + genre.slice(1).replace('-', ' ');
-        loadAndDisplayManga(`${API_BASE_URL}/api/genre?name=${genre}`, '#manga-results-grid', `${genreTitle} Manhwa`);
+        loadAndDisplayManga(`${API_BASE_URL}/genre?name=${genre}`, '#manga-results-grid', `${genreTitle} Manhwa`);
     } else if (searchQuery) {
-        loadAndDisplayManga(`${API_BASE_URL}/api/search?query=${searchQuery}`, '#manga-results-grid', `Search Results for "${searchQuery}"`);
+        loadAndDisplayManga(`${API_BASE_URL}/search?query=${searchQuery}`, '#manga-results-grid', `Search Results for "${searchQuery}"`);
     }
 }
 
@@ -105,15 +82,13 @@ async function handleDetailPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const detailUrl = urlParams.get('url');
     const container = document.getElementById('detail-container');
-
     if (!detailUrl) {
         container.innerHTML = `<p class="error-message">No manga URL provided.</p>`;
         return;
     }
-
     container.innerHTML = '<p class="loading-message">Loading details...</p>';
     try {
-        const response = await fetch(`${API_BASE_URL}/api/manga-details?url=${encodeURIComponent(detailUrl)}`);
+        const response = await fetch(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}`);
         const result = await response.json();
         if (result.success) {
             displayMangaDetails(result.data);
@@ -139,7 +114,6 @@ function handleSearchSubmit(event) {
     const searchInput = document.getElementById('search-input');
     const query = searchInput.value.trim();
     if (query) {
-        // Redirect to the dedicated results page
         window.location.href = `mangalist.html?search=${encodeURIComponent(query)}`;
     }
 }
@@ -147,23 +121,19 @@ function handleSearchSubmit(event) {
 async function handleLiveSearch(event) {
     const query = event.target.value.trim();
     const resultsContainer = document.getElementById('search-results-container') || createSearchResultsContainer();
-
     if (query.length < 2) {
         resultsContainer.style.display = 'none';
         return;
     }
     resultsContainer.innerHTML = '<p class="loading-message" style="padding: 1rem;">Searching...</p>';
     resultsContainer.style.display = 'block';
-
     try {
-        const response = await fetch(`${API_BASE_URL}/api/search?query=${encodeURIComponent(query)}`);
+        const response = await fetch(`${API_BASE_URL}/search?query=${encodeURIComponent(query)}`);
         const result = await response.json();
-
         resultsContainer.innerHTML = '';
         if (result.success && result.data.length > 0) {
-            result.data.slice(0, 7).forEach(manga => { // Limit to 7 results
+            result.data.slice(0, 7).forEach(manga => {
                 const item = document.createElement('a');
-                // Link to the detail page, not the reader
                 item.href = `detail.html?url=${encodeURIComponent(manga.detail_url)}`;
                 item.className = 'search-result-item';
                 item.innerHTML = `<img src="${manga.cover_url}" alt=""><span>${manga.title}</span>`;
@@ -195,11 +165,9 @@ function hideSearchResults() {
 }
 
 // --- Dynamic Element Creation & Display ---
-
 function displayMangaDetails(data) {
     const container = document.getElementById('detail-container');
-    document.title = `${data.title} - ManhwaVerse`; // Update page title
-
+    document.title = `${data.title} - ManhwaVerse`;
     const genresHtml = data.genres.map(genre => `<span class="genre-tag">${genre}</span>`).join('');
     const chaptersHtml = data.chapters.map(chapter => `
         <a href="reader.html?url=${encodeURIComponent(chapter.url)}" class="chapter-item">
@@ -207,7 +175,6 @@ function displayMangaDetails(data) {
             <span class="chapter-date">${chapter.date}</span>
         </a>
     `).join('');
-
     container.innerHTML = `
         <div class="detail-grid">
             <div class="detail-cover"><img src="${data.cover_image}" alt="${data.title}"></div>
@@ -246,32 +213,26 @@ function createMangaCard(manga) {
 }
 
 function displayMangaGrid(container, mangaList) {
-    if (!container) return;
-    if (!mangaList || mangaList.length === 0) {
+    if (!container || !mangaList) return;
+    if (mangaList.length === 0) {
         container.innerHTML = '<p class="error-message">No manga found.</p>';
         return;
     }
     container.innerHTML = '';
-    mangaList.forEach(manga => {
-        container.appendChild(createMangaCard(manga));
-    });
+    mangaList.forEach(manga => container.appendChild(createMangaCard(manga)));
 }
 
 async function loadAndDisplayManga(apiUrl, gridSelector, pageTitleText) {
     const grid = document.querySelector(gridSelector);
     const pageTitle = document.getElementById('page-title');
-
     if (pageTitle && pageTitleText) pageTitle.textContent = pageTitleText;
     if (!grid) return;
-    
     grid.innerHTML = '<p class="loading-message">Loading manga...</p>';
     try {
         const response = await fetch(apiUrl);
         const result = await response.json();
-
         if (result.success && result.data) {
-            const dataToShow = result.data.latest_updates || result.data; // Handle homepage structure
-            displayMangaGrid(grid, dataToShow);
+            displayMangaGrid(grid, result.data);
         } else {
             throw new Error(result.error || "No manga found.");
         }
@@ -280,17 +241,15 @@ async function loadAndDisplayManga(apiUrl, gridSelector, pageTitleText) {
     }
 }
 
-// Global function for reader page, as it's called from inline script
+// Global function for reader page
 window.loadChapterImages = async function(chapterUrl) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/chapter?url=${encodeURIComponent(chapterUrl)}`);
+        const response = await fetch(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
         const result = await response.json();
-        if (result.success) {
-            return result.data;
-        }
+        if (result.success) return result.data;
         throw new Error(result.error || 'Failed to load chapter images');
     } catch (error) {
         console.error("Chapter load error:", error);
-        throw error; // Re-throw to be caught by the calling function
+        throw error;
     }
 };
