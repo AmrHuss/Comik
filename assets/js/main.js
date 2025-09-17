@@ -334,6 +334,9 @@ function displayMangaDetails(data) {
     // Store chapters globally for sorting
     window.mangaChapters = data.chapters;
     
+    // Store chapters in sessionStorage for chapter navigation
+    sessionStorage.setItem('current_manga_chapters', JSON.stringify(data.chapters));
+    
     // Update page title
     document.title = `${data.title} - ManhwaVerse`;
     
@@ -587,7 +590,8 @@ function initializeEventListeners() {
     const navMenu = document.querySelector('.nav-menu');
     
     if (mobileMenuToggle && navMenu) {
-        mobileMenuToggle.addEventListener('click', () => {
+        mobileMenuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
             mobileMenuToggle.classList.toggle('active');
             navMenu.classList.toggle('active');
         });
@@ -613,7 +617,7 @@ function initializeEventListeners() {
 // --- Chapter Navigation Functions ---
 
 /**
- * Handle reader page initialization with seamless chapter navigation
+ * Handle reader page initialization with sessionStorage-based chapter navigation
  */
 async function handleReaderPage() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -625,16 +629,6 @@ async function handleReaderPage() {
     const nextFooterBtn = document.getElementById('next-chapter-footer');
     const chapterTitle = document.getElementById('reader-title');
     const endOfChapterNav = document.getElementById('end-of-chapter-nav');
-    
-    // Debug: Check if elements are found
-    console.log('Navigation elements found:', {
-        prevHeaderBtn: !!prevHeaderBtn,
-        nextHeaderBtn: !!nextHeaderBtn,
-        prevFooterBtn: !!prevFooterBtn,
-        nextFooterBtn: !!nextFooterBtn,
-        chapterTitle: !!chapterTitle,
-        endOfChapterNav: !!endOfChapterNav
-    });
     
     if (!chapterUrl) {
         showErrorState(container, 'No chapter URL provided.');
@@ -649,54 +643,82 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // First, load the chapter images
+        // Load the chapter images
         const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
         displayChapterImages(chapterResult.data, container);
         
-        // Try to get navigation data
-        try {
-            const result = await makeApiRequest(`${API_BASE_URL}/chapter-data?url=${encodeURIComponent(chapterUrl)}`);
+        // Get chapter navigation from sessionStorage
+        const chapterList = JSON.parse(sessionStorage.getItem('current_manga_chapters') || '[]');
+        
+        if (chapterList.length > 0) {
+            // Find current chapter index
+            const currentIndex = chapterList.findIndex(chapter => chapter.url === chapterUrl);
             
-            // Update page title and header
-            document.title = `${result.current_chapter_title} - ${result.manga_title} - ManhwaVerse`;
-            if (chapterTitle) {
-                chapterTitle.textContent = `${result.manga_title} - ${result.current_chapter_title}`;
+            if (currentIndex !== -1) {
+                // Determine next and previous chapters
+                // Note: chapterList is newest-to-oldest, so:
+                // - Previous chapter is at index + 1 (older chapter)
+                // - Next chapter is at index - 1 (newer chapter)
+                const prevChapter = currentIndex < chapterList.length - 1 ? chapterList[currentIndex + 1] : null;
+                const nextChapter = currentIndex > 0 ? chapterList[currentIndex - 1] : null;
+                
+                // Update page title and header
+                const currentChapter = chapterList[currentIndex];
+                document.title = `${currentChapter.title} - ManhwaVerse`;
+                if (chapterTitle) {
+                    chapterTitle.textContent = currentChapter.title;
+                }
+                
+                // Update navigation buttons
+                updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, prevChapter?.url, nextChapter?.url);
+                updateChapterNavigation(prevFooterBtn, nextFooterBtn, prevChapter?.url, nextChapter?.url);
+                
+                // Show end-of-chapter navigation
+                if (endOfChapterNav) {
+                    endOfChapterNav.style.display = 'flex';
+                }
+                
+                console.log('Chapter navigation:', {
+                    currentIndex,
+                    totalChapters: chapterList.length,
+                    prevChapter: prevChapter?.title,
+                    nextChapter: nextChapter?.title
+                });
+            } else {
+                // Current chapter not found in list, show basic info
+                showBasicChapterInfo(chapterUrl, chapterTitle, prevHeaderBtn, nextHeaderBtn, prevFooterBtn, nextFooterBtn, endOfChapterNav);
             }
-            
-            // Update navigation buttons
-            updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, result.prev_chapter_url, result.next_chapter_url);
-            updateChapterNavigation(prevFooterBtn, nextFooterBtn, result.prev_chapter_url, result.next_chapter_url);
-            
-            // Show end-of-chapter navigation
-            if (endOfChapterNav) {
-                endOfChapterNav.style.display = 'flex';
-            }
-            
-        } catch (navError) {
-            console.warn('Navigation data not available, showing basic chapter info:', navError);
-            
-            // Extract manga title from chapter URL for basic display
-            const mangaTitle = extractMangaTitleFromUrl(chapterUrl);
-            const chapterTitleText = extractChapterTitleFromUrl(chapterUrl);
-            
-            document.title = `${chapterTitleText} - ${mangaTitle} - ManhwaVerse`;
-            if (chapterTitle) {
-                chapterTitle.textContent = `${mangaTitle} - ${chapterTitleText}`;
-            }
-            
-            // Hide navigation buttons
-            updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, null, null);
-            updateChapterNavigation(prevFooterBtn, nextFooterBtn, null, null);
-            
-            // Don't show end-of-chapter nav
-            if (endOfChapterNav) {
-                endOfChapterNav.style.display = 'none';
-            }
+        } else {
+            // No chapter list available, show basic info
+            showBasicChapterInfo(chapterUrl, chapterTitle, prevHeaderBtn, nextHeaderBtn, prevFooterBtn, nextFooterBtn, endOfChapterNav);
         }
         
     } catch (error) {
         console.error('Error loading chapter:', error);
         showErrorState(container, `Failed to load chapter: ${error.message}`, true);
+    }
+}
+
+/**
+ * Show basic chapter info when navigation data is not available
+ */
+function showBasicChapterInfo(chapterUrl, chapterTitle, prevHeaderBtn, nextHeaderBtn, prevFooterBtn, nextFooterBtn, endOfChapterNav) {
+    // Extract manga title from chapter URL for basic display
+    const mangaTitle = extractMangaTitleFromUrl(chapterUrl);
+    const chapterTitleText = extractChapterTitleFromUrl(chapterUrl);
+    
+    document.title = `${chapterTitleText} - ${mangaTitle} - ManhwaVerse`;
+    if (chapterTitle) {
+        chapterTitle.textContent = `${mangaTitle} - ${chapterTitleText}`;
+    }
+    
+    // Hide navigation buttons
+    updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, null, null);
+    updateChapterNavigation(prevFooterBtn, nextFooterBtn, null, null);
+    
+    // Don't show end-of-chapter nav
+    if (endOfChapterNav) {
+        endOfChapterNav.style.display = 'none';
     }
 }
 
