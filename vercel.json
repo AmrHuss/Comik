@@ -19,5 +19,11 @@
   },
   "env": {
     "PYTHON_VERSION": "3.9"
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/$1"
+    }
+  ]
 }

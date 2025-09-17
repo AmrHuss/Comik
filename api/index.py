@@ -629,3 +629,13 @@ def internal_error(error):
 
 # This is required for Vercel - the app variable must be available
 # Vercel will automatically detect and use this Flask app
+
+# Local development server (only runs when script is executed directly)
+if __name__ == '__main__':
+    print("Starting ManhwaVerse API server...")
+    print("API will be available at: http://127.0.0.1:5000")
+    print("Test endpoints:")
+    print("  - http://127.0.0.1:5000/api")
+    print("  - http://127.0.0.1:5000/api/popular")
+    print("Press Ctrl+C to stop the server")
+    app.run(debug=True, host='127.0.0.1', port=5000)
