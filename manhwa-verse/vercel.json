@@ -13,7 +13,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/public/$1"
     }
   ],
   "functions": {
@@ -23,5 +23,11 @@
   },
   "env": {
     "PYTHON_VERSION": "3.9"
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/public/$1"
+    }
+  ]
 }

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ManhwaVerse - Your Ultimate Manhwa Reading Experience</title>
+    <meta name="description" content="Discover and read the best manhwa and webtoons at ManhwaVerse. Latest updates, trending series, and premium reading experience with thousands of titles.">
+    <meta name="keywords" content="manhwa, webtoon, manga, korean comics, reading, online, free, latest, trending">
+    <meta name="author" content="ManhwaVerse">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="ManhwaVerse - Your Ultimate Manhwa Reading Experience">
+    <meta property="og:description" content="Discover and read the best manhwa and webtoons at ManhwaVerse. Latest updates, trending series, and premium reading experience.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://manhwa-verse.vercel.app">
+    <meta property="og:image" content="https://manhwa-verse.vercel.app/assets/images/TowerOfGod.jpg">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ManhwaVerse - Your Ultimate Manhwa Reading Experience">
+    <meta name="twitter:description" content="Discover and read the best manhwa and webtoons at ManhwaVerse. Latest updates, trending series, and premium reading experience.">
+    <meta name="twitter:image" content="https://manhwa-verse.vercel.app/assets/images/TowerOfGod.jpg">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "ManhwaVerse",
+        "description": "Your ultimate destination for reading the best manhwa and webtoons",
+        "url": "https://manhwa-verse.vercel.app",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://manhwa-verse.vercel.app/mangalist.html?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+</head>
+<body data-page="home">
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- Header & Navigation -->
+    <header class="header" role="banner">
+        <nav class="navbar" role="navigation" aria-label="Main navigation">
+            <div class="nav-container">
+                <!-- Logo -->
+                <div class="nav-logo">
+                    <a href="index.html" class="logo-link" aria-label="ManhwaVerse Home">
+                        <span class="logo-text">ManhwaVerse</span>
+                    </a>
+                </div>
+                
+                <!-- Navigation Links -->
+                <ul class="nav-menu" role="menubar">
+                    <li class="nav-item" role="none">
+                        <a href="index.html" class="nav-link active" data-page="home" role="menuitem" aria-current="page">Home</a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a href="popular.html" class="nav-link" data-page="popular" role="menuitem">Popular</a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a href="new-releases.html" class="nav-link" data-page="new-releases" role="menuitem">New Releases</a>
+                    </li>
+                    <li class="nav-item" role="none">
+                        <a href="genres.html" class="nav-link" data-page="genres" role="menuitem">Genres</a>
+                    </li>
+                </ul>
+                
+                <!-- Search Bar -->
+                <div class="nav-search">
+                    <div class="search-container">
+                        <form id="search-form" class="search-form" role="search" aria-label="Search manhwa">
+                            <label for="search-input" class="sr-only">Search for manhwa</label>
+                            <input 
+                                id="search-input" 
+                                type="text" 
+                                placeholder="Search for a series..." 
+                                class="search-input"
+                                autocomplete="off"
+                                aria-describedby="search-help"
+                            >
+                            <button type="submit" class="search-btn" aria-label="Search">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                            </button>
+                        </form>
+                        <div id="search-help" class="sr-only">Search for manhwa by title or genre</div>
+                    </div>
+                </div>
+                
+                <!-- Login Button -->
+                <div class="nav-auth">
+                    <button class="login-btn" aria-label="Login to your account">Login</button>
+                </div>
+                
+                <!-- Mobile Menu Toggle -->
+                <button class="mobile-menu-toggle" aria-label="Toggle mobile menu" aria-expanded="false">
+                    <span class="hamburger" aria-hidden="true"></span>
+                    <span class="hamburger" aria-hidden="true"></span>
+                    <span class="hamburger" aria-hidden="true"></span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" role="main">
+        <!-- Hero Section -->
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="hero-background">
+                <div class="hero-overlay" aria-hidden="true"></div>
+                <img 
+                    src="assets/images/TowerOfGod.jpg" 
+                    alt="Featured Manhwa - Tower of God" 
+                    class="hero-image"
+                    loading="eager"
+                >
+            </div>
+            <div class="hero-content">
+                <div class="container">
+                    <div class="hero-text">
+                        <h1 id="hero-title" class="hero-title">Solo Leveling</h1>
+                        <p class="hero-synopsis">
+                            Sung Jin-Woo is the weakest of all hunters. But when he gets the chance to level up, 
+                            he becomes the strongest hunter in the world. Follow his journey as he rises from the 
+                            bottom to become the ultimate hunter.
+                        </p>
+                        <div class="hero-genres" role="list" aria-label="Genres">
+                            <span class="genre-tag" role="listitem">Action</span>
+                            <span class="genre-tag" role="listitem">Fantasy</span>
+                            <span class="genre-tag" role="listitem">Adventure</span>
+                        </div>
+                        <button class="hero-cta" aria-label="Start reading Solo Leveling">Read Now</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trending Now Section -->
+        <section class="trending-section" aria-labelledby="trending-title">
+            <div class="container">
+                <h2 id="trending-title" class="section-title">Trending Now</h2>
+                <div class="trending-grid" role="list" aria-label="Trending manhwa">
+                    <!-- Dynamic content will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Latest Updates Section -->
+        <section class="latest-updates-section" aria-labelledby="updates-title">
+            <div class="container">
+                <h2 id="updates-title" class="section-title">Latest Updates</h2>
+                <div class="updates-grid" role="list" aria-label="Latest manhwa updates">
+                    <!-- Dynamic content will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Browse by Genre Section -->
+        <section class="genre-section" aria-labelledby="genre-title">
+            <div class="container">
+                <h2 id="genre-title" class="section-title">Browse by Genre</h2>
+                <div class="genre-grid" role="list" aria-label="Browse manhwa by genre">
+                    <a href="mangalist.html?genre=action" class="genre-btn" role="listitem" aria-label="Browse Action manhwa">Action</a>
+                    <a href="mangalist.html?genre=romance" class="genre-btn" role="listitem" aria-label="Browse Romance manhwa">Romance</a>
+                    <a href="mangalist.html?genre=isekai" class="genre-btn" role="listitem" aria-label="Browse Isekai manhwa">Isekai</a>
+                    <a href="mangalist.html?genre=sci-fi" class="genre-btn" role="listitem" aria-label="Browse Sci-Fi manhwa">Sci-Fi</a>
+                    <a href="mangalist.html?genre=slice-of-life" class="genre-btn" role="listitem" aria-label="Browse Slice of Life manhwa">Slice of Life</a>
+                    <a href="mangalist.html?genre=horror" class="genre-btn" role="listitem" aria-label="Browse Horror manhwa">Horror</a>
+                    <a href="mangalist.html?genre=fantasy" class="genre-btn" role="listitem" aria-label="Browse Fantasy manhwa">Fantasy</a>
+                    <a href="mangalist.html?genre=comedy" class="genre-btn" role="listitem" aria-label="Browse Comedy manhwa">Comedy</a>
+                    <a href="mangalist.html?genre=drama" class="genre-btn" role="listitem" aria-label="Browse Drama manhwa">Drama</a>
+                    <a href="mangalist.html?genre=mystery" class="genre-btn" role="listitem" aria-label="Browse Mystery manhwa">Mystery</a>
+                    <a href="mangalist.html?genre=thriller" class="genre-btn" role="listitem" aria-label="Browse Thriller manhwa">Thriller</a>
+                    <a href="mangalist.html?genre=supernatural" class="genre-btn" role="listitem" aria-label="Browse Supernatural manhwa">Supernatural</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3 class="footer-title">ManhwaVerse</h3>
+                    <p class="footer-description">
+                        Your ultimate destination for reading the best manhwa and webtoons. 
+                        Discover new series, follow your favorites, and enjoy a premium reading experience.
+                    </p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-subtitle">Quick Links</h4>
+                    <ul class="footer-links" role="list">
+                        <li role="listitem"><a href="about.html" class="footer-link">About Us</a></li>
+                        <li role="listitem"><a href="contact.html" class="footer-link">Contact</a></li>
+                        <li role="listitem"><a href="privacy.html" class="footer-link">Privacy Policy</a></li>
+                        <li role="listitem"><a href="terms.html" class="footer-link">Terms of Service</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-subtitle">Categories</h4>
+                    <ul class="footer-links" role="list">
+                        <li role="listitem"><a href="popular.html" class="footer-link">Popular</a></li>
+                        <li role="listitem"><a href="new-releases.html" class="footer-link">New Releases</a></li>
+                        <li role="listitem"><a href="completed.html" class="footer-link">Completed</a></li>
+                        <li role="listitem"><a href="ongoing.html" class="footer-link">Ongoing</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-subtitle">Follow Us</h4>
+                    <div class="social-links" role="list" aria-label="Social media links">
+                        <a href="https://twitter.com/manhwa-verse" class="social-link" role="listitem" aria-label="Follow us on Twitter">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                            </svg>
+                        </a>
+                        <a href="https://facebook.com/manhwa-verse" class="social-link" role="listitem" aria-label="Follow us on Facebook">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                        </a>
+                        <a href="https://instagram.com/manhwa-verse" class="social-link" role="listitem" aria-label="Follow us on Instagram">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987s11.987-5.367 11.987-11.987C24.014 5.367 18.647.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.297-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.807.875 1.297 2.026 1.297 3.323s-.49 2.448-1.297 3.323c-.875.807-2.026 1.297-3.323 1.297zm7.718-1.297c-.875.807-2.026 1.297-3.323 1.297s-2.448-.49-3.323-1.297c-.807-.875-1.297-2.026-1.297-3.323s.49-2.448 1.297-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.807.875 1.297 2.026 1.297 3.323s-.49 2.448-1.297 3.323z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p class="copyright">© 2025 ManhwaVerse. All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="assets/js/main.js"></script>
+</body>
+</html>
