@@ -331,6 +331,9 @@ function displayMangaDetails(data) {
     const container = document.getElementById('detail-container');
     if (!container) return;
     
+    // Store chapters globally for sorting
+    window.mangaChapters = data.chapters;
+    
     // Update page title
     document.title = `${data.title} - ManhwaVerse`;
     
@@ -339,7 +342,7 @@ function displayMangaDetails(data) {
         `<span class="genre-tag">${genre}</span>`
     ).join('');
     
-    // Create chapters HTML
+    // Create chapters HTML (default: descending order - newest first)
     const chaptersHtml = data.chapters.map(chapter => `
         <a href="reader.html?url=${encodeURIComponent(chapter.url)}" class="chapter-item">
             <span class="chapter-title">${chapter.title}</span>
@@ -364,9 +367,67 @@ function displayMangaDetails(data) {
         </div>
         <div class="chapter-list-container">
             <h2>Chapters</h2>
-            <div class="chapter-list">${chaptersHtml}</div>
+            <div class="chapter-list-controls">
+                <button id="sort-asc-btn" class="sort-btn">Sort Ascending ↑</button>
+                <button id="sort-desc-btn" class="sort-btn active">Sort Descending ↓</button>
+            </div>
+            <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
         </div>
     `;
+    
+    // Add event listeners for sorting
+    initializeChapterSorting();
+}
+
+/**
+ * Initialize chapter sorting functionality
+ */
+function initializeChapterSorting() {
+    const sortAscBtn = document.getElementById('sort-asc-btn');
+    const sortDescBtn = document.getElementById('sort-desc-btn');
+    const chapterList = document.getElementById('chapter-list');
+    
+    if (!sortAscBtn || !sortDescBtn || !chapterList) return;
+    
+    // Sort ascending (oldest first)
+    sortAscBtn.addEventListener('click', () => {
+        if (window.mangaChapters) {
+            const sortedChapters = [...window.mangaChapters].reverse();
+            renderChapterList(sortedChapters, chapterList);
+            updateSortButtons(sortAscBtn, sortDescBtn);
+        }
+    });
+    
+    // Sort descending (newest first)
+    sortDescBtn.addEventListener('click', () => {
+        if (window.mangaChapters) {
+            const sortedChapters = [...window.mangaChapters];
+            renderChapterList(sortedChapters, chapterList);
+            updateSortButtons(sortDescBtn, sortAscBtn);
+        }
+    });
+}
+
+/**
+ * Render chapter list HTML
+ */
+function renderChapterList(chapters, container) {
+    const chaptersHtml = chapters.map(chapter => `
+        <a href="reader.html?url=${encodeURIComponent(chapter.url)}" class="chapter-item">
+            <span class="chapter-title">${chapter.title}</span>
+            <span class="chapter-date">${chapter.date}</span>
+        </a>
+    `).join('');
+    
+    container.innerHTML = chaptersHtml;
+}
+
+/**
+ * Update sort button active states
+ */
+function updateSortButtons(activeBtn, inactiveBtn) {
+    activeBtn.classList.add('active');
+    inactiveBtn.classList.remove('active');
 }
 
 // --- Search Functionality ---
@@ -552,15 +613,18 @@ function initializeEventListeners() {
 // --- Chapter Navigation Functions ---
 
 /**
- * Handle reader page initialization with chapter navigation
+ * Handle reader page initialization with seamless chapter navigation
  */
 async function handleReaderPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const chapterUrl = urlParams.get('url');
     const container = document.getElementById('reader-content');
-    const prevBtn = document.getElementById('prev-chapter-btn');
-    const nextBtn = document.getElementById('next-chapter-btn');
+    const prevHeaderBtn = document.getElementById('prev-chapter-header');
+    const nextHeaderBtn = document.getElementById('next-chapter-header');
+    const prevFooterBtn = document.getElementById('prev-chapter-footer');
+    const nextFooterBtn = document.getElementById('next-chapter-footer');
     const chapterTitle = document.getElementById('reader-title');
+    const endOfChapterNav = document.getElementById('end-of-chapter-nav');
     
     if (!chapterUrl) {
         showErrorState(container, 'No chapter URL provided.');
@@ -575,24 +639,30 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // Try the new chapter-details endpoint first
+        // Try the new chapter-data endpoint first
         try {
-            const result = await makeApiRequest(`${API_BASE_URL}/chapter-details?url=${encodeURIComponent(chapterUrl)}`);
+            const result = await makeApiRequest(`${API_BASE_URL}/chapter-data?url=${encodeURIComponent(chapterUrl)}`);
             
-            // Display chapter images
-            displayChapterImages(result.images, container);
-            
-            // Update navigation buttons
-            updateChapterNavigation(prevBtn, nextBtn, result.prev_chapter_url, result.next_chapter_url);
-            
-            // Update chapter title with progress info
+            // Update page title and header
+            document.title = `${result.current_chapter_title} - ${result.manga_title} - ManhwaVerse`;
             if (chapterTitle) {
-                const progress = `Chapter ${result.current_chapter_index + 1} of ${result.total_chapters}`;
-                chapterTitle.textContent = progress;
+                chapterTitle.textContent = `${result.manga_title} - ${result.current_chapter_title}`;
             }
             
-        } catch (chapterDetailsError) {
-            console.warn('Chapter-details endpoint failed, falling back to chapter endpoint:', chapterDetailsError);
+            // Display chapter images
+            displayChapterImages(result.image_urls, container);
+            
+            // Update navigation buttons
+            updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, result.prev_chapter_url, result.next_chapter_url);
+            updateChapterNavigation(prevFooterBtn, nextFooterBtn, result.prev_chapter_url, result.next_chapter_url);
+            
+            // Show end-of-chapter navigation after images load
+            if (endOfChapterNav) {
+                endOfChapterNav.style.display = 'flex';
+            }
+            
+        } catch (chapterDataError) {
+            console.warn('Chapter-data endpoint failed, falling back to chapter endpoint:', chapterDataError);
             
             // Fallback to the old chapter endpoint
             const result = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
@@ -601,11 +671,17 @@ async function handleReaderPage() {
             displayChapterImages(result.data, container);
             
             // Disable navigation buttons since we don't have navigation data
-            updateChapterNavigation(prevBtn, nextBtn, null, null);
+            updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, null, null);
+            updateChapterNavigation(prevFooterBtn, nextFooterBtn, null, null);
             
             // Update chapter title
             if (chapterTitle) {
                 chapterTitle.textContent = `Chapter - ${result.data.length} pages`;
+            }
+            
+            // Don't show end-of-chapter nav for fallback
+            if (endOfChapterNav) {
+                endOfChapterNav.style.display = 'none';
             }
         }
         
@@ -649,32 +725,46 @@ function displayChapterImages(images, container) {
 }
 
 /**
- * Update chapter navigation buttons
+ * Update chapter navigation buttons/links
  */
-function updateChapterNavigation(prevBtn, nextBtn, prevUrl, nextUrl) {
-    if (prevBtn) {
+function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl) {
+    if (prevElement) {
         if (prevUrl) {
-            prevBtn.disabled = false;
-            prevBtn.onclick = () => {
+            prevElement.disabled = false;
+            prevElement.style.display = 'block';
+            prevElement.href = `reader.html?url=${encodeURIComponent(prevUrl)}`;
+            prevElement.onclick = (e) => {
+                e.preventDefault();
                 window.location.href = `reader.html?url=${encodeURIComponent(prevUrl)}`;
             };
-            prevBtn.textContent = '← Previous';
+            if (prevElement.tagName === 'BUTTON') {
+                prevElement.textContent = '← Previous';
+            } else {
+                prevElement.textContent = '← Previous Chapter';
+            }
         } else {
-            prevBtn.disabled = true;
-            prevBtn.textContent = '← First';
+            prevElement.disabled = true;
+            prevElement.style.display = 'none';
         }
     }
     
-    if (nextBtn) {
+    if (nextElement) {
         if (nextUrl) {
-            nextBtn.disabled = false;
-            nextBtn.onclick = () => {
+            nextElement.disabled = false;
+            nextElement.style.display = 'block';
+            nextElement.href = `reader.html?url=${encodeURIComponent(nextUrl)}`;
+            nextElement.onclick = (e) => {
+                e.preventDefault();
                 window.location.href = `reader.html?url=${encodeURIComponent(nextUrl)}`;
             };
-            nextBtn.textContent = 'Next →';
+            if (nextElement.tagName === 'BUTTON') {
+                nextElement.textContent = 'Next →';
+            } else {
+                nextElement.textContent = 'Next Chapter →';
+            }
         } else {
-            nextBtn.disabled = true;
-            nextBtn.textContent = 'Last →';
+            nextElement.disabled = true;
+            nextElement.style.display = 'none';
         }
     }
 }
