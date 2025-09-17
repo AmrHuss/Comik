@@ -787,6 +787,10 @@ body {
     opacity: 0.5;
 }
 
+.nav-btn[style*="display: none"] {
+    display: none !important;
+}
+
 .reader-content {
     max-width: 1000px;
     margin: 0 auto;

@@ -626,6 +626,16 @@ async function handleReaderPage() {
     const chapterTitle = document.getElementById('reader-title');
     const endOfChapterNav = document.getElementById('end-of-chapter-nav');
     
+    // Debug: Check if elements are found
+    console.log('Navigation elements found:', {
+        prevHeaderBtn: !!prevHeaderBtn,
+        nextHeaderBtn: !!nextHeaderBtn,
+        prevFooterBtn: !!prevFooterBtn,
+        nextFooterBtn: !!nextFooterBtn,
+        chapterTitle: !!chapterTitle,
+        endOfChapterNav: !!endOfChapterNav
+    });
+    
     if (!chapterUrl) {
         showErrorState(container, 'No chapter URL provided.');
         return;
@@ -639,7 +649,11 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // Try the new chapter-data endpoint first
+        // First, load the chapter images
+        const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
+        displayChapterImages(chapterResult.data, container);
+        
+        // Try to get navigation data
         try {
             const result = await makeApiRequest(`${API_BASE_URL}/chapter-data?url=${encodeURIComponent(chapterUrl)}`);
             
@@ -649,37 +663,32 @@ async function handleReaderPage() {
                 chapterTitle.textContent = `${result.manga_title} - ${result.current_chapter_title}`;
             }
             
-            // Display chapter images
-            displayChapterImages(result.image_urls, container);
-            
             // Update navigation buttons
             updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, result.prev_chapter_url, result.next_chapter_url);
             updateChapterNavigation(prevFooterBtn, nextFooterBtn, result.prev_chapter_url, result.next_chapter_url);
             
-            // Show end-of-chapter navigation after images load
+            // Show end-of-chapter navigation
             if (endOfChapterNav) {
                 endOfChapterNav.style.display = 'flex';
             }
             
-        } catch (chapterDataError) {
-            console.warn('Chapter-data endpoint failed, falling back to chapter endpoint:', chapterDataError);
+        } catch (navError) {
+            console.warn('Navigation data not available, showing basic chapter info:', navError);
             
-            // Fallback to the old chapter endpoint
-            const result = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
+            // Extract manga title from chapter URL for basic display
+            const mangaTitle = extractMangaTitleFromUrl(chapterUrl);
+            const chapterTitleText = extractChapterTitleFromUrl(chapterUrl);
             
-            // Display chapter images
-            displayChapterImages(result.data, container);
+            document.title = `${chapterTitleText} - ${mangaTitle} - ManhwaVerse`;
+            if (chapterTitle) {
+                chapterTitle.textContent = `${mangaTitle} - ${chapterTitleText}`;
+            }
             
-            // Disable navigation buttons since we don't have navigation data
+            // Hide navigation buttons
             updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, null, null);
             updateChapterNavigation(prevFooterBtn, nextFooterBtn, null, null);
             
-            // Update chapter title
-            if (chapterTitle) {
-                chapterTitle.textContent = `Chapter - ${result.data.length} pages`;
-            }
-            
-            // Don't show end-of-chapter nav for fallback
+            // Don't show end-of-chapter nav
             if (endOfChapterNav) {
                 endOfChapterNav.style.display = 'none';
             }
@@ -688,6 +697,57 @@ async function handleReaderPage() {
     } catch (error) {
         console.error('Error loading chapter:', error);
         showErrorState(container, `Failed to load chapter: ${error.message}`, true);
+    }
+}
+
+/**
+ * Extract manga title from chapter URL
+ */
+function extractMangaTitleFromUrl(chapterUrl) {
+    try {
+        const url = new URL(chapterUrl);
+        const pathParts = url.pathname.split('/').filter(part => part);
+        
+        // Find the manga part (usually before 'chapter' or similar)
+        for (let i = 0; i < pathParts.length; i++) {
+            if (pathParts[i].includes('chapter') || pathParts[i].includes('ch')) {
+                if (i > 0) {
+                    return pathParts[i - 1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                }
+            }
+        }
+        
+        // Fallback: use the last part before the chapter
+        if (pathParts.length > 1) {
+            return pathParts[pathParts.length - 2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+        
+        return 'Unknown Manga';
+    } catch (e) {
+        return 'Unknown Manga';
+    }
+}
+
+/**
+ * Extract chapter title from chapter URL
+ */
+function extractChapterTitleFromUrl(chapterUrl) {
+    try {
+        const url = new URL(chapterUrl);
+        const pathParts = url.pathname.split('/').filter(part => part);
+        
+        // Find the chapter part
+        for (let i = 0; i < pathParts.length; i++) {
+            if (pathParts[i].includes('chapter') || pathParts[i].includes('ch')) {
+                return pathParts[i].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+        }
+        
+        // Fallback: use the last part
+        const lastPart = pathParts[pathParts.length - 1];
+        return lastPart.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    } catch (e) {
+        return 'Chapter';
     }
 }
 
@@ -728,10 +788,14 @@ function displayChapterImages(images, container) {
  * Update chapter navigation buttons/links
  */
 function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl) {
+    console.log('Updating navigation:', { prevElement: !!prevElement, nextElement: !!nextElement, prevUrl, nextUrl });
+    
     if (prevElement) {
         if (prevUrl) {
+            console.log('Setting up previous button with URL:', prevUrl);
             prevElement.disabled = false;
             prevElement.style.display = 'block';
+            prevElement.style.visibility = 'visible';
             prevElement.href = `reader.html?url=${encodeURIComponent(prevUrl)}`;
             prevElement.onclick = (e) => {
                 e.preventDefault();
@@ -743,15 +807,19 @@ function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl) {
                 prevElement.textContent = '← Previous Chapter';
             }
         } else {
+            console.log('Hiding previous button - no URL');
             prevElement.disabled = true;
             prevElement.style.display = 'none';
+            prevElement.style.visibility = 'hidden';
         }
     }
     
     if (nextElement) {
         if (nextUrl) {
+            console.log('Setting up next button with URL:', nextUrl);
             nextElement.disabled = false;
             nextElement.style.display = 'block';
+            nextElement.style.visibility = 'visible';
             nextElement.href = `reader.html?url=${encodeURIComponent(nextUrl)}`;
             nextElement.onclick = (e) => {
                 e.preventDefault();
@@ -763,8 +831,10 @@ function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl) {
                 nextElement.textContent = 'Next Chapter →';
             }
         } else {
+            console.log('Hiding next button - no URL');
             nextElement.disabled = true;
             nextElement.style.display = 'none';
+            nextElement.style.visibility = 'hidden';
         }
     }
 }
