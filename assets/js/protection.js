@@ -89,12 +89,7 @@
         }
     });
     
-    // Disable text selection (optional - can be annoying for users)
-    document.addEventListener('selectstart', function(e) {
-        e.preventDefault();
-        return false;
-    });
-    
+ 
     // Disable drag and drop
     document.addEventListener('dragstart', function(e) {
         e.preventDefault();
@@ -142,7 +137,7 @@
     }
     
     // Disable common debugging methods
-    if (typeof debugger !== 'undefined') {
+    if (typeof window.debugger !== 'undefined') {
         window.debugger = function() {};
     }
     
