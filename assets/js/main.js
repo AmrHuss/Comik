@@ -325,17 +325,27 @@ async function handleDetailPage() {
 }
 
 /**
- * Display manga details on detail page
+ * Display manga details on detail page with source selector
  */
-function displayMangaDetails(data) {
+function displayMangaDetails(data, source = 'AsuraScanz') {
     const container = document.getElementById('detail-container');
-    if (!container) return;
+    const mangaContent = document.getElementById('manga-details-content');
+    if (!container || !mangaContent) return;
     
-    // Store chapters globally for sorting
+    // Store current source and data globally
+    window.currentMangaSource = source;
+    window.currentMangaData = data;
     window.mangaChapters = data.chapters;
     
     // Store chapters in sessionStorage for chapter navigation
     sessionStorage.setItem('current_manga_chapters', JSON.stringify(data.chapters));
+    
+    // Show source selector if multiple sources available
+    const sourceSelector = document.getElementById('source-selector');
+    if (sourceSelector) {
+        sourceSelector.style.display = 'block';
+        initializeSourceSelector();
+    }
     
     // Update page title
     document.title = `${data.title} - ManhwaVerse`;
@@ -380,6 +390,108 @@ function displayMangaDetails(data) {
     
     // Add event listeners for sorting
     initializeChapterSorting();
+}
+
+/**
+ * Initialize source selector functionality
+ */
+function initializeSourceSelector() {
+    const sourceButtons = document.querySelectorAll('.source-btn');
+    
+    sourceButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const source = button.dataset.source;
+            const mangaContent = document.getElementById('manga-details-content');
+            
+            if (!mangaContent) return;
+            
+            // Update active button
+            sourceButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Show loading state
+            showLoadingState(mangaContent, `Loading from ${source}...`);
+            
+            try {
+                // Fetch data from the selected source
+                const data = await fetchMangaFromSource(window.currentMangaData.title, source);
+                if (data) {
+                    window.currentMangaSource = source;
+                    window.currentMangaData = data;
+                    window.mangaChapters = data.chapters;
+                    sessionStorage.setItem('current_manga_chapters', JSON.stringify(data.chapters));
+                    renderMangaContent(data, mangaContent);
+                    initializeChapterSorting();
+                } else {
+                    showErrorState(mangaContent, `No data available from ${source}`);
+                }
+            } catch (error) {
+                console.error(`Error loading from ${source}:`, error);
+                showErrorState(mangaContent, `Failed to load from ${source}: ${error.message}`);
+            }
+        });
+    });
+}
+
+/**
+ * Fetch manga data from specific source
+ */
+async function fetchMangaFromSource(title, source) {
+    try {
+        const response = await makeApiRequest(`${API_BASE_URL}/unified-details?title=${encodeURIComponent(title)}&source=${encodeURIComponent(source)}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching from ${source}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Render manga content in the details container
+ */
+function renderMangaContent(data, container) {
+    // Create genres HTML
+    const genresHtml = data.genres.map(genre => 
+        `<span class="genre-tag">${genre}</span>`
+    ).join('');
+    
+    // Create chapters HTML (default: descending order - newest first)
+    const chaptersHtml = data.chapters.map(chapter => `
+        <a href="reader.html?url=${encodeURIComponent(chapter.url)}&source=${encodeURIComponent(data.source || 'AsuraScanz')}" class="chapter-item">
+            <span class="chapter-title">${chapter.title}</span>
+            <span class="chapter-date">${chapter.date}</span>
+        </a>
+    `).join('');
+    
+    // Create the complete HTML
+    const html = `
+        <div class="detail-grid">
+            <div class="detail-cover">
+                <img src="${data.cover_image || data.cover_url}" alt="${data.title}" loading="lazy">
+            </div>
+            <div class="detail-info">
+                <h1>${data.title}</h1>
+                <div class="detail-meta">
+                    <span class="detail-rating">⭐ ${data.rating || 'N/A'}</span>
+                    <span class="detail-status">${data.status || 'Ongoing'}</span>
+                    <span class="detail-source">Source: ${data.source || 'Unknown'}</span>
+                </div>
+                <div class="detail-genres">${genresHtml}</div>
+                <p class="detail-description">${data.description || 'No description available.'}</p>
+            </div>
+        </div>
+        <div class="chapter-list-container">
+            <h2>Chapters</h2>
+            <div class="chapter-list-controls">
+                <button id="sort-asc-btn" class="sort-btn">Sort Ascending ↑</button>
+                <button id="sort-desc-btn" class="sort-btn active">Sort Descending ↓</button>
+            </div>
+            <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
+        </div>
+    `;
+    
+    // Inject the HTML
+    container.innerHTML = html;
 }
 
 /**
@@ -622,6 +734,7 @@ function initializeEventListeners() {
 async function handleReaderPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const chapterUrl = urlParams.get('url');
+    const source = urlParams.get('source') || 'AsuraScanz';
     const container = document.getElementById('reader-content');
     const prevHeaderBtn = document.getElementById('prev-chapter-header');
     const nextHeaderBtn = document.getElementById('next-chapter-header');
@@ -643,9 +756,9 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // Load the chapter images
-        const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
-        displayChapterImages(chapterResult.data, container);
+        // Load the chapter images using unified API
+        const chapterResult = await makeApiRequest(`${API_BASE_URL}/unified-chapter-data?url=${encodeURIComponent(chapterUrl)}&source=${encodeURIComponent(source)}`);
+        displayChapterImages(chapterResult.image_urls, container);
         
         // Get chapter navigation from sessionStorage
         const chapterList = JSON.parse(sessionStorage.getItem('current_manga_chapters') || '[]');

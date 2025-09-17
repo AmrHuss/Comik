@@ -18,6 +18,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
+from webtoons_scraper import scrape_webtoons_by_genre, scrape_webtoons_details, scrape_webtoons_chapter_images
 
 # --- Configuration ---
 logging.basicConfig(
@@ -746,6 +747,148 @@ def get_chapter_details():
             'error': 'An unexpected error occurred while fetching chapter details'
         }), 500
 
+@app.route('/api/unified-popular', methods=['GET'])
+def get_unified_popular():
+    """Get popular manga from multiple sources."""
+    try:
+        logger.info("Fetching unified popular manga from multiple sources")
+        
+        # Get popular manga from AsuraScanz
+        asura_manga = []
+        try:
+            asura_response = make_request('https://asurascanz.com/')
+            if asura_response:
+                asura_soup = BeautifulSoup(asura_response.content, 'lxml')
+                asura_manga = parse_manga_cards_from_soup(asura_soup)
+                # Add source flag
+                for manga in asura_manga:
+                    manga['source'] = 'AsuraScanz'
+        except Exception as e:
+            logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
+        
+        # Get popular manga from Webtoons (Action genre)
+        webtoons_manga = []
+        try:
+            webtoons_manga = scrape_webtoons_by_genre('action')
+        except Exception as e:
+            logger.warning(f"Failed to fetch Webtoons popular: {e}")
+        
+        # Combine and return
+        all_manga = asura_manga + webtoons_manga
+        logger.info(f"Returning {len(all_manga)} unified popular manga")
+        
+        return jsonify({
+            'success': True,
+            'data': all_manga,
+            'sources': {
+                'AsuraScanz': len(asura_manga),
+                'Webtoons': len(webtoons_manga)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in unified popular endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch popular manga from multiple sources'
+        }), 500
+
+@app.route('/api/unified-details', methods=['GET'])
+def get_unified_details():
+    """Get manga details from the specified source."""
+    title = request.args.get('title', '').strip()
+    source = request.args.get('source', 'AsuraScanz').strip()
+    
+    if not title:
+        return jsonify({
+            'success': False,
+            'error': 'Title parameter is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching unified details for '{title}' from {source}")
+        
+        if source.lower() == 'asurascanz':
+            # Use existing AsuraScanz detail scraper
+            # For now, we'll need to find the detail URL first
+            # This is a simplified version - in production, you'd want to store/cache URLs
+            return jsonify({
+                'success': False,
+                'error': 'AsuraScanz unified details not yet implemented'
+            }), 501
+            
+        elif source.lower() == 'webtoons':
+            # Use Webtoons detail scraper
+            # For now, we'll need to find the detail URL first
+            # This is a simplified version - in production, you'd want to store/cache URLs
+            return jsonify({
+                'success': False,
+                'error': 'Webtoons unified details not yet implemented'
+            }), 501
+            
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Unknown source: {source}'
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Error in unified details endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch manga details'
+        }), 500
+
+@app.route('/api/unified-chapter-data', methods=['GET'])
+def get_unified_chapter_data():
+    """Get chapter data from the specified source."""
+    chapter_url = request.args.get('url', '').strip()
+    source = request.args.get('source', 'AsuraScanz').strip()
+    
+    if not chapter_url:
+        return jsonify({
+            'success': False,
+            'error': 'Chapter URL parameter is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching unified chapter data from {source}: {chapter_url}")
+        
+        if source.lower() == 'asurascanz':
+            # Use existing AsuraScanz chapter scraper
+            return jsonify({
+                'success': False,
+                'error': 'AsuraScanz unified chapter data not yet implemented'
+            }), 501
+            
+        elif source.lower() == 'webtoons':
+            # Use Webtoons chapter scraper
+            images = scrape_webtoons_chapter_images(chapter_url)
+            if images:
+                return jsonify({
+                    'success': True,
+                    'image_urls': images,
+                    'source': 'Webtoons'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'No chapter images found'
+                }), 404
+                
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Unknown source: {source}'
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Error in unified chapter data endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch chapter data'
+        }), 500
+
 @app.route('/api', methods=['GET'])
 def api_root():
     """API root endpoint for health checks."""
@@ -759,7 +902,10 @@ def api_root():
             '/api/manga-details',
             '/api/chapter',
             '/api/chapter-details',
-            '/api/chapter-data'
+            '/api/chapter-data',
+            '/api/unified-popular',
+            '/api/unified-details',
+            '/api/unified-chapter-data'
         ]
     })
 

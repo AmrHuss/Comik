@@ -36,8 +36,26 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container" id="detail-container">
-            <!-- JS will inject a loading message here first -->
-            <p class="loading-message">Loading manhwa details...</p>
+            <!-- Source Selector -->
+            <div id="source-selector" class="source-selector" style="display: none;">
+                <h3>Available Sources</h3>
+                <div class="source-buttons">
+                    <button id="asurascanz-btn" class="source-btn active" data-source="AsuraScanz">
+                        <span class="source-name">AsuraScanz</span>
+                        <span class="source-status">Available</span>
+                    </button>
+                    <button id="webtoons-btn" class="source-btn" data-source="Webtoons">
+                        <span class="source-name">Webtoons</span>
+                        <span class="source-status">Available</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Manga Details Content -->
+            <div id="manga-details-content">
+                <!-- JS will inject content here -->
+                <p class="loading-message">Loading manhwa details...</p>
+            </div>
         </div>
     </main>
 
