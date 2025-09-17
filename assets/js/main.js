@@ -673,17 +673,20 @@ async function handleReaderPage() {
                 updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, prevChapter?.url, nextChapter?.url);
                 updateChapterNavigation(prevFooterBtn, nextFooterBtn, prevChapter?.url, nextChapter?.url);
                 
-                // Show end-of-chapter navigation
-                if (endOfChapterNav) {
-                    endOfChapterNav.style.display = 'flex';
-                }
-                
-                console.log('Chapter navigation:', {
-                    currentIndex,
-                    totalChapters: chapterList.length,
-                    prevChapter: prevChapter?.title,
-                    nextChapter: nextChapter?.title
-                });
+        // Show end-of-chapter navigation
+        if (endOfChapterNav) {
+            endOfChapterNav.style.display = 'flex';
+        }
+        
+        // Initialize immersive reader UI
+        initReaderUI();
+        
+        console.log('Chapter navigation:', {
+            currentIndex,
+            totalChapters: chapterList.length,
+            prevChapter: prevChapter?.title,
+            nextChapter: nextChapter?.title
+        });
             } else {
                 // Current chapter not found in list, show basic info
                 showBasicChapterInfo(chapterUrl, chapterTitle, prevHeaderBtn, nextHeaderBtn, prevFooterBtn, nextFooterBtn, endOfChapterNav);
@@ -881,6 +884,51 @@ function initialize() {
     } catch (error) {
         console.error('Failed to initialize ManhwaVerse frontend:', error);
     }
+}
+
+/**
+ * Initialize immersive reader UI with disappearing header
+ */
+function initReaderUI() {
+    const header = document.querySelector('.header');
+    if (!header) return;
+    
+    let lastScrollY = window.scrollY;
+    let isScrolling = false;
+    const scrollThreshold = 50; // Minimum scroll distance to trigger header hide/show
+    
+    const handleScroll = () => {
+        if (isScrolling) return;
+        
+        isScrolling = true;
+        requestAnimationFrame(() => {
+            const currentScrollY = window.scrollY;
+            const scrollDifference = Math.abs(currentScrollY - lastScrollY);
+            
+            // Only process if scroll difference is significant
+            if (scrollDifference > scrollThreshold) {
+                if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                    // Scrolling down - hide header
+                    header.classList.add('header--hidden');
+                } else if (currentScrollY < lastScrollY) {
+                    // Scrolling up - show header
+                    header.classList.remove('header--hidden');
+                }
+                
+                lastScrollY = currentScrollY;
+            }
+            
+            isScrolling = false;
+        });
+    };
+    
+    // Add scroll event listener with throttling
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Clean up function (optional - for if the reader is dynamically loaded/unloaded)
+    return () => {
+        window.removeEventListener('scroll', handleScroll);
+    };
 }
 
 // Start the application when DOM is ready

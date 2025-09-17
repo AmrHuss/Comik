@@ -736,6 +736,19 @@ body {
     border-bottom: 1px solid var(--border-color);
     padding: 1rem 0;
     margin-bottom: 2rem;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Immersive Reader - Disappearing Header */
+body[data-page="reader"] .header {
+    position: sticky;
+    top: 0;
+    transition: transform 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+body[data-page="reader"] .header--hidden {
+    transform: translateY(-100%);
 }
 
 .reader-controls {
