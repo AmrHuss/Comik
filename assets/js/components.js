@@ -172,7 +172,7 @@ class UIComponents {
         return progressBar;
     }
 
-    // Create notification system
+    // Create clean notification system
     showNotification(message, type = 'info', duration = 3000) {
         // Remove existing notifications
         const existing = document.querySelectorAll('.notification');
@@ -182,8 +182,9 @@ class UIComponents {
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
             <div class="notification-content">
+                <div class="notification-icon"></div>
                 <span class="notification-message">${message}</span>
-                <button class="notification-close">&times;</button>
+                <button class="notification-close" aria-label="Close notification">×</button>
             </div>
         `;
 
@@ -192,13 +193,23 @@ class UIComponents {
         // Auto remove after duration
         setTimeout(() => {
             if (notification.parentNode) {
-                notification.remove();
+                notification.style.animation = 'slideInRight 0.3s ease reverse';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
             }
         }, duration);
 
         // Close button functionality
         notification.querySelector('.notification-close').addEventListener('click', () => {
-            notification.remove();
+            notification.style.animation = 'slideInRight 0.3s ease reverse';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
         });
     }
 
