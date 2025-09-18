@@ -333,20 +333,33 @@ async function handleMangaListPage() {
  * Handle manga detail page
  */
 async function handleDetailPage() {
+    console.log('handleDetailPage called');
     const urlParams = new URLSearchParams(window.location.search);
     const detailUrl = urlParams.get('url');
     const container = document.getElementById('detail-container');
+    const mangaContent = document.getElementById('manga-details-content');
+    
+    console.log('Detail URL:', detailUrl);
+    console.log('Container found:', !!container);
+    console.log('Manga content found:', !!mangaContent);
     
     if (!detailUrl) {
+        console.error('No manga URL provided');
         showErrorState(container, 'No manga URL provided.');
         return;
     }
     
-    showLoadingState(container, 'Loading manga details...');
+    if (mangaContent) {
+        showLoadingState(mangaContent, 'Loading manga details...');
+    }
     
     try {
+        console.log('Making API request for manga details...');
         const result = await makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}`);
+        console.log('Manga details API response:', result);
+        console.log('Calling displayMangaDetails with data:', result.data);
         displayMangaDetails(result.data);
+        console.log('displayMangaDetails call completed');
     } catch (error) {
         console.error('Error loading manga details:', error);
         showErrorState(container, `Failed to load manga details: ${error.message}`, true);
@@ -357,9 +370,17 @@ async function handleDetailPage() {
  * Display manga details on detail page with source selector
  */
 function displayMangaDetails(data, source = 'AsuraScanz') {
+    console.log('displayMangaDetails called with data:', data);
     const container = document.getElementById('detail-container');
     const mangaContent = document.getElementById('manga-details-content');
-    if (!container || !mangaContent) return;
+    
+    console.log('Container found:', !!container);
+    console.log('Manga content found:', !!mangaContent);
+    
+    if (!container || !mangaContent) {
+        console.error('Required elements not found for manga details display');
+        return;
+    }
     
     // Store current source and data globally
     window.currentMangaSource = source;
