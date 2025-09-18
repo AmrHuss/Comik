@@ -869,6 +869,443 @@ body[data-page="reader"] .header--hidden {
     transform: none;
 }
 
+/* Bookmark System */
+.bookmark-container {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+}
+
+.bookmark-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.manhwa-card:hover .bookmark-btn {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.bookmark-btn:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.bookmark-btn.bookmarked {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.bookmark-icon {
+    width: 16px;
+    height: 16px;
+    transition: var(--transition-fast);
+}
+
+.bookmark-btn:hover .bookmark-icon {
+    transform: scale(1.1);
+}
+
+.bookmark-text {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+}
+
+/* Reading Progress */
+.reading-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: var(--transition-fast);
+}
+
+.manhwa-card:hover .reading-progress {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-color), var(--accent-hover));
+    border-radius: var(--radius-full);
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    min-width: 300px;
+    max-width: 400px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+    animation: slideInRight 0.3s ease;
+}
+
+.notification-success {
+    border-left: 4px solid #10b981;
+}
+
+.notification-error {
+    border-left: 4px solid #ef4444;
+}
+
+.notification-info {
+    border-left: 4px solid var(--accent-color);
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.notification-message {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 1rem;
+    transition: var(--transition-fast);
+}
+
+.notification-close:hover {
+    color: var(--text-primary);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Reading History */
+.history-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    transition: var(--transition-fast);
+}
+
+.history-item:hover {
+    background: var(--accent-hover-faded);
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+}
+
+.history-cover {
+    position: relative;
+    width: 80px;
+    height: 120px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.history-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.history-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition-fast);
+}
+
+.history-cover:hover .history-overlay {
+    opacity: 1;
+}
+
+.continue-reading-btn {
+    padding: 0.5rem 1rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.continue-reading-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.history-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.history-manga-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.history-chapter-title {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.history-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.history-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.action-btn:hover {
+    background: var(--accent-hover-faded);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Bookmarks */
+.bookmark-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    transition: var(--transition-fast);
+}
+
+.bookmark-item:hover {
+    background: var(--accent-hover-faded);
+    border-color: var(--accent-color);
+    transform: translateY(-2px);
+}
+
+.bookmark-cover {
+    position: relative;
+    width: 80px;
+    height: 120px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.bookmark-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bookmark-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition-fast);
+}
+
+.bookmark-cover:hover .bookmark-overlay {
+    opacity: 1;
+}
+
+.read-manga-btn {
+    padding: 0.5rem 1rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.read-manga-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.bookmark-status {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.bookmark-status.reading {
+    background: #3b82f6;
+    color: white;
+}
+
+.bookmark-status.completed {
+    background: #10b981;
+    color: white;
+}
+
+.bookmark-status.plan-to-read {
+    background: #f59e0b;
+    color: white;
+}
+
+.bookmark-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bookmark-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.bookmark-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.last-read {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.bookmark-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.status-select {
+    padding: 0.5rem;
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.status-select:hover {
+    border-color: var(--accent-color);
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--accent-hover-faded);
+}
+
 /* Source Selector */
 .source-selector {
     margin-bottom: 2rem;

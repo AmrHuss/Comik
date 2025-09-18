@@ -11,10 +11,13 @@
  */
 
 // --- Configuration ---
-const API_BASE_URL = '/api'; // Correct for Vercel deployment
+const API_BASE_URL = '/api';
 const DEBOUNCE_DELAY = 300;
 const MAX_SEARCH_RESULTS = 7;
 const REQUEST_TIMEOUT = 15000;
+
+// --- Initialize Storage and Components ---
+let storageManager, uiComponents;
 
 // --- State Management ---
 const AppState = {
@@ -126,6 +129,8 @@ function createMangaCard(manga) {
     cardLink.className = 'manhwa-card';
     cardLink.setAttribute('data-title', manga.title);
     
+    const isBookmarked = storageManager ? storageManager.isBookmarked(manga.title) : false;
+    
     cardLink.innerHTML = `
         <div class="card-image">
             <img 
@@ -140,6 +145,16 @@ function createMangaCard(manga) {
             <div class="card-overlay">
                 <button class="read-btn" aria-label="View details for ${manga.title}">
                     View Details
+                </button>
+            </div>
+            <div class="bookmark-container">
+                <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" 
+                        data-manga='${JSON.stringify(manga)}' 
+                        onclick="event.preventDefault(); event.stopPropagation(); toggleBookmark(this)">
+                    <svg class="bookmark-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span class="bookmark-text">${isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
                 </button>
             </div>
         </div>
@@ -1044,5 +1059,137 @@ function initReaderUI() {
     };
 }
 
+// --- User Features Initialization ---
+function initializeUserFeatures() {
+    // Add bookmark buttons to existing manga cards
+    addBookmarkButtonsToExistingCards();
+    
+    // Initialize reading history tracking
+    initializeReadingHistory();
+    
+    // Add progress indicators
+    addProgressIndicators();
+}
+
+function addBookmarkButtonsToExistingCards() {
+    const mangaCards = document.querySelectorAll('.manhwa-card');
+    mangaCards.forEach(card => {
+        const titleElement = card.querySelector('.manhwa-title');
+        if (titleElement && !card.querySelector('.bookmark-btn')) {
+            const title = titleElement.textContent;
+            const cover = card.querySelector('.manhwa-cover img')?.src;
+            const detailUrl = card.closest('a')?.href;
+            
+            if (title && detailUrl) {
+                const mangaData = {
+                    title: title,
+                    cover_image: cover,
+                    detail_url: detailUrl,
+                    source: 'AsuraScanz'
+                };
+                
+                const bookmarkContainer = document.createElement('div');
+                bookmarkContainer.className = 'bookmark-container';
+                card.appendChild(bookmarkContainer);
+                uiComponents.createBookmarkButton(mangaData, bookmarkContainer);
+            }
+        }
+    });
+}
+
+function initializeReadingHistory() {
+    // Track when user reads a chapter
+    const currentUrl = window.location.href;
+    if (currentUrl.includes('reader.html')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const chapterUrl = urlParams.get('url');
+        const source = urlParams.get('source') || 'AsuraScanz';
+        
+        if (chapterUrl) {
+            // Get manga data from session storage or URL
+            const mangaData = getMangaDataFromContext();
+            const chapterData = {
+                title: extractChapterTitleFromUrl(chapterUrl),
+                url: chapterUrl
+            };
+            
+            if (mangaData && chapterData.title) {
+                storageManager.addToHistory(mangaData, chapterData);
+            }
+        }
+    }
+}
+
+function getMangaDataFromContext() {
+    // Try to get from session storage first
+    const storedData = sessionStorage.getItem('current_manga_data');
+    if (storedData) {
+        return JSON.parse(storedData);
+    }
+    
+    // Fallback: extract from URL or page context
+    const currentUrl = window.location.href;
+    if (currentUrl.includes('reader.html')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const chapterUrl = urlParams.get('url');
+        
+        if (chapterUrl) {
+            return {
+                title: extractMangaTitleFromUrl(chapterUrl),
+                cover_image: 'assets/images/default-cover.jpg',
+                detail_url: '#',
+                source: urlParams.get('source') || 'AsuraScanz'
+            };
+        }
+    }
+    
+    return null;
+}
+
+function addProgressIndicators() {
+    const mangaCards = document.querySelectorAll('.manhwa-card');
+    mangaCards.forEach(card => {
+        const titleElement = card.querySelector('.manhwa-title');
+        if (titleElement) {
+            const title = titleElement.textContent;
+            const progress = storageManager.getReadingProgress(title);
+            
+            if (progress) {
+                const progressIndicator = uiComponents.createProgressIndicator(title);
+                if (progressIndicator) {
+                    card.appendChild(progressIndicator);
+                }
+            }
+        }
+    });
+}
+
+// Global functions for inline event handlers
+window.toggleBookmark = function(button) {
+    if (!storageManager || !uiComponents) return;
+    
+    const mangaData = JSON.parse(button.dataset.manga);
+    const isBookmarked = storageManager.isBookmarked(mangaData.title);
+    
+    if (isBookmarked) {
+        storageManager.removeBookmark(mangaData.title);
+        button.classList.remove('bookmarked');
+        button.querySelector('.bookmark-text').textContent = 'Bookmark';
+        uiComponents.showNotification('Removed from bookmarks', 'success');
+    } else {
+        storageManager.addBookmark(mangaData);
+        button.classList.add('bookmarked');
+        button.querySelector('.bookmark-text').textContent = 'Bookmarked';
+        uiComponents.showNotification('Added to bookmarks', 'success');
+    }
+};
+
 // Start the application when DOM is ready
-document.addEventListener('DOMContentLoaded', initialize);
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize storage and components
+    storageManager = window.storageManager;
+    uiComponents = window.uiComponents;
+    
+    initialize();
+    initializeUserFeatures();
+});
