@@ -26,14 +26,20 @@ REQUEST_TIMEOUT = 15
 MAX_RETRIES = 3
 
 def get_headers():
-    """Get standardized headers for HTTP requests."""
+    """Get standardized headers for HTTP requests with anti-scraping measures."""
     return {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'DNT': '1'
     }
 
 def make_request(url, max_retries=3, delay=1):
@@ -49,13 +55,38 @@ def make_request(url, max_retries=3, delay=1):
     """
     for attempt in range(max_retries):
         try:
+            # Add random delay to avoid rate limiting
+            if attempt > 0:
+                time.sleep(delay * (attempt + 1))
+            
             response = requests.get(url, headers=get_headers(), timeout=REQUEST_TIMEOUT)
-            response.raise_for_status()  # Raise an exception for HTTP errors
+            
+            # Check for anti-scraping measures
+            if response.status_code == 403:
+                logger.warning(f"Access forbidden (403) for {url} - possible anti-scraping protection")
+                return None
+            elif response.status_code == 429:
+                logger.warning(f"Rate limited (429) for {url} - waiting longer")
+                time.sleep(delay * 2)
+                continue
+            elif response.status_code == 503:
+                logger.warning(f"Service unavailable (503) for {url} - possible anti-scraping protection")
+                return None
+            
+            response.raise_for_status()  # Raise an exception for other HTTP errors
+            
+            # Check if response contains anti-scraping content
+            if 'cloudflare' in response.text.lower() or 'access denied' in response.text.lower():
+                logger.warning(f"Anti-scraping protection detected for {url}")
+                return None
+                
             return response
+            
         except requests.exceptions.RequestException as e:
             logger.warning(f"Request attempt {attempt + 1} failed for {url}: {e}")
             if attempt < max_retries - 1:
                 time.sleep(delay)
+    
     logger.error(f"All {max_retries} attempts failed for {url}")
     return None
 
@@ -75,7 +106,12 @@ def scrape_genre(genre_name):
     try:
         response = make_request(genre_url)
         if not response:
-            logger.error(f"Failed to fetch genre page: {genre_url}")
+            logger.warning(f"Failed to fetch genre page: {genre_url} - likely anti-scraping protection")
+            return []
+        
+        # Check if we got a valid response
+        if len(response.content) < 1000:  # Very small response might be an error page
+            logger.warning(f"Received suspiciously small response ({len(response.content)} bytes) for {genre_url}")
             return []
         
         soup = BeautifulSoup(response.content, 'lxml')
@@ -90,8 +126,16 @@ def scrape_genre(genre_name):
             webtoon_cards = soup.select('div.episode_thumb')
             if not webtoon_cards:
                 webtoon_cards = soup.select('div.episode')
+                if not webtoon_cards:
+                    # Try even more generic selectors
+                    webtoon_cards = soup.select('div[class*="episode"]') or soup.select('div[class*="webtoon"]')
         
         logger.info(f"Found {len(webtoon_cards)} webtoon cards")
+        
+        # If no cards found, return empty list (likely anti-scraping)
+        if not webtoon_cards:
+            logger.warning(f"No webtoon cards found for genre {genre_name} - possible anti-scraping protection")
+            return []
         
         for card in webtoon_cards:
             try:

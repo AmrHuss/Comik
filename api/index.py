@@ -24,10 +24,14 @@ try:
     from webtoons_scraper import scrape_genre as scrape_webtoons_genre, scrape_details as scrape_webtoons_details, scrape_chapter_images as scrape_webtoons_chapter_images, search_by_title as search_webtoons_by_title
     logger.info("✓ Successfully imported all Webtoons scraper functions")
     
-    # Test the import by calling a function
+    # Test the import by calling a function (with error handling)
     logger.info("Testing Webtoons scraper with action genre...")
-    test_result = scrape_webtoons_genre('action')
-    logger.info(f"✓ Webtoons scraper test returned {len(test_result)} items")
+    try:
+        test_result = scrape_webtoons_genre('action')
+        logger.info(f"✓ Webtoons scraper test returned {len(test_result)} items")
+    except Exception as e:
+        logger.warning(f"Webtoons scraper test failed: {e}")
+        logger.info("Webtoons scraper imported but may have anti-scraping issues")
     
 except ImportError as e:
     logger.error(f"✗ ImportError importing Webtoons scraper: {e}")
@@ -818,9 +822,12 @@ def get_unified_popular():
         # Get popular manga from Webtoons (Action genre)
         webtoons_manga = []
         try:
+            logger.info("Attempting to fetch Webtoons popular manga...")
             webtoons_manga = scrape_webtoons_genre('action')
+            logger.info(f"Webtoons returned {len(webtoons_manga)} items")
         except Exception as e:
             logger.warning(f"Failed to fetch Webtoons popular: {e}")
+            logger.info("Continuing with AsuraScanz data only")
         
         # Combine and return
         all_manga = asura_manga + webtoons_manga
