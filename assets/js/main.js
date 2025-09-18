@@ -871,7 +871,7 @@ async function handleReaderPage() {
         
         // Initialize immersive reader UI
         initReaderUI();
-        
+        //sd
         console.log('Chapter navigation:', {
             currentIndex,
             totalChapters: chapterList.length,
