@@ -18,8 +18,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-# Temporarily disabled Webtoons imports to fix 500 error
-# from webtoons_scraper import scrape_webtoons_by_genre, scrape_webtoons_details, scrape_webtoons_chapter_images, search_webtoons_by_title
+from webtoons_scraper import scrape_genre as scrape_webtoons_genre, scrape_details as scrape_webtoons_details, scrape_chapter_images as scrape_webtoons_chapter_images, search_by_title as search_webtoons_by_title
 
 # --- Configuration ---
 logging.basicConfig(
@@ -975,42 +974,145 @@ def get_unified_chapter_data():
         }), 500
 
 # ============================================================================
-# WEBTOONS ENDPOINTS - TEMPORARILY DISABLED DUE TO VERCEL COMPATIBILITY
+# WEBTOONS DEDICATED ENDPOINTS - VERCEL COMPATIBLE
 # ============================================================================
-# Note: Selenium doesn't work well in Vercel's serverless environment
-# These endpoints will be re-enabled with a Vercel-compatible solution
 
 @app.route('/api/webtoons/genre', methods=['GET'])
 def webtoons_genre():
-    """Webtoons genre endpoint - temporarily disabled."""
-    return jsonify({
-        'success': False,
-        'error': 'Webtoons functionality temporarily disabled for Vercel compatibility'
-    }), 503
+    """Get webtoons by genre from Webtoons.com."""
+    genre_name = request.args.get('name', '').strip()
+    
+    if not genre_name:
+        return jsonify({
+            'success': False,
+            'error': 'Genre name parameter is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching webtoons for genre: {genre_name}")
+        
+        manga_list = scrape_webtoons_genre(genre_name)
+        
+        if not manga_list:
+            return jsonify({
+                'success': False,
+                'error': f'No webtoons found for genre: {genre_name}'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_list,
+            'total': len(manga_list),
+            'source': 'Webtoons'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in webtoons genre endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch webtoons by genre'
+        }), 500
 
 @app.route('/api/webtoons/details', methods=['GET'])
 def webtoons_details():
-    """Webtoons details endpoint - temporarily disabled."""
-    return jsonify({
-        'success': False,
-        'error': 'Webtoons functionality temporarily disabled for Vercel compatibility'
-    }), 503
+    """Get detailed information for a specific webtoon from Webtoons.com."""
+    detail_url = request.args.get('url', '').strip()
+    
+    if not detail_url:
+        return jsonify({
+            'success': False,
+            'error': 'Webtoon detail URL is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching webtoon details from: {detail_url}")
+        
+        manga_details = scrape_webtoons_details(detail_url)
+        
+        if not manga_details:
+            return jsonify({
+                'success': False,
+                'error': 'Could not scrape details for the provided Webtoons URL'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_details
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in webtoons details endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch webtoon details'
+        }), 500
 
 @app.route('/api/webtoons/chapter', methods=['GET'])
 def webtoons_chapter():
-    """Webtoons chapter endpoint - temporarily disabled."""
-    return jsonify({
-        'success': False,
-        'error': 'Webtoons functionality temporarily disabled for Vercel compatibility'
-    }), 503
+    """Get chapter images for a specific webtoon chapter from Webtoons.com."""
+    chapter_url = request.args.get('url', '').strip()
+    
+    if not chapter_url:
+        return jsonify({
+            'success': False,
+            'error': 'Chapter URL is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching webtoon chapter images from: {chapter_url}")
+        
+        images = scrape_webtoons_chapter_images(chapter_url)
+        
+        if not images:
+            return jsonify({
+                'success': False,
+                'error': 'No chapter images found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'image_urls': images,
+                'source': 'Webtoons'
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in webtoons chapter endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch chapter images'
+        }), 500
 
 @app.route('/api/webtoons/search', methods=['GET'])
 def webtoons_search():
-    """Webtoons search endpoint - temporarily disabled."""
-    return jsonify({
-        'success': False,
-        'error': 'Webtoons functionality temporarily disabled for Vercel compatibility'
-    }), 503
+    """Search for webtoons by title on Webtoons.com."""
+    query = request.args.get('q', '').strip()
+    
+    if not query:
+        return jsonify({
+            'success': False,
+            'error': 'Search query parameter is required'
+        }), 400
+    
+    try:
+        logger.info(f"Searching webtoons for: {query}")
+        
+        results = search_webtoons_by_title(query)
+        
+        return jsonify({
+            'success': True,
+            'data': results,
+            'total': len(results),
+            'source': 'Webtoons'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in webtoons search endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to search webtoons'
+        }), 500
 
 @app.route('/api', methods=['GET'])
 def api_root():

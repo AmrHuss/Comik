@@ -4,11 +4,10 @@ Webtoons.com Scraper Module for ManhwaVerse
 ===========================================
 
 This module provides scraping functionality for webtoons.com,
-including genre-based manga discovery and detailed manga information.
-Uses Selenium for dynamic content handling.
+using the same requests + BeautifulSoup approach as AsuraScanz.
 
 Author: ManhwaVerse Development Team
-Version: 2.0
+Version: 3.0 - Vercel Compatible
 """
 
 import requests
@@ -18,20 +17,12 @@ import time
 from urllib.parse import urljoin, urlparse, quote
 import re
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 WEBTOONS_BASE_URL = "https://www.webtoons.com/en/"
-REQUEST_TIMEOUT = 20
+REQUEST_TIMEOUT = 15
 MAX_RETRIES = 3
 
 def get_headers():
@@ -45,32 +36,32 @@ def get_headers():
         'Upgrade-Insecure-Requests': '1'
     }
 
-def initialize_selenium_driver():
-    """Initialize a headless Chrome WebDriver with optimized settings."""
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-plugins")
-    chrome_options.add_argument("--disable-images")  # Faster loading
-    chrome_options.add_argument(f"user-agent={get_headers()['User-Agent']}")
+def make_request(url, max_retries=3, delay=1):
+    """
+    Make a robust HTTP request with retries and proper headers.
     
-    try:
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        return driver
-    except Exception as e:
-        logger.error(f"Error initializing Selenium driver: {e}")
-        return None
+    Args:
+        url (str): The URL to request
+        max_retries (int): Maximum number of retry attempts
+        delay (int): Delay between retries in seconds
+    Returns:
+        requests.Response or None: The response object if successful, None otherwise.
+    """
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=get_headers(), timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            return response
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Request attempt {attempt + 1} failed for {url}: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+    logger.error(f"All {max_retries} attempts failed for {url}")
+    return None
 
 def scrape_genre(genre_name):
     """
-    Scrape webtoons by genre from webtoons.com using Selenium.
+    Scrape webtoons by genre from webtoons.com using requests + BeautifulSoup.
     
     Args:
         genre_name (str): The genre to scrape (e.g., 'action', 'romance')
@@ -81,70 +72,74 @@ def scrape_genre(genre_name):
     genre_url = urljoin(WEBTOONS_BASE_URL, f"genres/{genre_name}/")
     logger.info(f"Scraping webtoons for genre: {genre_name} from {genre_url}")
     
-    driver = None
     try:
-        driver = initialize_selenium_driver()
-        if not driver:
-            logger.error("Failed to initialize Selenium driver")
+        response = make_request(genre_url)
+        if not response:
+            logger.error(f"Failed to fetch genre page: {genre_url}")
             return []
         
-        driver.get(genre_url)
-        
-        # Wait for the main list of webtoons to be present
-        WebDriverWait(driver, REQUEST_TIMEOUT).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.webtoon_list'))
-        )
-        
-        # Additional wait for content to load
-        time.sleep(2)
-        
-        soup = BeautifulSoup(driver.page_source, 'lxml')
+        soup = BeautifulSoup(response.content, 'lxml')
         manga_list = []
         
-        webtoon_list_ul = soup.select_one('ul.webtoon_list')
-        if not webtoon_list_ul:
-            logger.warning(f"Could not find webtoon_list on {genre_url}")
-            return []
+        # Look for webtoon cards in the genre page
+        # Webtoons uses different selectors than AsuraScanz
+        webtoon_cards = soup.select('ul.webtoon_list li')
         
-        for li in webtoon_list_ul.select('li'):
+        if not webtoon_cards:
+            # Try alternative selectors
+            webtoon_cards = soup.select('div.episode_thumb')
+            if not webtoon_cards:
+                webtoon_cards = soup.select('div.episode')
+        
+        logger.info(f"Found {len(webtoon_cards)} webtoon cards")
+        
+        for card in webtoon_cards:
             try:
-                title_strong = li.select_one('strong.title')
-                cover_img = li.select_one('img')
-                detail_link = li.select_one('a')
-                author_div = li.select_one('div.author')
+                # Extract title
+                title_element = card.select_one('strong.title') or card.select_one('p.subj') or card.select_one('h3')
+                title = title_element.get_text(strip=True) if title_element else "Unknown Title"
                 
-                if not (title_strong and cover_img and detail_link and author_div):
-                    continue
+                # Extract cover image
+                cover_img = card.select_one('img')
+                cover_url = ""
+                if cover_img:
+                    cover_url = cover_img.get('src') or cover_img.get('data-src') or ""
+                    if cover_url and not cover_url.startswith('http'):
+                        cover_url = urljoin(WEBTOONS_BASE_URL, cover_url)
                 
-                title = title_strong.get_text(strip=True)
-                cover_url = cover_img.get('src') or cover_img.get('data-src')
-                detail_url = urljoin(WEBTOONS_BASE_URL, detail_link.get('href'))
-                author = author_div.get_text(strip=True)
+                # Extract detail URL
+                detail_link = card.select_one('a')
+                detail_url = ""
+                if detail_link and detail_link.get('href'):
+                    detail_url = urljoin(WEBTOONS_BASE_URL, detail_link.get('href'))
                 
-                manga_list.append({
-                    'title': title,
-                    'cover_url': cover_url,
-                    'detail_url': detail_url,
-                    'author': author,
-                    'source': 'Webtoons'
-                })
+                # Extract author
+                author_element = card.select_one('div.author') or card.select_one('p.author')
+                author = author_element.get_text(strip=True) if author_element else "Unknown Author"
+                
+                if title and detail_url:  # Only add if we have essential data
+                    manga_list.append({
+                        'title': title,
+                        'cover_url': cover_url,
+                        'detail_url': detail_url,
+                        'author': author,
+                        'source': 'Webtoons'
+                    })
+                    
             except Exception as e:
-                logger.warning(f"Error parsing webtoon item: {e}")
+                logger.warning(f"Error parsing webtoon card: {e}")
                 continue
         
-        logger.info(f"Found {len(manga_list)} webtoons for genre: {genre_name}")
+        logger.info(f"Successfully scraped {len(manga_list)} webtoons for genre: {genre_name}")
         return manga_list
         
     except Exception as e:
         logger.error(f"Error scraping webtoons by genre: {e}")
         return []
-    finally:
-        if driver:
-            driver.quit()
 
 def scrape_details(detail_url):
     """
-    Scrape detailed information for a specific webtoon using Selenium.
+    Scrape detailed information for a specific webtoon using requests + BeautifulSoup.
     
     Args:
         detail_url (str): The detail page URL of the webtoon
@@ -153,56 +148,51 @@ def scrape_details(detail_url):
         dict: Dictionary containing all manga details including chapters
     """
     logger.info(f"Scraping webtoon details from: {detail_url}")
-    driver = None
+    
     try:
-        driver = initialize_selenium_driver()
-        if not driver:
-            logger.error("Failed to initialize Selenium driver")
+        response = make_request(detail_url)
+        if not response:
+            logger.error(f"Failed to fetch detail page: {detail_url}")
             return None
         
-        driver.get(detail_url)
-        
-        # Wait for the chapter list container to be present
-        WebDriverWait(driver, REQUEST_TIMEOUT).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'ul#_listUl'))
-        )
-        
-        # Additional wait for content to load
-        time.sleep(2)
-        
-        soup = BeautifulSoup(driver.page_source, 'lxml')
+        soup = BeautifulSoup(response.content, 'lxml')
         
         # Extract title
-        title_element = soup.select_one('h1.subj')
+        title_element = soup.select_one('h1.subj') or soup.select_one('h1.title')
         title = title_element.get_text(strip=True) if title_element else "Unknown Title"
         
         # Extract cover image
-        cover_img = soup.select_one('span.thmb img')
-        cover_image = cover_img['src'] if cover_img and cover_img.get('src') else ""
+        cover_img = soup.select_one('span.thmb img') or soup.select_one('div.episode_thumb img')
+        cover_image = ""
+        if cover_img and cover_img.get('src'):
+            cover_image = cover_img.get('src')
+            if not cover_image.startswith('http'):
+                cover_image = urljoin(WEBTOONS_BASE_URL, cover_image)
         
         # Extract description
-        desc_element = soup.select_one('p.summary')
+        desc_element = soup.select_one('p.summary') or soup.select_one('div.summary')
         description = desc_element.get_text(strip=True) if desc_element else "No description available"
         
-        # Extract genres (Webtoons often has categories, not explicit genres like Asura)
-        genre_elements = soup.select('h2.genre a')
+        # Extract genres
+        genre_elements = soup.select('h2.genre a') or soup.select('div.genre a')
         genres = [g.get_text(strip=True) for g in genre_elements]
         
         # Extract author
-        author_element = soup.select_one('div.author_area p.author')
+        author_element = soup.select_one('div.author_area p.author') or soup.select_one('p.author')
         author = author_element.get_text(strip=True) if author_element else "Unknown Author"
         
-        # Extract chapters with pagination handling
+        # Extract chapters
         chapters = []
-        chapter_list_ul = soup.select_one('ul#_listUl')
+        chapter_list_ul = soup.select_one('ul#_listUl') or soup.select_one('ul.episode_list')
         
         if chapter_list_ul:
-            # Get initial chapters
-            for li in chapter_list_ul.select('li._episodeItem'):
+            chapter_items = chapter_list_ul.select('li._episodeItem') or chapter_list_ul.select('li.episode_item')
+            
+            for item in chapter_items:
                 try:
-                    link = li.select_one('a')
+                    link = item.select_one('a')
                     if link and link.get('href'):
-                        chapter_title_element = li.select_one('p.sub_title')
+                        chapter_title_element = item.select_one('p.sub_title') or item.select_one('span.title')
                         chapter_title = chapter_title_element.get_text(strip=True) if chapter_title_element else "Chapter"
                         
                         chapters.append({
@@ -213,38 +203,6 @@ def scrape_details(detail_url):
                 except Exception as e:
                     logger.warning(f"Error parsing webtoon chapter: {e}")
                     continue
-            
-            # Try to load more chapters by clicking "Next" button
-            try:
-                next_button = driver.find_element(By.CSS_SELECTOR, 'a.pg_next')
-                if next_button and next_button.is_enabled():
-                    driver.execute_script("arguments[0].click();", next_button)
-                    time.sleep(2)  # Wait for new content to load
-                    
-                    # Parse additional chapters
-                    soup = BeautifulSoup(driver.page_source, 'lxml')
-                    chapter_list_ul = soup.select_one('ul#_listUl')
-                    if chapter_list_ul:
-                        for li in chapter_list_ul.select('li._episodeItem'):
-                            try:
-                                link = li.select_one('a')
-                                if link and link.get('href'):
-                                    chapter_title_element = li.select_one('p.sub_title')
-                                    chapter_title = chapter_title_element.get_text(strip=True) if chapter_title_element else "Chapter"
-                                    
-                                    # Check if chapter already exists
-                                    chapter_url = urljoin(WEBTOONS_BASE_URL, link['href'])
-                                    if not any(ch['url'] == chapter_url for ch in chapters):
-                                        chapters.append({
-                                            'title': chapter_title,
-                                            'date': 'N/A',
-                                            'url': chapter_url
-                                        })
-                            except Exception as e:
-                                logger.warning(f"Error parsing additional webtoon chapter: {e}")
-                                continue
-            except Exception as e:
-                logger.info(f"No next page button found or error clicking it: {e}")
         
         # Reverse chapters to be newest first
         chapters.reverse()
@@ -254,7 +212,7 @@ def scrape_details(detail_url):
             'cover_image': cover_image,
             'description': description,
             'rating': 'N/A',  # Webtoons uses likes, not star ratings
-            'status': 'Ongoing',  # Placeholder, needs more complex logic
+            'status': 'Ongoing',  # Placeholder
             'genres': genres,
             'author': author,
             'chapters': chapters,
@@ -264,13 +222,10 @@ def scrape_details(detail_url):
     except Exception as e:
         logger.error(f"Error scraping webtoon details: {e}")
         return None
-    finally:
-        if driver:
-            driver.quit()
 
 def scrape_chapter_images(chapter_url):
     """
-    Scrape chapter images for a specific webtoon chapter using Selenium.
+    Scrape chapter images for a specific webtoon chapter using requests + BeautifulSoup.
     
     Args:
         chapter_url (str): The chapter reader URL
@@ -279,33 +234,33 @@ def scrape_chapter_images(chapter_url):
         list: List of image URLs for the chapter
     """
     logger.info(f"Scraping webtoon chapter images from: {chapter_url}")
-    driver = None
+    
     try:
-        driver = initialize_selenium_driver()
-        if not driver:
-            logger.error("Failed to initialize Selenium driver")
+        response = make_request(chapter_url)
+        if not response:
+            logger.error(f"Failed to fetch chapter page: {chapter_url}")
             return []
         
-        driver.get(chapter_url)
-        
-        # Wait for images to be present
-        WebDriverWait(driver, REQUEST_TIMEOUT).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, '#_imageList img'))
-        )
-        
-        # Additional wait for all images to load
-        time.sleep(3)
-        
-        soup = BeautifulSoup(driver.page_source, 'lxml')
+        soup = BeautifulSoup(response.content, 'lxml')
         
         image_urls = []
-        viewer_area = soup.select_one('#_imageList')
         
-        if viewer_area:
-            for img in viewer_area.select('img'):
-                src = img.get('src') or img.get('data-src')
-                if src and 'img-webtoon.pstatic.net' in src:  # Specific domain for webtoons images
-                    image_urls.append(src)
+        # Look for images in the chapter viewer
+        image_selectors = [
+            '#_imageList img',
+            '.viewer_img img',
+            '.episode_viewer img',
+            'div.viewer img'
+        ]
+        
+        for selector in image_selectors:
+            images = soup.select(selector)
+            if images:
+                for img in images:
+                    src = img.get('src') or img.get('data-src')
+                    if src and 'img-webtoon.pstatic.net' in src:
+                        image_urls.append(src)
+                break  # Use the first selector that finds images
         
         logger.info(f"Found {len(image_urls)} images for chapter: {chapter_url}")
         return image_urls
@@ -313,13 +268,10 @@ def scrape_chapter_images(chapter_url):
     except Exception as e:
         logger.error(f"Error scraping webtoon chapter images: {e}")
         return []
-    finally:
-        if driver:
-            driver.quit()
 
 def search_by_title(query):
     """
-    Search for webtoons by title on webtoons.com using Selenium.
+    Search for webtoons by title on webtoons.com using requests + BeautifulSoup.
     
     Args:
         query (str): The search query
@@ -330,36 +282,31 @@ def search_by_title(query):
     search_url = urljoin(WEBTOONS_BASE_URL, f"search?keyword={quote(query)}")
     logger.info(f"Searching webtoons for title: {query} from {search_url}")
     
-    driver = None
     try:
-        driver = initialize_selenium_driver()
-        if not driver:
-            logger.error("Failed to initialize Selenium driver")
+        response = make_request(search_url)
+        if not response:
+            logger.error(f"Failed to fetch search page: {search_url}")
             return []
         
-        driver.get(search_url)
-        
-        # Wait for search results to load
-        WebDriverWait(driver, REQUEST_TIMEOUT).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'ul.search_result_list'))
-        )
-        
-        # Additional wait for content to load
-        time.sleep(2)
-        
-        soup = BeautifulSoup(driver.page_source, 'lxml')
+        soup = BeautifulSoup(response.content, 'lxml')
         results = []
         
-        for li in soup.select('ul.search_result_list li'):
+        # Look for search results
+        search_items = soup.select('ul.search_result_list li') or soup.select('div.search_item')
+        
+        for item in search_items:
             try:
-                title_element = li.select_one('p.subj')
-                detail_link = li.select_one('a')
-                cover_img = li.select_one('img')
+                title_element = item.select_one('p.subj') or item.select_one('h3')
+                detail_link = item.select_one('a')
+                cover_img = item.select_one('img')
                 
                 if title_element and detail_link and cover_img:
                     title = title_element.get_text(strip=True)
                     detail_url = urljoin(WEBTOONS_BASE_URL, detail_link.get('href'))
                     cover_url = cover_img.get('src') or cover_img.get('data-src')
+                    
+                    if cover_url and not cover_url.startswith('http'):
+                        cover_url = urljoin(WEBTOONS_BASE_URL, cover_url)
                     
                     results.append({
                         'title': title,
@@ -377,6 +324,3 @@ def search_by_title(query):
     except Exception as e:
         logger.error(f"Error searching webtoons by title: {e}")
         return []
-    finally:
-        if driver:
-            driver.quit()
