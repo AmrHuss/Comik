@@ -17,8 +17,7 @@ const MAX_SEARCH_RESULTS = 7;
 const REQUEST_TIMEOUT = 15000;
 
 // --- Initialize Storage and Components ---
-// Temporarily disabled for debugging
-// let storageManager, uiComponents;
+let storageManager, uiComponents;
 
 // --- State Management ---
 const AppState = {
@@ -136,8 +135,7 @@ function createMangaCard(manga) {
     cardLink.className = 'manhwa-card';
     cardLink.setAttribute('data-title', manga.title);
     
-    // Temporarily disabled bookmark functionality
-    const isBookmarked = false;
+    const isBookmarked = (storageManager && storageManager.isBookmarked) ? storageManager.isBookmarked(manga.title) : false;
     
     cardLink.innerHTML = `
         <div class="card-image">
@@ -806,9 +804,9 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // Load the chapter images using unified API
-        const chapterResult = await makeApiRequest(`${API_BASE_URL}/unified-chapter-data?url=${encodeURIComponent(chapterUrl)}&source=${encodeURIComponent(source)}`);
-        displayChapterImages(chapterResult.image_urls, container);
+        // Load the chapter images using original API
+        const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
+        displayChapterImages(chapterResult.data, container);
         
         // Get chapter navigation from sessionStorage
         const chapterList = JSON.parse(sessionStorage.getItem('current_manga_chapters') || '[]');
@@ -1232,5 +1230,20 @@ window.toggleBookmark = function(button) {
 
 // Start the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize storage and components safely
+    try {
+        storageManager = window.storageManager;
+        uiComponents = window.uiComponents;
+    } catch (error) {
+        console.warn('Storage or components not available:', error);
+        storageManager = null;
+        uiComponents = null;
+    }
+    
     initialize();
+    
+    // Only initialize user features if components are available
+    if (storageManager && uiComponents) {
+        initializeUserFeatures();
+    }
 });
