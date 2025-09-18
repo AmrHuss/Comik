@@ -18,7 +18,22 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-from webtoons_scraper import scrape_genre as scrape_webtoons_genre, scrape_details as scrape_webtoons_details, scrape_chapter_images as scrape_webtoons_chapter_images, search_by_title as search_webtoons_by_title
+# Temporarily disable Webtoons import to debug 500 error
+# from webtoons_scraper import scrape_genre as scrape_webtoons_genre, scrape_details as scrape_webtoons_details, scrape_chapter_images as scrape_webtoons_chapter_images, search_by_title as search_webtoons_by_title
+
+# Define dummy functions to prevent crashes
+def scrape_webtoons_genre(genre):
+    logger.info("Webtoons scraper temporarily disabled for debugging")
+    return []
+def scrape_webtoons_details(url):
+    logger.info("Webtoons scraper temporarily disabled for debugging")
+    return None
+def scrape_webtoons_chapter_images(url):
+    logger.info("Webtoons scraper temporarily disabled for debugging")
+    return []
+def search_webtoons_by_title(query):
+    logger.info("Webtoons scraper temporarily disabled for debugging")
+    return []
 
 # --- Configuration ---
 logging.basicConfig(
@@ -776,7 +791,7 @@ def get_unified_popular():
         # Get popular manga from Webtoons (Action genre)
         webtoons_manga = []
         try:
-            webtoons_manga = scrape_webtoons_by_genre('action')
+            webtoons_manga = scrape_webtoons_genre('action')
         except Exception as e:
             logger.warning(f"Failed to fetch Webtoons popular: {e}")
         
