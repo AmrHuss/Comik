@@ -129,7 +129,7 @@ function createMangaCard(manga) {
     cardLink.className = 'manhwa-card';
     cardLink.setAttribute('data-title', manga.title);
     
-    const isBookmarked = storageManager ? storageManager.isBookmarked(manga.title) : false;
+    const isBookmarked = (storageManager && storageManager.isBookmarked) ? storageManager.isBookmarked(manga.title) : false;
     
     cardLink.innerHTML = `
         <div class="card-image">
@@ -1061,14 +1061,18 @@ function initReaderUI() {
 
 // --- User Features Initialization ---
 function initializeUserFeatures() {
-    // Add bookmark buttons to existing manga cards
-    addBookmarkButtonsToExistingCards();
-    
-    // Initialize reading history tracking
-    initializeReadingHistory();
-    
-    // Add progress indicators
-    addProgressIndicators();
+    try {
+        // Add bookmark buttons to existing manga cards
+        addBookmarkButtonsToExistingCards();
+        
+        // Initialize reading history tracking
+        initializeReadingHistory();
+        
+        // Add progress indicators
+        addProgressIndicators();
+    } catch (error) {
+        console.error('Error initializing user features:', error);
+    }
 }
 
 function addBookmarkButtonsToExistingCards() {
@@ -1166,30 +1170,47 @@ function addProgressIndicators() {
 
 // Global functions for inline event handlers
 window.toggleBookmark = function(button) {
-    if (!storageManager || !uiComponents) return;
+    if (!storageManager || !uiComponents) {
+        console.warn('Storage or components not available for bookmark toggle');
+        return;
+    }
     
-    const mangaData = JSON.parse(button.dataset.manga);
-    const isBookmarked = storageManager.isBookmarked(mangaData.title);
-    
-    if (isBookmarked) {
-        storageManager.removeBookmark(mangaData.title);
-        button.classList.remove('bookmarked');
-        button.querySelector('.bookmark-text').textContent = 'Bookmark';
-        uiComponents.showNotification('Removed from bookmarks', 'success');
-    } else {
-        storageManager.addBookmark(mangaData);
-        button.classList.add('bookmarked');
-        button.querySelector('.bookmark-text').textContent = 'Bookmarked';
-        uiComponents.showNotification('Added to bookmarks', 'success');
+    try {
+        const mangaData = JSON.parse(button.dataset.manga);
+        const isBookmarked = storageManager.isBookmarked(mangaData.title);
+        
+        if (isBookmarked) {
+            storageManager.removeBookmark(mangaData.title);
+            button.classList.remove('bookmarked');
+            button.querySelector('.bookmark-text').textContent = 'Bookmark';
+            uiComponents.showNotification('Removed from bookmarks', 'success');
+        } else {
+            storageManager.addBookmark(mangaData);
+            button.classList.add('bookmarked');
+            button.querySelector('.bookmark-text').textContent = 'Bookmarked';
+            uiComponents.showNotification('Added to bookmarks', 'success');
+        }
+    } catch (error) {
+        console.error('Error toggling bookmark:', error);
     }
 };
 
 // Start the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize storage and components
-    storageManager = window.storageManager;
-    uiComponents = window.uiComponents;
+    // Initialize storage and components safely
+    try {
+        storageManager = window.storageManager;
+        uiComponents = window.uiComponents;
+    } catch (error) {
+        console.warn('Storage or components not available:', error);
+        storageManager = null;
+        uiComponents = null;
+    }
     
     initialize();
-    initializeUserFeatures();
+    
+    // Only initialize user features if components are available
+    if (storageManager && uiComponents) {
+        initializeUserFeatures();
+    }
 });
