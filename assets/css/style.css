@@ -2342,6 +2342,27 @@ a:focus {
    ============================================================================ */
 
 /* Continue Reading Section */
+/* Immersive Reader */
+.reader-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 100;
+    transition: transform 0.3s ease;
+    transform: translateY(0);
+}
+
+.reader-header.hidden {
+    transform: translateY(-100%);
+}
+
+.reader-content {
+    margin-top: 80px; /* Account for fixed header */
+}
+
 .continue-reading {
     background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
     padding: 2rem 0;
@@ -2524,16 +2545,35 @@ a:focus {
     box-shadow: var(--shadow-sm);
 }
 
-/* Chapter Filter */
-.chapter-filter {
+/* Chapter Controls */
+.chapter-controls {
     background: var(--card-bg);
     border-radius: var(--radius-lg);
     padding: 1rem;
     margin-bottom: 1.5rem;
     border: 1px solid var(--border-color);
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.chapter-filter {
+    display: flex;
     gap: 1rem;
     align-items: center;
+    flex: 1;
+}
+
+.chapter-sort {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chapter-sort .btn.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
 }
 
 .chapter-search-input {

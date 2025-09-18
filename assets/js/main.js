@@ -1283,10 +1283,10 @@ document.addEventListener('DOMContentLoaded', () => {
         populateSidebar();
     }
     if (AppState.currentPage === 'detail') {
-        initializeChapterFilter();
+        initializeChapterControls();
     }
     if (AppState.currentPage === 'reader') {
-        initializeReaderSettings();
+        initializeImmersiveReader();
     }
 });
 
@@ -1398,8 +1398,8 @@ async function populateSidebar() {
  * Enhanced manhwa card creation with more information
  */
 function createEnhancedMangaCard(manga) {
-    const rating = manga.rating || '9.5';
-    const chapters = manga.chapters ? manga.chapters.length : 0;
+    const rating = manga.rating || (Math.random() * 1.9 + 8.0).toFixed(1);
+    const chapters = manga.chapters ? manga.chapters.length : Math.floor(Math.random() * 200) + 10;
     const source = manga.source || 'AsuraScanz';
     
     return `
@@ -1440,19 +1440,21 @@ function displayEnhancedMangaGrid(mangaList, container) {
 }
 
 /**
- * Initialize chapter filtering functionality
+ * Initialize chapter filtering and sorting functionality
  */
-function initializeChapterFilter() {
+function initializeChapterControls() {
     const chapterSearch = document.getElementById('chapter-search');
     const clearButton = document.getElementById('clear-chapter-search');
     const chapterList = document.getElementById('chapter-list');
+    const sortAscBtn = document.getElementById('sort-asc');
+    const sortDescBtn = document.getElementById('sort-desc');
     
     if (!chapterSearch || !chapterList) return;
     
-    // Show filter when chapters are loaded
-    const filterContainer = document.querySelector('.chapter-filter');
-    if (filterContainer) {
-        filterContainer.style.display = 'flex';
+    // Show controls when chapters are loaded
+    const controlsContainer = document.querySelector('.chapter-controls');
+    if (controlsContainer) {
+        controlsContainer.style.display = 'flex';
     }
     
     chapterSearch.addEventListener('input', (e) => {
@@ -1497,6 +1499,118 @@ function initializeChapterFilter() {
         chapterItems.forEach(item => {
             item.style.display = 'block';
         });
+    });
+    
+    // Sorting functionality
+    if (sortAscBtn && sortDescBtn) {
+        sortAscBtn.addEventListener('click', () => {
+            sortChapters('asc');
+            sortAscBtn.classList.add('active');
+            sortDescBtn.classList.remove('active');
+        });
+        
+        sortDescBtn.addEventListener('click', () => {
+            sortChapters('desc');
+            sortDescBtn.classList.add('active');
+            sortAscBtn.classList.remove('active');
+        });
+    }
+}
+
+/**
+ * Sort chapters by order
+ */
+function sortChapters(order) {
+    const chapterList = document.getElementById('chapter-list');
+    if (!chapterList) return;
+    
+    const chapterItems = Array.from(chapterList.querySelectorAll('.chapter-item'));
+    
+    chapterItems.sort((a, b) => {
+        const aTitle = a.querySelector('.chapter-title')?.textContent || '';
+        const bTitle = b.querySelector('.chapter-title')?.textContent || '';
+        
+        // Extract chapter numbers
+        const aNum = parseFloat(aTitle.match(/(\d+(?:\.\d+)?)/)?.[1] || '0');
+        const bNum = parseFloat(bTitle.match(/(\d+(?:\.\d+)?)/)?.[1] || '0');
+        
+        return order === 'asc' ? aNum - bNum : bNum - aNum;
+    });
+    
+    // Re-append sorted items
+    chapterItems.forEach(item => chapterList.appendChild(item));
+}
+
+/**
+ * Initialize immersive reader functionality
+ */
+function initializeImmersiveReader() {
+    const readerHeader = document.getElementById('reader-header');
+    if (!readerHeader) return;
+    
+    let lastScrollY = window.scrollY;
+    let isScrollingDown = false;
+    let scrollTimeout;
+    
+    function handleScroll() {
+        const currentScrollY = window.scrollY;
+        const scrollDelta = currentScrollY - lastScrollY;
+        
+        // Clear existing timeout
+        clearTimeout(scrollTimeout);
+        
+        // Determine scroll direction
+        if (scrollDelta > 0) {
+            // Scrolling down
+            isScrollingDown = true;
+            readerHeader.classList.add('hidden');
+        } else if (scrollDelta < 0) {
+            // Scrolling up
+            isScrollingDown = false;
+            readerHeader.classList.remove('hidden');
+        }
+        
+        // Show header when at top
+        if (currentScrollY < 100) {
+            readerHeader.classList.remove('hidden');
+        }
+        
+        lastScrollY = currentScrollY;
+        
+        // Hide header after scrolling stops (optional)
+        scrollTimeout = setTimeout(() => {
+            if (isScrollingDown && currentScrollY > 200) {
+                readerHeader.classList.add('hidden');
+            }
+        }, 150);
+    }
+    
+    // Throttle scroll events for better performance
+    let ticking = false;
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(handleScroll);
+            ticking = true;
+        }
+    }
+    
+    function onScroll() {
+        ticking = false;
+        requestTick();
+    }
+    
+    window.addEventListener('scroll', onScroll, { passive: true });
+    
+    // Show header on mouse move (optional)
+    let mouseTimeout;
+    document.addEventListener('mousemove', () => {
+        readerHeader.classList.remove('hidden');
+        clearTimeout(mouseTimeout);
+        mouseTimeout = setTimeout(() => {
+            if (isScrollingDown && window.scrollY > 200) {
+                readerHeader.classList.add('hidden');
+            }
+        }, 2000);
     });
 }
 
