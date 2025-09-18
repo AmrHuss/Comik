@@ -486,27 +486,10 @@ function initializeSourceSelector() {
  */
 async function fetchMangaFromSource(title, source) {
     try {
-        if (source === 'MadaraScans') {
-            // Use the new dedicated MadaraScans search endpoint
-            // For now, we'll use the popular endpoint and search through results
-            // In a full implementation, you'd want a dedicated search endpoint
-            const popularResponse = await makeApiRequest(`${API_BASE_URL}/madara/popular`);
-            if (popularResponse.data && popularResponse.data.length > 0) {
-                // Search through popular results for matching title
-                const matchingManga = popularResponse.data.find(manga => 
-                    manga.title.toLowerCase().includes(title.toLowerCase())
-                );
-                if (matchingManga) {
-                    const detailsResponse = await makeApiRequest(`${API_BASE_URL}/madara/details?url=${encodeURIComponent(matchingManga.detail_url)}`);
-                    return detailsResponse.data;
-                }
-            }
-            return null;
-        } else {
-            // Use existing AsuraScanz unified endpoint
-            const response = await makeApiRequest(`${API_BASE_URL}/unified-details?title=${encodeURIComponent(title)}&source=${encodeURIComponent(source)}`);
-            return response.data;
-        }
+        // Only AsuraScanz is supported now
+        // Use existing AsuraScanz unified endpoint
+        const response = await makeApiRequest(`${API_BASE_URL}/unified-details?title=${encodeURIComponent(title)}&source=${encodeURIComponent(source)}`);
+        return response.data;
     } catch (error) {
         console.error(`Error fetching from ${source}:`, error);
         return null;
@@ -843,15 +826,8 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // Load the chapter images using appropriate API based on source
-        let chapterResult;
-        if (source === 'MadaraScans') {
-            // MadaraScans doesn't have a dedicated chapter endpoint yet
-            // For now, we'll use the existing chapter endpoint
-            chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
-        } else {
-            chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
-        }
+        // Load the chapter images using AsuraScanz API
+        const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
         displayChapterImages(chapterResult.data, container);
         
         // Get chapter navigation from sessionStorage

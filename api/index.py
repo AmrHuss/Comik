@@ -18,28 +18,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-# Import MadaraScans scraper with error handling
-try:
-    from madara_scraper import scrape_popular as scrape_madara_popular, scrape_details as scrape_madara_details
-    logger.info("✓ Successfully imported MadaraScans scraper functions")
-except ImportError as e:
-    logger.error(f"✗ Failed to import MadaraScans scraper: {e}")
-    # Define dummy functions to prevent crashes
-    def scrape_madara_popular():
-        logger.error("MadaraScans scraper not available - ImportError")
-        return []
-    def scrape_madara_details(url):
-        logger.error("MadaraScans scraper not available - ImportError")
-        return None
-except Exception as e:
-    logger.error(f"✗ Unexpected error importing MadaraScans scraper: {e}")
-    # Define dummy functions to prevent crashes
-    def scrape_madara_popular():
-        logger.error("MadaraScans scraper not available - Unexpected error")
-        return []
-    def scrape_madara_details(url):
-        logger.error("MadaraScans scraper not available - Unexpected error")
-        return None
+# MadaraScans scraper removed - keeping only AsuraScanz
 
 # --- Configuration ---
 logging.basicConfig(
@@ -794,19 +773,9 @@ def get_unified_popular():
         except Exception as e:
             logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
         
-        # Get popular manga from MadaraScans
-        madara_manga = []
-        try:
-            logger.info("Attempting to fetch MadaraScans popular manga...")
-            madara_manga = scrape_madara_popular()
-            logger.info(f"MadaraScans returned {len(madara_manga)} items")
-        except Exception as e:
-            logger.warning(f"Failed to fetch MadaraScans popular: {e}")
-            logger.info("Continuing with AsuraScanz data only")
-        
-        # Combine and return
-        all_manga = asura_manga + madara_manga
-        logger.info(f"Returning {len(all_manga)} unified popular manga")
+        # Return only AsuraScanz data
+        all_manga = asura_manga
+        logger.info(f"Returning {len(all_manga)} popular manga from AsuraScanz")
         
         return jsonify({
             'success': True,
@@ -997,71 +966,7 @@ def get_unified_chapter_data():
             'error': 'Failed to fetch chapter data'
         }), 500
 
-# ============================================================================
-# MADARASCANS DEDICATED ENDPOINTS
-# ============================================================================
-
-@app.route('/api/madara/popular', methods=['GET'])
-def madara_popular():
-    """Get popular manga from MadaraScans.com."""
-    try:
-        logger.info("Fetching popular manga from MadaraScans")
-        
-        manga_list = scrape_madara_popular()
-        
-        if not manga_list:
-            return jsonify({
-                'success': False,
-                'error': 'No popular manga found on MadaraScans'
-            }), 404
-        
-        return jsonify({
-            'success': True,
-            'data': manga_list,
-            'total': len(manga_list),
-            'source': 'MadaraScans'
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in madara popular endpoint: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Failed to fetch popular manga from MadaraScans'
-        }), 500
-
-@app.route('/api/madara/details', methods=['GET'])
-def madara_details():
-    """Get detailed information for a specific manga from MadaraScans.com."""
-    detail_url = request.args.get('url', '').strip()
-    
-    if not detail_url:
-        return jsonify({
-            'success': False,
-            'error': 'Manga detail URL is required'
-        }), 400
-    
-    try:
-        logger.info(f"Fetching MadaraScans details from: {detail_url}")
-        
-        manga_details = scrape_madara_details(detail_url)
-        
-        if not manga_details:
-            return jsonify({
-                'success': False,
-                'error': 'Could not scrape details for the provided MadaraScans URL'
-            }), 404
-        
-        return jsonify({
-            'success': True,
-            'data': manga_details
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in madara details endpoint: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Failed to fetch manga details from MadaraScans'
-        }), 500
+# MadaraScans endpoints removed - keeping only AsuraScanz
 
 @app.route('/api', methods=['GET'])
 def api_root():
@@ -1080,9 +985,7 @@ def api_root():
             '/api/unified-popular',
             '/api/unified-details',
             '/api/unified-chapter-data',
-            '/api/source-search',
-            '/api/madara/popular',
-            '/api/madara/details'
+            '/api/source-search'
         ]
     })
 
