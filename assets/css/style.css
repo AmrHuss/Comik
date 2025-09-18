@@ -434,7 +434,7 @@ body {
 }
 
 .manhwa-card:hover .card-image img {
-    transform: scale(1.1);
+    transform: scale(1.02);
 }
 
 .read-btn {

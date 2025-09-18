@@ -1511,17 +1511,24 @@ function initializeChapterControls() {
     
     // Sorting functionality
     if (sortAscBtn && sortDescBtn) {
-        sortAscBtn.addEventListener('click', () => {
+        console.log('Adding sort button listeners');
+        sortAscBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Ascending button clicked');
             sortChapters('asc');
             sortAscBtn.classList.add('active');
             sortDescBtn.classList.remove('active');
         });
         
-        sortDescBtn.addEventListener('click', () => {
+        sortDescBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Descending button clicked');
             sortChapters('desc');
             sortDescBtn.classList.add('active');
             sortAscBtn.classList.remove('active');
         });
+    } else {
+        console.log('Sort buttons not found:', { sortAscBtn, sortDescBtn });
     }
     }, 500); // Wait 500ms for DOM to be ready
 }
@@ -1530,24 +1537,43 @@ function initializeChapterControls() {
  * Sort chapters by order
  */
 function sortChapters(order) {
+    console.log('Sorting chapters:', order);
     const chapterList = document.getElementById('chapter-list');
-    if (!chapterList) return;
+    if (!chapterList) {
+        console.log('Chapter list not found');
+        return;
+    }
     
     const chapterItems = Array.from(chapterList.querySelectorAll('.chapter-item'));
+    console.log('Found chapter items:', chapterItems.length);
+    
+    if (chapterItems.length === 0) {
+        console.log('No chapter items found');
+        return;
+    }
     
     chapterItems.sort((a, b) => {
         const aTitle = a.querySelector('.chapter-title')?.textContent || '';
         const bTitle = b.querySelector('.chapter-title')?.textContent || '';
         
+        console.log('Comparing:', aTitle, 'vs', bTitle);
+        
         // Extract chapter numbers
         const aNum = parseFloat(aTitle.match(/(\d+(?:\.\d+)?)/)?.[1] || '0');
         const bNum = parseFloat(bTitle.match(/(\d+(?:\.\d+)?)/)?.[1] || '0');
         
+        console.log('Numbers:', aNum, 'vs', bNum);
+        
         return order === 'asc' ? aNum - bNum : bNum - aNum;
     });
     
+    // Clear the container first
+    chapterList.innerHTML = '';
+    
     // Re-append sorted items
     chapterItems.forEach(item => chapterList.appendChild(item));
+    
+    console.log('Chapters sorted successfully');
 }
 
 /**
