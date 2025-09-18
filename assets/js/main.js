@@ -486,14 +486,20 @@ function initializeSourceSelector() {
  */
 async function fetchMangaFromSource(title, source) {
     try {
-        if (source === 'Webtoons') {
-            // Use the new dedicated Webtoons search endpoint
-            const searchResponse = await makeApiRequest(`${API_BASE_URL}/webtoons/search?q=${encodeURIComponent(title)}`);
-            if (searchResponse.data && searchResponse.data.length > 0) {
-                // Get the first result and fetch its details
-                const webtoon = searchResponse.data[0];
-                const detailsResponse = await makeApiRequest(`${API_BASE_URL}/webtoons/details?url=${encodeURIComponent(webtoon.detail_url)}`);
-                return detailsResponse.data;
+        if (source === 'MadaraScans') {
+            // Use the new dedicated MadaraScans search endpoint
+            // For now, we'll use the popular endpoint and search through results
+            // In a full implementation, you'd want a dedicated search endpoint
+            const popularResponse = await makeApiRequest(`${API_BASE_URL}/madara/popular`);
+            if (popularResponse.data && popularResponse.data.length > 0) {
+                // Search through popular results for matching title
+                const matchingManga = popularResponse.data.find(manga => 
+                    manga.title.toLowerCase().includes(title.toLowerCase())
+                );
+                if (matchingManga) {
+                    const detailsResponse = await makeApiRequest(`${API_BASE_URL}/madara/details?url=${encodeURIComponent(matchingManga.detail_url)}`);
+                    return detailsResponse.data;
+                }
             }
             return null;
         } else {
@@ -839,8 +845,10 @@ async function handleReaderPage() {
     try {
         // Load the chapter images using appropriate API based on source
         let chapterResult;
-        if (source === 'Webtoons') {
-            chapterResult = await makeApiRequest(`${API_BASE_URL}/webtoons/chapter?url=${encodeURIComponent(chapterUrl)}`);
+        if (source === 'MadaraScans') {
+            // MadaraScans doesn't have a dedicated chapter endpoint yet
+            // For now, we'll use the existing chapter endpoint
+            chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
         } else {
             chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
         }

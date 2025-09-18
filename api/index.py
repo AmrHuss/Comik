@@ -18,53 +18,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-# Import Webtoons scraper with detailed error handling
-try:
-    logger.info("Attempting to import Webtoons scraper...")
-    from webtoons_scraper import scrape_genre as scrape_webtoons_genre, scrape_details as scrape_webtoons_details, scrape_chapter_images as scrape_webtoons_chapter_images, search_by_title as search_webtoons_by_title
-    logger.info("✓ Successfully imported all Webtoons scraper functions")
-    
-    # Test the import by calling a function (with error handling)
-    logger.info("Testing Webtoons scraper with action genre...")
-    try:
-        test_result = scrape_webtoons_genre('action')
-        logger.info(f"✓ Webtoons scraper test returned {len(test_result)} items")
-    except Exception as e:
-        logger.warning(f"Webtoons scraper test failed: {e}")
-        logger.info("Webtoons scraper imported but may have anti-scraping issues")
-    
-except ImportError as e:
-    logger.error(f"✗ ImportError importing Webtoons scraper: {e}")
-    logger.error(traceback.format_exc())
-    # Define dummy functions to prevent crashes
-    def scrape_webtoons_genre(genre):
-        logger.error("Webtoons scraper not available - ImportError")
-        return []
-    def scrape_webtoons_details(url):
-        logger.error("Webtoons scraper not available - ImportError")
-        return None
-    def scrape_webtoons_chapter_images(url):
-        logger.error("Webtoons scraper not available - ImportError")
-        return []
-    def search_webtoons_by_title(query):
-        logger.error("Webtoons scraper not available - ImportError")
-        return []
-except Exception as e:
-    logger.error(f"✗ Unexpected error importing Webtoons scraper: {e}")
-    logger.error(traceback.format_exc())
-    # Define dummy functions to prevent crashes
-    def scrape_webtoons_genre(genre):
-        logger.error("Webtoons scraper not available - Unexpected error")
-        return []
-    def scrape_webtoons_details(url):
-        logger.error("Webtoons scraper not available - Unexpected error")
-        return None
-    def scrape_webtoons_chapter_images(url):
-        logger.error("Webtoons scraper not available - Unexpected error")
-        return []
-    def search_webtoons_by_title(query):
-        logger.error("Webtoons scraper not available - Unexpected error")
-        return []
+# Import MadaraScans scraper
+from madara_scraper import scrape_popular as scrape_madara_popular, scrape_details as scrape_madara_details
 
 # --- Configuration ---
 logging.basicConfig(
@@ -819,18 +774,18 @@ def get_unified_popular():
         except Exception as e:
             logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
         
-        # Get popular manga from Webtoons (Action genre)
-        webtoons_manga = []
+        # Get popular manga from MadaraScans
+        madara_manga = []
         try:
-            logger.info("Attempting to fetch Webtoons popular manga...")
-            webtoons_manga = scrape_webtoons_genre('action')
-            logger.info(f"Webtoons returned {len(webtoons_manga)} items")
+            logger.info("Attempting to fetch MadaraScans popular manga...")
+            madara_manga = scrape_madara_popular()
+            logger.info(f"MadaraScans returned {len(madara_manga)} items")
         except Exception as e:
-            logger.warning(f"Failed to fetch Webtoons popular: {e}")
+            logger.warning(f"Failed to fetch MadaraScans popular: {e}")
             logger.info("Continuing with AsuraScanz data only")
         
         # Combine and return
-        all_manga = asura_manga + webtoons_manga
+        all_manga = asura_manga + madara_manga
         logger.info(f"Returning {len(all_manga)} unified popular manga")
         
         return jsonify({
@@ -1023,65 +978,57 @@ def get_unified_chapter_data():
         }), 500
 
 # ============================================================================
-# WEBTOONS DEDICATED ENDPOINTS - VERCEL COMPATIBLE
+# MADARASCANS DEDICATED ENDPOINTS
 # ============================================================================
 
-@app.route('/api/webtoons/genre', methods=['GET'])
-def webtoons_genre():
-    """Get webtoons by genre from Webtoons.com."""
-    genre_name = request.args.get('name', '').strip()
-    
-    if not genre_name:
-        return jsonify({
-            'success': False,
-            'error': 'Genre name parameter is required'
-        }), 400
-    
+@app.route('/api/madara/popular', methods=['GET'])
+def madara_popular():
+    """Get popular manga from MadaraScans.com."""
     try:
-        logger.info(f"Fetching webtoons for genre: {genre_name}")
+        logger.info("Fetching popular manga from MadaraScans")
         
-        manga_list = scrape_webtoons_genre(genre_name)
+        manga_list = scrape_madara_popular()
         
         if not manga_list:
             return jsonify({
                 'success': False,
-                'error': f'No webtoons found for genre: {genre_name}'
+                'error': 'No popular manga found on MadaraScans'
             }), 404
         
         return jsonify({
             'success': True,
             'data': manga_list,
             'total': len(manga_list),
-            'source': 'Webtoons'
+            'source': 'MadaraScans'
         })
         
     except Exception as e:
-        logger.error(f"Error in webtoons genre endpoint: {e}")
+        logger.error(f"Error in madara popular endpoint: {e}")
         return jsonify({
             'success': False,
-            'error': 'Failed to fetch webtoons by genre'
+            'error': 'Failed to fetch popular manga from MadaraScans'
         }), 500
 
-@app.route('/api/webtoons/details', methods=['GET'])
-def webtoons_details():
-    """Get detailed information for a specific webtoon from Webtoons.com."""
+@app.route('/api/madara/details', methods=['GET'])
+def madara_details():
+    """Get detailed information for a specific manga from MadaraScans.com."""
     detail_url = request.args.get('url', '').strip()
     
     if not detail_url:
         return jsonify({
             'success': False,
-            'error': 'Webtoon detail URL is required'
+            'error': 'Manga detail URL is required'
         }), 400
     
     try:
-        logger.info(f"Fetching webtoon details from: {detail_url}")
+        logger.info(f"Fetching MadaraScans details from: {detail_url}")
         
-        manga_details = scrape_webtoons_details(detail_url)
+        manga_details = scrape_madara_details(detail_url)
         
         if not manga_details:
             return jsonify({
                 'success': False,
-                'error': 'Could not scrape details for the provided Webtoons URL'
+                'error': 'Could not scrape details for the provided MadaraScans URL'
             }), 404
         
         return jsonify({
@@ -1090,77 +1037,10 @@ def webtoons_details():
         })
         
     except Exception as e:
-        logger.error(f"Error in webtoons details endpoint: {e}")
+        logger.error(f"Error in madara details endpoint: {e}")
         return jsonify({
             'success': False,
-            'error': 'Failed to fetch webtoon details'
-        }), 500
-
-@app.route('/api/webtoons/chapter', methods=['GET'])
-def webtoons_chapter():
-    """Get chapter images for a specific webtoon chapter from Webtoons.com."""
-    chapter_url = request.args.get('url', '').strip()
-    
-    if not chapter_url:
-        return jsonify({
-            'success': False,
-            'error': 'Chapter URL is required'
-        }), 400
-    
-    try:
-        logger.info(f"Fetching webtoon chapter images from: {chapter_url}")
-        
-        images = scrape_webtoons_chapter_images(chapter_url)
-        
-        if not images:
-            return jsonify({
-                'success': False,
-                'error': 'No chapter images found'
-            }), 404
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'image_urls': images,
-                'source': 'Webtoons'
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in webtoons chapter endpoint: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Failed to fetch chapter images'
-        }), 500
-
-@app.route('/api/webtoons/search', methods=['GET'])
-def webtoons_search():
-    """Search for webtoons by title on Webtoons.com."""
-    query = request.args.get('q', '').strip()
-    
-    if not query:
-        return jsonify({
-            'success': False,
-            'error': 'Search query parameter is required'
-        }), 400
-    
-    try:
-        logger.info(f"Searching webtoons for: {query}")
-        
-        results = search_webtoons_by_title(query)
-        
-        return jsonify({
-            'success': True,
-            'data': results,
-            'total': len(results),
-            'source': 'Webtoons'
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in webtoons search endpoint: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Failed to search webtoons'
+            'error': 'Failed to fetch manga details from MadaraScans'
         }), 500
 
 @app.route('/api', methods=['GET'])
@@ -1181,10 +1061,8 @@ def api_root():
             '/api/unified-details',
             '/api/unified-chapter-data',
             '/api/source-search',
-            '/api/webtoons/genre',
-            '/api/webtoons/details',
-            '/api/webtoons/chapter',
-            '/api/webtoons/search'
+            '/api/madara/popular',
+            '/api/madara/details'
         ]
     })
 
