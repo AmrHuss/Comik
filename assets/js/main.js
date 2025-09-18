@@ -405,7 +405,7 @@ function displayMangaDetails(data, source = 'AsuraScanz') {
     
     // Create chapters HTML (default: descending order - newest first)
     const chaptersHtml = data.chapters.map(chapter => `
-        <a href="reader.html?url=${encodeURIComponent(chapter.url)}" class="chapter-item">
+        <a href="reader.html?url=${encodeURIComponent(chapter.url)}&source=${encodeURIComponent(data.source || 'AsuraScanz')}" class="chapter-item">
             <span class="chapter-title">${chapter.title}</span>
             <span class="chapter-date">${chapter.date}</span>
         </a>
@@ -486,11 +486,44 @@ function initializeSourceSelector() {
  */
 async function fetchMangaFromSource(title, source) {
     try {
-        const response = await makeApiRequest(`${API_BASE_URL}/unified-details?title=${encodeURIComponent(title)}&source=${encodeURIComponent(source)}`);
-        return response.data;
+        if (source === 'Webtoons') {
+            // Use the new dedicated Webtoons search endpoint
+            const searchResponse = await makeApiRequest(`${API_BASE_URL}/webtoons/search?q=${encodeURIComponent(title)}`);
+            if (searchResponse.data && searchResponse.data.length > 0) {
+                // Get the first result and fetch its details
+                const webtoon = searchResponse.data[0];
+                const detailsResponse = await makeApiRequest(`${API_BASE_URL}/webtoons/details?url=${encodeURIComponent(webtoon.detail_url)}`);
+                return detailsResponse.data;
+            }
+            return null;
+        } else {
+            // Use existing AsuraScanz unified endpoint
+            const response = await makeApiRequest(`${API_BASE_URL}/unified-details?title=${encodeURIComponent(title)}&source=${encodeURIComponent(source)}`);
+            return response.data;
+        }
     } catch (error) {
         console.error(`Error fetching from ${source}:`, error);
         return null;
+    }
+}
+
+/**
+ * Fetch manga by genre from specific source
+ */
+async function fetchMangaByGenre(genre, source) {
+    try {
+        if (source === 'Webtoons') {
+            // Use the new dedicated Webtoons genre endpoint
+            const response = await makeApiRequest(`${API_BASE_URL}/webtoons/genre?name=${encodeURIComponent(genre)}`);
+            return response.data;
+        } else {
+            // Use existing AsuraScanz genre endpoint
+            const response = await makeApiRequest(`${API_BASE_URL}/genre?name=${encodeURIComponent(genre)}`);
+            return response.data;
+        }
+    } catch (error) {
+        console.error(`Error fetching ${genre} from ${source}:`, error);
+        return [];
     }
 }
 
@@ -576,7 +609,7 @@ function initializeChapterSorting() {
  */
 function renderChapterList(chapters, container) {
     const chaptersHtml = chapters.map(chapter => `
-        <a href="reader.html?url=${encodeURIComponent(chapter.url)}" class="chapter-item">
+        <a href="reader.html?url=${encodeURIComponent(chapter.url)}&source=${encodeURIComponent(data.source || 'AsuraScanz')}" class="chapter-item">
             <span class="chapter-title">${chapter.title}</span>
             <span class="chapter-date">${chapter.date}</span>
         </a>
@@ -804,8 +837,13 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // Load the chapter images using original API
-        const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
+        // Load the chapter images using appropriate API based on source
+        let chapterResult;
+        if (source === 'Webtoons') {
+            chapterResult = await makeApiRequest(`${API_BASE_URL}/webtoons/chapter?url=${encodeURIComponent(chapterUrl)}`);
+        } else {
+            chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
+        }
         displayChapterImages(chapterResult.data, container);
         
         // Get chapter navigation from sessionStorage
@@ -831,8 +869,8 @@ async function handleReaderPage() {
                 }
                 
                 // Update navigation buttons
-                updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, prevChapter?.url, nextChapter?.url);
-                updateChapterNavigation(prevFooterBtn, nextFooterBtn, prevChapter?.url, nextChapter?.url);
+                updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, prevChapter?.url, nextChapter?.url, source);
+                updateChapterNavigation(prevFooterBtn, nextFooterBtn, prevChapter?.url, nextChapter?.url, source);
                 
         // Show end-of-chapter navigation
         if (endOfChapterNav) {
@@ -877,8 +915,8 @@ function showBasicChapterInfo(chapterUrl, chapterTitle, prevHeaderBtn, nextHeade
     }
     
     // Hide navigation buttons
-    updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, null, null);
-    updateChapterNavigation(prevFooterBtn, nextFooterBtn, null, null);
+    updateChapterNavigation(prevHeaderBtn, nextHeaderBtn, null, null, source);
+    updateChapterNavigation(prevFooterBtn, nextFooterBtn, null, null, source);
     
     // Don't show end-of-chapter nav
     if (endOfChapterNav) {
@@ -973,8 +1011,8 @@ function displayChapterImages(images, container) {
 /**
  * Update chapter navigation buttons/links
  */
-function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl) {
-    console.log('Updating navigation:', { prevElement: !!prevElement, nextElement: !!nextElement, prevUrl, nextUrl });
+function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl, source = 'AsuraScanz') {
+    console.log('Updating navigation:', { prevElement: !!prevElement, nextElement: !!nextElement, prevUrl, nextUrl, source });
     
     if (prevElement) {
         if (prevUrl) {
@@ -982,10 +1020,10 @@ function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl) {
             prevElement.disabled = false;
             prevElement.style.display = 'block';
             prevElement.style.visibility = 'visible';
-            prevElement.href = `reader.html?url=${encodeURIComponent(prevUrl)}`;
+            prevElement.href = `reader.html?url=${encodeURIComponent(prevUrl)}&source=${encodeURIComponent(source)}`;
             prevElement.onclick = (e) => {
                 e.preventDefault();
-                window.location.href = `reader.html?url=${encodeURIComponent(prevUrl)}`;
+                window.location.href = `reader.html?url=${encodeURIComponent(prevUrl)}&source=${encodeURIComponent(source)}`;
             };
             if (prevElement.tagName === 'BUTTON') {
                 prevElement.textContent = '← Previous';
@@ -1006,10 +1044,10 @@ function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl) {
             nextElement.disabled = false;
             nextElement.style.display = 'block';
             nextElement.style.visibility = 'visible';
-            nextElement.href = `reader.html?url=${encodeURIComponent(nextUrl)}`;
+            nextElement.href = `reader.html?url=${encodeURIComponent(nextUrl)}&source=${encodeURIComponent(source)}`;
             nextElement.onclick = (e) => {
                 e.preventDefault();
-                window.location.href = `reader.html?url=${encodeURIComponent(nextUrl)}`;
+                window.location.href = `reader.html?url=${encodeURIComponent(nextUrl)}&source=${encodeURIComponent(source)}`;
             };
             if (nextElement.tagName === 'BUTTON') {
                 nextElement.textContent = 'Next →';
