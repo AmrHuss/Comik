@@ -18,8 +18,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-# Temporarily disabled webtoons scraper to fix 500 error
-# from webtoons_scraper import scrape_webtoons_by_genre, scrape_webtoons_details, scrape_webtoons_chapter_images
+from webtoons_scraper import scrape_webtoons_by_genre, scrape_webtoons_details, scrape_webtoons_chapter_images, search_webtoons_by_title
 
 # --- Configuration ---
 logging.basicConfig(
@@ -385,8 +384,9 @@ def search_manga():
 
 @app.route('/api/manga-details', methods=['GET'])
 def get_manga_details():
-    """Get detailed information for a specific manga."""
+    """Get detailed information for a specific manga from the specified source."""
     detail_url = request.args.get('url', '').strip()
+    source = request.args.get('source', 'AsuraScanz').strip()
     
     if not detail_url:
         return jsonify({
@@ -395,8 +395,14 @@ def get_manga_details():
         }), 400
     
     try:
-        logger.info(f"Fetching manga details for: {detail_url}")
-        manga_details = scrape_manga_details(detail_url)
+        logger.info(f"Fetching manga details for: {detail_url} from {source}")
+        
+        if source.lower() == 'webtoons':
+            # Use Webtoons scraper
+            manga_details = scrape_webtoons_details(detail_url)
+        else:
+            # Use AsuraScanz scraper (default)
+            manga_details = scrape_manga_details(detail_url)
         
         if not manga_details:
             return jsonify({
@@ -767,12 +773,12 @@ def get_unified_popular():
         except Exception as e:
             logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
         
-        # Get popular manga from Webtoons (Action genre) - TEMPORARILY DISABLED
+        # Get popular manga from Webtoons (Action genre)
         webtoons_manga = []
-        # try:
-        #     webtoons_manga = scrape_webtoons_by_genre('action')
-        # except Exception as e:
-        #     logger.warning(f"Failed to fetch Webtoons popular: {e}")
+        try:
+            webtoons_manga = scrape_webtoons_by_genre('action')
+        except Exception as e:
+            logger.warning(f"Failed to fetch Webtoons popular: {e}")
         
         # Combine and return
         all_manga = asura_manga + webtoons_manga
@@ -838,6 +844,60 @@ def get_unified_details():
         return jsonify({
             'success': False,
             'error': 'Failed to fetch manga details'
+        }), 500
+
+@app.route('/api/source-search', methods=['GET'])
+def search_manga_sources():
+    """Search for manga across multiple sources."""
+    title = request.args.get('title', '').strip()
+    
+    if not title:
+        return jsonify({
+            'success': False,
+            'error': 'Title parameter is required'
+        }), 400
+    
+    try:
+        logger.info(f"Searching for manga: {title}")
+        sources = []
+        
+        # Search AsuraScanz
+        try:
+            asura_results = search_manga_by_title(title)
+            if asura_results:
+                sources.append({
+                    'source': 'AsuraScanz',
+                    'detail_url': asura_results[0]['detail_url'],
+                    'title': asura_results[0]['title'],
+                    'cover_url': asura_results[0]['cover_url']
+                })
+        except Exception as e:
+            logger.warning(f"Error searching AsuraScanz: {e}")
+        
+        # Search Webtoons
+        try:
+            webtoons_results = search_webtoons_by_title(title)
+            if webtoons_results:
+                sources.append({
+                    'source': 'Webtoons',
+                    'detail_url': webtoons_results[0]['detail_url'],
+                    'title': webtoons_results[0]['title'],
+                    'cover_url': webtoons_results[0]['cover_url']
+                })
+        except Exception as e:
+            logger.warning(f"Error searching Webtoons: {e}")
+        
+        return jsonify({
+            'success': True,
+            'sources': sources,
+            'total_found': len(sources)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in source search: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to search manga sources'
         }), 500
 
 @app.route('/api/unified-chapter-data', methods=['GET'])
@@ -925,7 +985,8 @@ def api_root():
             '/api/chapter-data',
             '/api/unified-popular',
             '/api/unified-details',
-            '/api/unified-chapter-data'
+            '/api/unified-chapter-data',
+            '/api/source-search'
         ]
     })
 
