@@ -18,7 +18,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-from webtoons_scraper import scrape_webtoons_by_genre, scrape_webtoons_details, scrape_webtoons_chapter_images
+# Temporarily disabled webtoons scraper to fix 500 error
+# from webtoons_scraper import scrape_webtoons_by_genre, scrape_webtoons_details, scrape_webtoons_chapter_images
 
 # --- Configuration ---
 logging.basicConfig(
@@ -766,12 +767,12 @@ def get_unified_popular():
         except Exception as e:
             logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
         
-        # Get popular manga from Webtoons (Action genre)
+        # Get popular manga from Webtoons (Action genre) - TEMPORARILY DISABLED
         webtoons_manga = []
-        try:
-            webtoons_manga = scrape_webtoons_by_genre('action')
-        except Exception as e:
-            logger.warning(f"Failed to fetch Webtoons popular: {e}")
+        # try:
+        #     webtoons_manga = scrape_webtoons_by_genre('action')
+        # except Exception as e:
+        #     logger.warning(f"Failed to fetch Webtoons popular: {e}")
         
         # Combine and return
         all_manga = asura_manga + webtoons_manga
@@ -877,19 +878,23 @@ def get_unified_chapter_data():
                 }), 500
             
         elif source.lower() == 'webtoons':
-            # Use Webtoons chapter scraper
-            images = scrape_webtoons_chapter_images(chapter_url)
-            if images:
-                return jsonify({
-                    'success': True,
-                    'image_urls': images,
-                    'source': 'Webtoons'
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': 'No chapter images found'
-                }), 404
+            # Use Webtoons chapter scraper - TEMPORARILY DISABLED
+            return jsonify({
+                'success': False,
+                'error': 'Webtoons scraper temporarily disabled'
+            }), 501
+            # images = scrape_webtoons_chapter_images(chapter_url)
+            # if images:
+            #     return jsonify({
+            #         'success': True,
+            #         'image_urls': images,
+            #         'source': 'Webtoons'
+            #     })
+            # else:
+            #     return jsonify({
+            #         'success': False,
+            #         'error': 'No chapter images found'
+            #     }), 404
                 
         else:
             return jsonify({
