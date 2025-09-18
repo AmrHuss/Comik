@@ -1239,7 +1239,7 @@ window.toggleBookmark = function(button) {
     }
     
     try {
-        const mangaData = JSON.parse(button.dataset.manga);
+        const mangaData = JSON.parse(button.getAttribute('data-manga'));
         const isBookmarked = storageManager.isBookmarked(mangaData.title);
         
         if (isBookmarked) {
@@ -1401,23 +1401,41 @@ function createEnhancedMangaCard(manga) {
     const rating = manga.rating || (Math.random() * 1.9 + 8.0).toFixed(1);
     const chapters = manga.chapters ? manga.chapters.length : Math.floor(Math.random() * 200) + 10;
     const source = manga.source || 'AsuraScanz';
+    const isBookmarked = (storageManager && storageManager.isBookmarked) ? storageManager.isBookmarked(manga.title) : false;
     
     return `
         <div class="manhwa-card" data-source="${source}">
-            <a href="detail.html?url=${encodeURIComponent(manga.detail_url)}" class="manhwa-card-content">
-                <img src="${manga.cover_url}" alt="${manga.title}" loading="lazy">
-                <div class="manhwa-card-info">
-                    <h3>${manga.title}</h3>
-                    <div class="manhwa-card-meta">
-                        <span class="rating">⭐ ${rating}</span>
-                        <span class="chapters">${chapters} ch</span>
-                        <span class="source">${source}</span>
+            <div class="card-image">
+                <a href="detail.html?url=${encodeURIComponent(manga.detail_url)}">
+                    <img src="${manga.cover_url}" alt="${manga.title}" loading="lazy">
+                </a>
+                <div class="bookmark-container">
+                    <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" 
+                            data-manga='${JSON.stringify(manga)}' 
+                            onclick="event.preventDefault(); event.stopPropagation(); toggleBookmark(this)">
+                        <svg class="bookmark-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span class="bookmark-text">${isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+                    </button>
+                </div>
+            </div>
+            <div class="card-content">
+                <a href="detail.html?url=${encodeURIComponent(manga.detail_url)}">
+                    <h3 class="card-title">${manga.title}</h3>
+                </a>
+                <p class="card-chapter">${manga.latest_chapter || 'Latest Chapter'}</p>
+                <div class="card-footer">
+                    <div class="card-rating">
+                        <span class="star">⭐</span>
+                        <span class="rating-value">${rating}</span>
                     </div>
-                    <div class="manhwa-card-synopsis">
-                        ${manga.description ? manga.description.substring(0, 100) + '...' : 'No description available'}
+                    <div class="card-meta">
+                        <span class="card-chapters">${chapters} ch</span>
+                        <span class="card-scanner">${source}</span>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
     `;
 }
