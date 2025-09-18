@@ -18,22 +18,49 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-# Temporarily disable Webtoons import to debug 500 error
-# from webtoons_scraper import scrape_genre as scrape_webtoons_genre, scrape_details as scrape_webtoons_details, scrape_chapter_images as scrape_webtoons_chapter_images, search_by_title as search_webtoons_by_title
-
-# Define dummy functions to prevent crashes
-def scrape_webtoons_genre(genre):
-    logger.info("Webtoons scraper temporarily disabled for debugging")
-    return []
-def scrape_webtoons_details(url):
-    logger.info("Webtoons scraper temporarily disabled for debugging")
-    return None
-def scrape_webtoons_chapter_images(url):
-    logger.info("Webtoons scraper temporarily disabled for debugging")
-    return []
-def search_webtoons_by_title(query):
-    logger.info("Webtoons scraper temporarily disabled for debugging")
-    return []
+# Import Webtoons scraper with detailed error handling
+try:
+    logger.info("Attempting to import Webtoons scraper...")
+    from webtoons_scraper import scrape_genre as scrape_webtoons_genre, scrape_details as scrape_webtoons_details, scrape_chapter_images as scrape_webtoons_chapter_images, search_by_title as search_webtoons_by_title
+    logger.info("✓ Successfully imported all Webtoons scraper functions")
+    
+    # Test the import by calling a function
+    logger.info("Testing Webtoons scraper with action genre...")
+    test_result = scrape_webtoons_genre('action')
+    logger.info(f"✓ Webtoons scraper test returned {len(test_result)} items")
+    
+except ImportError as e:
+    logger.error(f"✗ ImportError importing Webtoons scraper: {e}")
+    logger.error(traceback.format_exc())
+    # Define dummy functions to prevent crashes
+    def scrape_webtoons_genre(genre):
+        logger.error("Webtoons scraper not available - ImportError")
+        return []
+    def scrape_webtoons_details(url):
+        logger.error("Webtoons scraper not available - ImportError")
+        return None
+    def scrape_webtoons_chapter_images(url):
+        logger.error("Webtoons scraper not available - ImportError")
+        return []
+    def search_webtoons_by_title(query):
+        logger.error("Webtoons scraper not available - ImportError")
+        return []
+except Exception as e:
+    logger.error(f"✗ Unexpected error importing Webtoons scraper: {e}")
+    logger.error(traceback.format_exc())
+    # Define dummy functions to prevent crashes
+    def scrape_webtoons_genre(genre):
+        logger.error("Webtoons scraper not available - Unexpected error")
+        return []
+    def scrape_webtoons_details(url):
+        logger.error("Webtoons scraper not available - Unexpected error")
+        return None
+    def scrape_webtoons_chapter_images(url):
+        logger.error("Webtoons scraper not available - Unexpected error")
+        return []
+    def search_webtoons_by_title(query):
+        logger.error("Webtoons scraper not available - Unexpected error")
+        return []
 
 # --- Configuration ---
 logging.basicConfig(
