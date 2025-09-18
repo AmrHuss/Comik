@@ -1443,21 +1443,29 @@ function displayEnhancedMangaGrid(mangaList, container) {
  * Initialize chapter filtering and sorting functionality
  */
 function initializeChapterControls() {
-    const chapterSearch = document.getElementById('chapter-search');
-    const clearButton = document.getElementById('clear-chapter-search');
-    const chapterList = document.getElementById('chapter-list');
-    const sortAscBtn = document.getElementById('sort-asc');
-    const sortDescBtn = document.getElementById('sort-desc');
-    
-    if (!chapterSearch || !chapterList) return;
-    
-    // Show controls when chapters are loaded
-    const controlsContainer = document.querySelector('.chapter-controls');
-    if (controlsContainer) {
-        controlsContainer.style.display = 'flex';
-    }
-    
-    chapterSearch.addEventListener('input', (e) => {
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        const chapterSearch = document.getElementById('chapter-search');
+        const clearButton = document.getElementById('clear-chapter-search');
+        const chapterList = document.getElementById('chapter-list');
+        const sortAscBtn = document.getElementById('sort-asc');
+        const sortDescBtn = document.getElementById('sort-desc');
+        
+        if (!chapterSearch || !chapterList) {
+            console.log('Chapter controls not found, retrying...');
+            setTimeout(initializeChapterControls, 1000);
+            return;
+        }
+        
+        console.log('Initializing chapter controls...');
+        
+        // Show controls when chapters are loaded
+        const controlsContainer = document.querySelector('.chapter-controls');
+        if (controlsContainer) {
+            controlsContainer.style.display = 'flex';
+        }
+        
+        chapterSearch.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
         const chapterItems = chapterList.querySelectorAll('.chapter-item');
         
@@ -1515,6 +1523,7 @@ function initializeChapterControls() {
             sortAscBtn.classList.remove('active');
         });
     }
+    }, 500); // Wait 500ms for DOM to be ready
 }
 
 /**
@@ -1545,8 +1554,16 @@ function sortChapters(order) {
  * Initialize immersive reader functionality
  */
 function initializeImmersiveReader() {
-    const readerHeader = document.getElementById('reader-header');
-    if (!readerHeader) return;
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        const readerHeader = document.getElementById('reader-header');
+        if (!readerHeader) {
+            console.log('Reader header not found, retrying...');
+            setTimeout(initializeImmersiveReader, 1000);
+            return;
+        }
+        
+        console.log('Initializing immersive reader...');
     
     let lastScrollY = window.scrollY;
     let isScrollingDown = false;
@@ -1612,6 +1629,7 @@ function initializeImmersiveReader() {
             }
         }, 2000);
     });
+    }, 500); // Wait 500ms for DOM to be ready
 }
 
 /**
