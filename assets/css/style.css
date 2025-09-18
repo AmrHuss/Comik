@@ -399,8 +399,9 @@ body {
 
 .card-image {
     position: relative;
-    aspect-ratio: 3/4;
+    aspect-ratio: 2/3;
     overflow: hidden;
+    height: 280px;
 }
 
 .card-image img {
@@ -2684,16 +2685,7 @@ a:focus {
     z-index: 2;
 }
 
-.manhwa-card img {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    transition: var(--transition-normal);
-}
-
-.manhwa-card:hover img {
-    transform: scale(1.05);
-}
+/* Card image styles moved to .card-image img above */
 
 .manhwa-card-info {
     padding: 1rem;
@@ -2976,8 +2968,8 @@ a:focus {
         height: 45px;
     }
     
-    .manhwa-card img {
-        height: 180px;
+    .card-image {
+        height: 240px;
     }
 }
 
