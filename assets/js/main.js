@@ -17,7 +17,8 @@ const MAX_SEARCH_RESULTS = 7;
 const REQUEST_TIMEOUT = 15000;
 
 // --- Initialize Storage and Components ---
-let storageManager, uiComponents;
+// Temporarily disabled for debugging
+// let storageManager, uiComponents;
 
 // --- State Management ---
 const AppState = {
@@ -85,6 +86,7 @@ function showEmptyState(container, message = 'No content found.') {
  * Make API request with proper error handling
  */
 async function makeApiRequest(url, options = {}) {
+    console.log('Making API request to:', url);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     
@@ -96,11 +98,15 @@ async function makeApiRequest(url, options = {}) {
         
         clearTimeout(timeoutId);
         
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const data = await response.json();
+        console.log('Response data:', data);
         
         if (!data.success) {
             throw new Error(data.error || 'API request failed');
@@ -114,6 +120,7 @@ async function makeApiRequest(url, options = {}) {
             throw new Error('Request timed out. Please try again.');
         }
         
+        console.error('API request failed:', error);
         throw error;
     }
 }
@@ -129,7 +136,8 @@ function createMangaCard(manga) {
     cardLink.className = 'manhwa-card';
     cardLink.setAttribute('data-title', manga.title);
     
-    const isBookmarked = (storageManager && storageManager.isBookmarked) ? storageManager.isBookmarked(manga.title) : false;
+    // Temporarily disabled bookmark functionality
+    const isBookmarked = false;
     
     cardLink.innerHTML = `
         <div class="card-image">
@@ -254,6 +262,10 @@ async function loadHomepageContent() {
     const trendingGrid = document.querySelector('.trending-grid');
     const updatesGrid = document.querySelector('.updates-grid');
     
+    console.log('Homepage content loading...');
+    console.log('Trending grid found:', !!trendingGrid);
+    console.log('Updates grid found:', !!updatesGrid);
+    
     if (!trendingGrid && !updatesGrid) {
         console.error('Homepage grid containers not found');
         return;
@@ -267,7 +279,9 @@ async function loadHomepageContent() {
     }
     
     try {
+        console.log('Making API request to:', `${API_BASE_URL}/popular`);
         const result = await makeApiRequest(`${API_BASE_URL}/popular`);
+        console.log('API response received:', result);
         
         if (trendingGrid) {
             displayMangaGrid(trendingGrid, result.data.slice(0, 6));
@@ -1197,20 +1211,5 @@ window.toggleBookmark = function(button) {
 
 // Start the application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize storage and components safely
-    try {
-        storageManager = window.storageManager;
-        uiComponents = window.uiComponents;
-    } catch (error) {
-        console.warn('Storage or components not available:', error);
-        storageManager = null;
-        uiComponents = null;
-    }
-    
     initialize();
-    
-    // Only initialize user features if components are available
-    if (storageManager && uiComponents) {
-        initializeUserFeatures();
-    }
 });
