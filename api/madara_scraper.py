@@ -77,7 +77,12 @@ def scrape_popular():
     try:
         response = make_request(MADARA_BASE_URL)
         if not response:
-            logger.error(f"Failed to fetch MadaraScans homepage: {MADARA_BASE_URL}")
+            logger.warning(f"Failed to fetch MadaraScans homepage: {MADARA_BASE_URL}")
+            return []
+        
+        # Check if we got a valid response
+        if len(response.content) < 1000:  # Very small response might be an error page
+            logger.warning(f"Received suspiciously small response ({len(response.content)} bytes) for {MADARA_BASE_URL}")
             return []
         
         soup = BeautifulSoup(response.content, 'lxml')
@@ -91,8 +96,16 @@ def scrape_popular():
             manga_cards = soup.select('div[class*="bs"]')
             if not manga_cards:
                 manga_cards = soup.select('div[class*="manga"]')
+                if not manga_cards:
+                    # Try even more generic selectors
+                    manga_cards = soup.select('div[class*="card"]') or soup.select('article')
         
         logger.info(f"Found {len(manga_cards)} manga cards")
+        
+        # If no cards found, return empty list (likely anti-scraping or site structure changed)
+        if not manga_cards:
+            logger.warning(f"No manga cards found on MadaraScans homepage - possible anti-scraping protection")
+            return []
         
         for card in manga_cards:
             try:

@@ -18,8 +18,28 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
-# Import MadaraScans scraper
-from madara_scraper import scrape_popular as scrape_madara_popular, scrape_details as scrape_madara_details
+# Import MadaraScans scraper with error handling
+try:
+    from madara_scraper import scrape_popular as scrape_madara_popular, scrape_details as scrape_madara_details
+    logger.info("✓ Successfully imported MadaraScans scraper functions")
+except ImportError as e:
+    logger.error(f"✗ Failed to import MadaraScans scraper: {e}")
+    # Define dummy functions to prevent crashes
+    def scrape_madara_popular():
+        logger.error("MadaraScans scraper not available - ImportError")
+        return []
+    def scrape_madara_details(url):
+        logger.error("MadaraScans scraper not available - ImportError")
+        return None
+except Exception as e:
+    logger.error(f"✗ Unexpected error importing MadaraScans scraper: {e}")
+    # Define dummy functions to prevent crashes
+    def scrape_madara_popular():
+        logger.error("MadaraScans scraper not available - Unexpected error")
+        return []
+    def scrape_madara_details(url):
+        logger.error("MadaraScans scraper not available - Unexpected error")
+        return None
 
 # --- Configuration ---
 logging.basicConfig(
