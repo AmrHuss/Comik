@@ -77,8 +77,51 @@
                 <a href="javascript:history.back()" class="nav-btn">← Back</a>
                 <h1 class="reader-title" id="reader-title">Loading Chapter...</h1>
                 <div class="reader-nav">
+                    <button class="nav-btn" id="settings-btn" aria-label="Reader settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                        </svg>
+                    </button>
                     <a href="#" class="nav-btn" id="prev-chapter-header" style="display: none;">← Previous</a>
                     <a href="#" class="nav-btn" id="next-chapter-header" style="display: none;">Next →</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reader Settings Modal -->
+        <div id="reader-settings-modal" class="reader-settings-modal" style="display: none;">
+            <div class="reader-settings-content">
+                <div class="reader-settings-header">
+                    <h3>Reader Settings</h3>
+                    <button id="close-settings" class="close-settings-btn" aria-label="Close settings">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m18 6-12 12m0-12 12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="reader-settings-body">
+                    <div class="setting-group">
+                        <label for="reading-mode">Reading Mode</label>
+                        <div class="setting-options">
+                            <button class="setting-option active" data-mode="vertical">Vertical Strip</button>
+                            <button class="setting-option" data-mode="single">Single Page</button>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="width-fit">Image Fit</label>
+                        <div class="setting-options">
+                            <button class="setting-option active" data-fit="width">Fit to Width</button>
+                            <button class="setting-option" data-fit="original">Original Size</button>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="auto-scroll">Auto Scroll</label>
+                        <div class="setting-toggle">
+                            <input type="checkbox" id="auto-scroll" class="toggle-input">
+                            <label for="auto-scroll" class="toggle-label"></label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

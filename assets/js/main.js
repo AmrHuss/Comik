@@ -24,7 +24,9 @@ const AppState = {
     isLoading: false,
     currentPage: null,
     searchResults: [],
-    lastSearchQuery: ''
+    lastSearchQuery: '',
+    readingHistory: JSON.parse(localStorage.getItem('readingHistory') || '[]'),
+    userPreferences: JSON.parse(localStorage.getItem('userPreferences') || '{}')
 };
 
 // --- Utility Functions ---
@@ -282,10 +284,10 @@ async function loadHomepageContent() {
         console.log('API response received:', result);
         
         if (trendingGrid) {
-            displayMangaGrid(trendingGrid, result.data.slice(0, 6));
+            displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
         }
         if (updatesGrid) {
-            displayMangaGrid(updatesGrid, result.data);
+            displayEnhancedMangaGrid(result.data, updatesGrid);
         }
     } catch (error) {
         console.error('Error loading homepage content:', error);
@@ -830,6 +832,12 @@ async function handleReaderPage() {
         const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
         displayChapterImages(chapterResult.data, container);
         
+        // Save reading progress
+        const mangaData = JSON.parse(sessionStorage.getItem('current_manga') || '{}');
+        if (mangaData.title) {
+            saveReadingProgress(mangaData, chapterUrl, chapterTitle);
+        }
+        
         // Get chapter navigation from sessionStorage
         const chapterList = JSON.parse(sessionStorage.getItem('current_manga_chapters') || '[]');
         
@@ -1268,4 +1276,349 @@ document.addEventListener('DOMContentLoaded', () => {
     if (storageManager && uiComponents) {
         initializeUserFeatures();
     }
+    
+    // Initialize new UX features
+    initializeContinueReading();
+    if (AppState.currentPage === 'home') {
+        populateSidebar();
+    }
+    if (AppState.currentPage === 'detail') {
+        initializeChapterFilter();
+    }
+    if (AppState.currentPage === 'reader') {
+        initializeReaderSettings();
+    }
 });
+
+// ============================================================================
+// NEW UX FEATURES - CONTINUE READING & SIDEBAR
+// ============================================================================
+
+/**
+ * Initialize Continue Reading feature
+ */
+function initializeContinueReading() {
+    const continueSection = document.getElementById('continue-reading-section');
+    const continueCard = document.getElementById('continue-reading-card');
+    
+    if (!continueSection || !continueCard) return;
+    
+    const lastRead = AppState.readingHistory[0]; // Most recent
+    if (lastRead) {
+        continueCard.innerHTML = `
+            <img src="${lastRead.cover_url}" alt="${lastRead.title}" loading="lazy">
+            <div class="continue-card-content">
+                <h3>${lastRead.title}</h3>
+                <p>Continue from ${lastRead.chapter_title}</p>
+                <a href="${lastRead.chapter_url}" class="btn">Continue Reading</a>
+            </div>
+        `;
+        continueSection.style.display = 'block';
+    }
+}
+
+/**
+ * Save reading progress to localStorage
+ */
+function saveReadingProgress(mangaData, chapterUrl, chapterTitle) {
+    const readingEntry = {
+        title: mangaData.title,
+        cover_url: mangaData.cover_image || mangaData.cover_url,
+        detail_url: mangaData.detail_url,
+        chapter_url: chapterUrl,
+        chapter_title: chapterTitle,
+        timestamp: Date.now(),
+        source: mangaData.source || 'AsuraScanz'
+    };
+    
+    // Remove existing entry for this manga
+    AppState.readingHistory = AppState.readingHistory.filter(entry => 
+        entry.detail_url !== readingEntry.detail_url
+    );
+    
+    // Add new entry at the beginning
+    AppState.readingHistory.unshift(readingEntry);
+    
+    // Keep only last 10 entries
+    AppState.readingHistory = AppState.readingHistory.slice(0, 10);
+    
+    // Save to localStorage
+    localStorage.setItem('readingHistory', JSON.stringify(AppState.readingHistory));
+    
+    // Update Continue Reading section if on homepage
+    if (AppState.currentPage === 'home') {
+        initializeContinueReading();
+    }
+}
+
+/**
+ * Populate sidebar with popular manga
+ */
+async function populateSidebar() {
+    try {
+        // Get popular manga for sidebar
+        const response = await makeApiRequest(`${API_BASE_URL}/popular`);
+        if (response.success && response.data) {
+            const manga = response.data.slice(0, 7); // Top 7 for sidebar
+            
+            // Populate Popular Today
+            const popularList = document.getElementById('popular-today-list');
+            if (popularList) {
+                popularList.innerHTML = manga.slice(0, 5).map(item => `
+                    <a href="detail.html?url=${encodeURIComponent(item.detail_url)}" class="compact-item">
+                        <img src="${item.cover_url}" alt="${item.title}" loading="lazy">
+                        <div class="compact-item-content">
+                            <h4>${item.title}</h4>
+                            <p>${item.latest_chapter || 'Latest Chapter'}</p>
+                        </div>
+                    </a>
+                `).join('');
+            }
+            
+            // Populate New Series (use different slice)
+            const newSeriesList = document.getElementById('new-series-list');
+            if (newSeriesList) {
+                newSeriesList.innerHTML = manga.slice(2, 7).map(item => `
+                    <a href="detail.html?url=${encodeURIComponent(item.detail_url)}" class="compact-item">
+                        <img src="${item.cover_url}" alt="${item.title}" loading="lazy">
+                        <div class="compact-item-content">
+                            <h4>${item.title}</h4>
+                            <p>${item.latest_chapter || 'New Series'}</p>
+                        </div>
+                    </a>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error populating sidebar:', error);
+    }
+}
+
+/**
+ * Enhanced manhwa card creation with more information
+ */
+function createEnhancedMangaCard(manga) {
+    const rating = manga.rating || '9.5';
+    const chapters = manga.chapters ? manga.chapters.length : 0;
+    const source = manga.source || 'AsuraScanz';
+    
+    return `
+        <div class="manhwa-card" data-source="${source}">
+            <a href="detail.html?url=${encodeURIComponent(manga.detail_url)}" class="manhwa-card-content">
+                <img src="${manga.cover_url}" alt="${manga.title}" loading="lazy">
+                <div class="manhwa-card-info">
+                    <h3>${manga.title}</h3>
+                    <div class="manhwa-card-meta">
+                        <span class="rating">⭐ ${rating}</span>
+                        <span class="chapters">${chapters} ch</span>
+                        <span class="source">${source}</span>
+                    </div>
+                    <div class="manhwa-card-synopsis">
+                        ${manga.description ? manga.description.substring(0, 100) + '...' : 'No description available'}
+                    </div>
+                </div>
+            </a>
+        </div>
+    `;
+}
+
+/**
+ * Display enhanced manga grid with more information
+ */
+function displayEnhancedMangaGrid(mangaList, container) {
+    if (!mangaList || !Array.isArray(mangaList)) {
+        container.innerHTML = '<p class="error-message">No manga data available</p>';
+        return;
+    }
+    
+    if (mangaList.length === 0) {
+        container.innerHTML = '<p class="error-message">No manga found</p>';
+        return;
+    }
+    
+    container.innerHTML = mangaList.map(manga => createEnhancedMangaCard(manga)).join('');
+}
+
+/**
+ * Initialize chapter filtering functionality
+ */
+function initializeChapterFilter() {
+    const chapterSearch = document.getElementById('chapter-search');
+    const clearButton = document.getElementById('clear-chapter-search');
+    const chapterList = document.getElementById('chapter-list');
+    
+    if (!chapterSearch || !chapterList) return;
+    
+    // Show filter when chapters are loaded
+    const filterContainer = document.querySelector('.chapter-filter');
+    if (filterContainer) {
+        filterContainer.style.display = 'flex';
+    }
+    
+    chapterSearch.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const chapterItems = chapterList.querySelectorAll('.chapter-item');
+        
+        let visibleCount = 0;
+        
+        chapterItems.forEach(item => {
+            const title = item.querySelector('.chapter-title')?.textContent.toLowerCase() || '';
+            const chapterNumber = item.querySelector('.chapter-number')?.textContent.toLowerCase() || '';
+            
+            const matches = title.includes(query) || chapterNumber.includes(query);
+            
+            if (matches) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        // Show/hide clear button
+        if (query) {
+            clearButton.style.display = 'block';
+        } else {
+            clearButton.style.display = 'none';
+        }
+        
+        // Show message if no results
+        if (visibleCount === 0 && query) {
+            chapterList.innerHTML = `<p class="no-results">No chapters found matching "${query}"</p>`;
+        }
+    });
+    
+    clearButton.addEventListener('click', () => {
+        chapterSearch.value = '';
+        clearButton.style.display = 'none';
+        
+        // Show all chapters
+        const chapterItems = chapterList.querySelectorAll('.chapter-item');
+        chapterItems.forEach(item => {
+            item.style.display = 'block';
+        });
+    });
+}
+
+/**
+ * Initialize reader settings functionality
+ */
+function initializeReaderSettings() {
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('reader-settings-modal');
+    const closeBtn = document.getElementById('close-settings');
+    const readerContent = document.getElementById('reader-content');
+    
+    if (!settingsBtn || !settingsModal) return;
+    
+    // Load saved preferences
+    const preferences = AppState.userPreferences;
+    
+    // Set initial states
+    if (preferences.readingMode) {
+        setReadingMode(preferences.readingMode);
+    }
+    if (preferences.widthFit) {
+        setWidthFit(preferences.widthFit);
+    }
+    if (preferences.autoScroll !== undefined) {
+        document.getElementById('auto-scroll').checked = preferences.autoScroll;
+    }
+    
+    // Open settings modal
+    settingsBtn.addEventListener('click', () => {
+        settingsModal.style.display = 'flex';
+    });
+    
+    // Close settings modal
+    closeBtn.addEventListener('click', () => {
+        settingsModal.style.display = 'none';
+    });
+    
+    // Close on backdrop click
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            settingsModal.style.display = 'none';
+        }
+    });
+    
+    // Reading mode buttons
+    const modeButtons = document.querySelectorAll('[data-mode]');
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modeButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            setReadingMode(btn.dataset.mode);
+        });
+    });
+    
+    // Width fit buttons
+    const fitButtons = document.querySelectorAll('[data-fit]');
+    fitButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            fitButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            setWidthFit(btn.dataset.fit);
+        });
+    });
+    
+    // Auto scroll toggle
+    const autoScrollToggle = document.getElementById('auto-scroll');
+    autoScrollToggle.addEventListener('change', (e) => {
+        setAutoScroll(e.target.checked);
+    });
+}
+
+/**
+ * Set reading mode (vertical strip or single page)
+ */
+function setReadingMode(mode) {
+    const readerContent = document.getElementById('reader-content');
+    if (!readerContent) return;
+    
+    // Remove existing classes
+    readerContent.classList.remove('vertical-strip', 'single-page');
+    
+    // Add new class
+    readerContent.classList.add(mode === 'single' ? 'single-page' : 'vertical-strip');
+    
+    // Save preference
+    AppState.userPreferences.readingMode = mode;
+    localStorage.setItem('userPreferences', JSON.stringify(AppState.userPreferences));
+}
+
+/**
+ * Set width fit mode
+ */
+function setWidthFit(fit) {
+    const readerContent = document.getElementById('reader-content');
+    if (!readerContent) return;
+    
+    // Remove existing classes
+    readerContent.classList.remove('fit-width', 'original-size');
+    
+    // Add new class
+    readerContent.classList.add(fit === 'original' ? 'original-size' : 'fit-width');
+    
+    // Save preference
+    AppState.userPreferences.widthFit = fit;
+    localStorage.setItem('userPreferences', JSON.stringify(AppState.userPreferences));
+}
+
+/**
+ * Set auto scroll mode
+ */
+function setAutoScroll(enabled) {
+    const readerContent = document.getElementById('reader-content');
+    if (!readerContent) return;
+    
+    if (enabled) {
+        readerContent.classList.add('auto-scroll');
+    } else {
+        readerContent.classList.remove('auto-scroll');
+    }
+    
+    // Save preference
+    AppState.userPreferences.autoScroll = enabled;
+    localStorage.setItem('userPreferences', JSON.stringify(AppState.userPreferences));
+}
