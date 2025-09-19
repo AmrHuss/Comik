@@ -337,53 +337,109 @@ def scrape_webtoons_details(detail_url):
                 author = author_element.get_text(strip=True)
                 break
         
-        # Extract chapters - try multiple selectors
+        # Extract chapters from all pages with pagination
         chapters = []
-        chapter_selectors = [
-            'ul#_listUl li._episodeItem',
-            'ul[id*="list"] li[class*="episode"]',
-            'ul li[class*="episode"]',
-            '.episode-list li',
-            '.chapter-list li'
-        ]
+        current_page = 1
+        max_pages = 10  # Limit to prevent infinite loops
         
-        for selector in chapter_selectors:
-            chapter_items = soup.select(selector)
-            if chapter_items:
-                for chapter_item in chapter_items:
-                    try:
-                        link = chapter_item.find('a', href=True)
-                        if link:
-                            chapter_title = "Unknown Chapter"
-                            chapter_date = "Unknown Date"
-                            
-                            # Extract chapter title
-                            title_elem = chapter_item.find('span', class_='tx')
-                            if not title_elem:
-                                title_elem = chapter_item.find('span', class_='title')
-                            if not title_elem:
-                                title_elem = chapter_item.find('a')
-                            
-                            if title_elem:
-                                chapter_title = title_elem.get_text(strip=True)
-                            
-                            # Extract chapter date
-                            date_elem = chapter_item.find('span', class_='date')
-                            if not date_elem:
-                                date_elem = chapter_item.find('span', class_='time')
-                            
-                            if date_elem:
-                                chapter_date = date_elem.get_text(strip=True)
-                            
-                            chapters.append({
-                                'title': chapter_title,
-                                'date': chapter_date,
-                                'url': link['href']
-                            })
-                    except Exception as e:
-                        logger.warning(f"Error parsing chapter: {e}")
-                        continue
+        while current_page <= max_pages:
+            logger.info(f"Scraping chapters from page {current_page}")
+            
+            # Get the current page URL - Webtoons uses different pagination structure
+            if current_page == 1:
+                page_url = detail_url
+            else:
+                # Webtoons pagination uses &page=N format
+                if '?' in detail_url:
+                    page_url = f"{detail_url}&page={current_page}"
+                else:
+                    page_url = f"{detail_url}?page={current_page}"
+            
+            # Make request to the page
+            page_response = make_request(page_url)
+            if not page_response:
+                logger.warning(f"Failed to fetch page {current_page}")
                 break
+                
+            page_soup = BeautifulSoup(page_response.text, 'html.parser')
+            
+            # Find chapter list on this page
+            chapter_list = page_soup.find('ul', {'id': '_listUl'})
+            if not chapter_list:
+                logger.info(f"No chapter list found on page {current_page}, stopping pagination")
+                break
+                
+            chapter_items = chapter_list.find_all('li', class_='_episodeItem')
+            if not chapter_items:
+                logger.info(f"No chapter items found on page {current_page}, stopping pagination")
+                break
+                
+            # Extract chapters from this page
+            page_chapters = []
+            for chapter_item in chapter_items:
+                try:
+                    link = chapter_item.find('a', href=True)
+                    if link:
+                        chapter_title = "Unknown Chapter"
+                        chapter_date = "Unknown Date"
+                        
+                        # Extract chapter title - look for the episode title
+                        title_elem = chapter_item.find('span', class_='subj')
+                        if not title_elem:
+                            title_elem = chapter_item.find('span', class_='tx')
+                        if not title_elem:
+                            title_elem = chapter_item.find('span', class_='title')
+                        if not title_elem:
+                            title_elem = chapter_item.find('a')
+                        
+                        if title_elem:
+                            chapter_title = title_elem.get_text(strip=True)
+                        
+                        # Extract chapter date
+                        date_elem = chapter_item.find('span', class_='date')
+                        if not date_elem:
+                            date_elem = chapter_item.find('span', class_='time')
+                        
+                        if date_elem:
+                            chapter_date = date_elem.get_text(strip=True)
+                        
+                        # Ensure URL is absolute
+                        chapter_url = link['href']
+                        if not chapter_url.startswith('http'):
+                            chapter_url = urljoin(WEBTOONS_BASE_URL, chapter_url)
+                        
+                        page_chapters.append({
+                            'title': chapter_title,
+                            'date': chapter_date,
+                            'url': chapter_url
+                        })
+                except Exception as e:
+                    logger.warning(f"Error parsing chapter: {e}")
+                    continue
+            
+            if not page_chapters:
+                logger.info(f"No chapters found on page {current_page}, stopping pagination")
+                break
+                
+            chapters.extend(page_chapters)
+            logger.info(f"Found {len(page_chapters)} chapters on page {current_page}")
+            
+            # Check if there's a next page by looking at pagination
+            # Webtoons shows page numbers like "1 2 3 4 5 6 7 8 9"
+            pagination_links = page_soup.find_all('a', href=True)
+            next_page_found = False
+            
+            for link in pagination_links:
+                href = link.get('href', '')
+                if f'page={current_page + 1}' in href or f'&page={current_page + 1}' in href:
+                    next_page_found = True
+                    break
+            
+            if not next_page_found:
+                logger.info(f"No next page found after page {current_page}, stopping pagination")
+                break
+                
+            current_page += 1
         
         # Create detailed webtoon data
         webtoon_details = {

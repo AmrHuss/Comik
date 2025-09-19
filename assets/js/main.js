@@ -829,7 +829,14 @@ function initializeEventListeners() {
 async function handleReaderPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const chapterUrl = urlParams.get('url');
-    const source = urlParams.get('source') || 'AsuraScanz';
+    let source = urlParams.get('source') || 'AsuraScanz';
+    
+    // Auto-detect source if not provided or incorrect
+    if (chapterUrl && chapterUrl.includes('webtoons.com')) {
+        source = 'Webtoons';
+    } else if (chapterUrl && chapterUrl.includes('asurascanz.com')) {
+        source = 'AsuraScanz';
+    }
     const container = document.getElementById('reader-content');
     const prevHeaderBtn = document.getElementById('prev-chapter-header');
     const nextHeaderBtn = document.getElementById('next-chapter-header');
