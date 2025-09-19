@@ -276,8 +276,8 @@ async function loadHomepageContent() {
     }
     
     try {
-        console.log('Making API request to:', `${API_BASE_URL}/popular`);
-        const result = await makeApiRequest(`${API_BASE_URL}/popular`);
+        console.log('Making API request to:', `${API_BASE_URL}/unified-popular`);
+        const result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
         console.log('API response received:', result);
         
         if (trendingGrid) {
@@ -735,10 +735,10 @@ function initializePage() {
             loadHomepageContent();
             break;
         case 'popular':
-            loadAndDisplayManga(`${API_BASE_URL}/popular`, '.manhwa-grid', 'Popular Manhwa');
+            loadAndDisplayManga(`${API_BASE_URL}/unified-popular`, '.manhwa-grid', 'Popular Manhwa');
             break;
         case 'new-releases':
-            loadAndDisplayManga(`${API_BASE_URL}/popular`, '.manhwa-grid', 'New Releases');
+            loadAndDisplayManga(`${API_BASE_URL}/unified-popular`, '.manhwa-grid', 'New Releases');
             break;
         case 'mangalist':
             handleMangaListPage();
