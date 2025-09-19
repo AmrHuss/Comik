@@ -577,7 +577,7 @@ function initializeChapterSorting() {
     sortAscBtn.addEventListener('click', () => {
         if (window.mangaChapters) {
             const sortedChapters = [...window.mangaChapters].reverse();
-            renderChapterList(sortedChapters, chapterList);
+            renderChapterList(sortedChapters, chapterList, window.currentMangaSource || 'AsuraScanz');
             updateSortButtons(sortAscBtn, sortDescBtn);
         }
     });
@@ -586,7 +586,7 @@ function initializeChapterSorting() {
     sortDescBtn.addEventListener('click', () => {
         if (window.mangaChapters) {
             const sortedChapters = [...window.mangaChapters];
-            renderChapterList(sortedChapters, chapterList);
+            renderChapterList(sortedChapters, chapterList, window.currentMangaSource || 'AsuraScanz');
             updateSortButtons(sortDescBtn, sortAscBtn);
         }
     });
@@ -595,9 +595,9 @@ function initializeChapterSorting() {
 /**
  * Render chapter list HTML
  */
-function renderChapterList(chapters, container) {
+function renderChapterList(chapters, container, source = 'AsuraScanz') {
     const chaptersHtml = chapters.map(chapter => `
-        <a href="reader.html?url=${encodeURIComponent(chapter.url)}&source=${encodeURIComponent(data.source || 'AsuraScanz')}" class="chapter-item">
+        <a href="reader.html?url=${encodeURIComponent(chapter.url)}&source=${encodeURIComponent(source)}" class="chapter-item">
             <span class="chapter-title">${chapter.title}</span>
             <span class="chapter-date">${chapter.date}</span>
         </a>
