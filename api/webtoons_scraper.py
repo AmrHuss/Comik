@@ -478,7 +478,16 @@ def scrape_webtoons_chapter_images(chapter_url):
         
         # Make request to the chapter URL with proper headers
         headers = get_headers()
-        headers['Referer'] = 'https://www.webtoons.com/'
+        headers['Referer'] = chapter_url  # Use the specific chapter URL as referer
+        headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+        headers['Accept-Language'] = 'en-US,en;q=0.9'
+        headers['Cache-Control'] = 'no-cache'
+        headers['Pragma'] = 'no-cache'
+        headers['Sec-Fetch-Dest'] = 'document'
+        headers['Sec-Fetch-Mode'] = 'navigate'
+        headers['Sec-Fetch-Site'] = 'same-origin'
+        headers['Sec-Fetch-User'] = '?1'
+        headers['Upgrade-Insecure-Requests'] = '1'
         
         response = make_request(chapter_url, headers=headers)
         if not response:
@@ -524,6 +533,9 @@ def scrape_webtoons_chapter_images(chapter_url):
                 if not img_url.startswith('http'):
                     img_url = urljoin(WEBTOONS_BASE_URL, img_url)
                 
+                # Convert to the proper CDN URL format that bypasses hotlinking protection
+                img_url = convert_to_proper_cdn_url(img_url, chapter_url)
+                
                 images.append(img_url)
         
         logger.info(f"Found {len(images)} actual chapter images (filtered out placeholders)")
@@ -533,6 +545,29 @@ def scrape_webtoons_chapter_images(chapter_url):
         logger.error(f"Error scraping Webtoons chapter images: {e}")
         logger.error(traceback.format_exc())
         return []
+
+def convert_to_proper_cdn_url(img_url, chapter_url):
+    """Convert image URL to use our proxy endpoint that bypasses hotlinking protection."""
+    try:
+        # Instead of trying to access the image directly, we'll use our API proxy
+        # This will handle the proper headers and authentication
+        if 'webtoon-phinf.pstatic.net' in img_url:
+            # Encode the original image URL and chapter URL for our proxy
+            import urllib.parse
+            encoded_img_url = urllib.parse.quote(img_url, safe='')
+            encoded_chapter_url = urllib.parse.quote(chapter_url, safe='')
+            
+            # Use our API proxy endpoint
+            proxy_url = f"/api/webtoons-image-proxy?img_url={encoded_img_url}&chapter_url={encoded_chapter_url}"
+            
+            logger.debug(f"Using proxy URL: {proxy_url}")
+            return proxy_url
+            
+        return img_url
+        
+    except Exception as e:
+        logger.warning(f"Failed to convert to proxy URL: {e}")
+        return img_url
 
 # Main execution for testing
 if __name__ == "__main__":

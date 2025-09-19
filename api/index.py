@@ -1103,6 +1103,69 @@ def search_webtoons():
 
 # MadaraScans endpoints removed - keeping only AsuraScanz
 
+@app.route('/api/webtoons-image-proxy', methods=['GET'])
+def webtoons_image_proxy():
+    """Proxy endpoint for Webtoons images to bypass hotlinking protection."""
+    try:
+        img_url = request.args.get('img_url')
+        chapter_url = request.args.get('chapter_url')
+        
+        if not img_url or not chapter_url:
+            return jsonify({
+                'success': False,
+                'error': 'Missing img_url or chapter_url parameter'
+            }), 400
+        
+        # Decode the URLs
+        import urllib.parse
+        img_url = urllib.parse.unquote(img_url)
+        chapter_url = urllib.parse.unquote(chapter_url)
+        
+        # Set up proper headers to bypass hotlinking protection
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': chapter_url,  # This is crucial - use the specific chapter URL
+            'Origin': 'https://www.webtoons.com',
+            'Sec-Fetch-Dest': 'image',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'cross-site',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        }
+        
+        # Make the request to get the image
+        response = requests.get(img_url, headers=headers, timeout=30, stream=True)
+        response.raise_for_status()
+        
+        # Return the image with proper headers
+        from flask import Response
+        return Response(
+            response.content,
+            mimetype=response.headers.get('content-type', 'image/jpeg'),
+            headers={
+                'Cache-Control': 'public, max-age=3600',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        )
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching Webtoons image: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to fetch image: {str(e)}'
+        }), 500
+    except Exception as e:
+        logger.error(f"Unexpected error in image proxy: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
 @app.route('/api', methods=['GET'])
 def api_root():
     """API root endpoint for health checks."""
@@ -1123,7 +1186,8 @@ def api_root():
             '/api/source-search',
             '/api/webtoons/popular',
             '/api/webtoons/details',
-            '/api/webtoons/search'
+            '/api/webtoons/search',
+            '/api/webtoons-image-proxy'
         ]
     })
 
