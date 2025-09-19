@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discussion - ManhwaVerse</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/discussion.css">
+</head>
+<body data-page="discussion">
+    <!-- Header -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <a href="index.html" class="logo-link">ManhwaVerse</a>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link">Home</a></li>
+                    <li><a href="popular.html" class="nav-link">Popular</a></li>
+                    <li><a href="new-releases.html" class="nav-link">New Releases</a></li>
+                    <li><a href="genres.html" class="nav-link">Genres</a></li>
+                    <li><a href="discussion.html" class="nav-link active">Discussion</a></li>
+                </ul>
+                <div class="nav-search">
+                    <div class="search-container">
+                        <form id="search-form" class="search-form">
+                            <input id="search-input" type="text" placeholder="Search discussions..." class="search-input">
+                            <button type="submit" class="search-btn" aria-label="Search">
+                                <svg width="20" height="20" viewBox="0 0 24 24">
+                                    <circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                                    <path d="m21 21-4.35-4.35"></path>
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="nav-auth">
+                    <button class="login-btn" id="auth-btn">Login</button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Discussion Header -->
+            <div class="discussion-header">
+                <h1 class="page-title">Community Discussions</h1>
+                <p class="page-subtitle">Join the conversation about your favorite manhwa and webtoons</p>
+                
+                <!-- Discussion Tabs -->
+                <div class="discussion-tabs">
+                    <button class="tab-btn active" data-tab="recent">Recent</button>
+                    <button class="tab-btn" data-tab="popular">Popular</button>
+                    <button class="tab-btn" data-tab="series">Series</button>
+                    <button class="tab-btn" data-tab="chapters">Chapters</button>
+                </div>
+            </div>
+
+            <!-- Discussion Content -->
+            <div class="discussion-content">
+                <!-- Sidebar -->
+                <aside class="discussion-sidebar">
+                    <div class="sidebar-section">
+                        <h3>Trending Topics</h3>
+                        <div class="trending-topics">
+                            <a href="#" class="topic-tag">#SoloLeveling</a>
+                            <a href="#" class="topic-tag">#TowerOfGod</a>
+                            <a href="#" class="topic-tag">#TheBeginningAfterTheEnd</a>
+                            <a href="#" class="topic-tag">#OmniscientReader</a>
+                            <a href="#" class="topic-tag">#UnOrdinary</a>
+                        </div>
+                    </div>
+                    
+                    <div class="sidebar-section">
+                        <h3>Community Guidelines</h3>
+                        <div class="guidelines">
+                            <p>• Be respectful and constructive</p>
+                            <p>• Use spoiler tags for new chapters</p>
+                            <p>• Stay on topic</p>
+                            <p>• Report inappropriate content</p>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main Discussion Area -->
+                <div class="discussion-main">
+                    <!-- Create New Discussion -->
+                    <div class="create-discussion" id="create-discussion" style="display: none;">
+                        <div class="create-form">
+                            <h3>Start a New Discussion</h3>
+                            <form id="new-discussion-form">
+                                <div class="form-group">
+                                    <label for="discussion-title">Title</label>
+                                    <input type="text" id="discussion-title" class="form-input" placeholder="What's your discussion about?" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="discussion-type">Type</label>
+                                    <select id="discussion-type" class="form-select" required>
+                                        <option value="">Select discussion type</option>
+                                        <option value="series">Series Discussion</option>
+                                        <option value="chapter">Chapter Discussion</option>
+                                        <option value="character">Character Discussion</option>
+                                        <option value="theory">Theory Discussion</option>
+                                        <option value="general">General</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="discussion-series">Related Series (Optional)</label>
+                                    <input type="text" id="discussion-series" class="form-input" placeholder="Search for a series...">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="discussion-content">Content</label>
+                                    <textarea id="discussion-content" class="form-textarea" placeholder="Share your thoughts..." rows="6" required></textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="spoiler-warning" class="checkbox">
+                                        <span class="checkbox-text">Contains spoilers</span>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" id="cancel-discussion">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Create Discussion</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Discussion List -->
+                    <div class="discussion-list" id="discussion-list">
+                        <!-- Discussions will be loaded here -->
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p>Loading discussions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Discussion Modal -->
+    <div class="modal" id="discussion-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Discussion</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Discussion content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="copyright">© 2025 ManhwaVerse. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/discussion.js"></script>
+</body>
+</html>

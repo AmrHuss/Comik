@@ -1840,3 +1840,113 @@ function setAutoScroll(enabled) {
     AppState.userPreferences.autoScroll = enabled;
     localStorage.setItem('userPreferences', JSON.stringify(AppState.userPreferences));
 }
+
+/**
+ * Initialize authentication UI
+ */
+function initializeAuthUI() {
+    const authBtn = document.getElementById('auth-btn');
+    if (!authBtn) return;
+    
+    // Check if user is authenticated
+    if (window.auth && window.auth.isAuthenticated()) {
+        const user = window.auth.getCurrentUser();
+        authBtn.textContent = user.username;
+        authBtn.innerHTML = `
+            <span>${user.username}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 9l6 6 6-6"></path>
+            </svg>
+        `;
+        
+        // Add dropdown functionality
+        authBtn.addEventListener('click', showUserDropdown);
+    } else {
+        authBtn.textContent = 'Login';
+        authBtn.addEventListener('click', () => {
+            window.location.href = 'auth.html';
+        });
+    }
+}
+
+/**
+ * Show user dropdown menu
+ */
+function showUserDropdown() {
+    // Create dropdown menu
+    const dropdown = document.createElement('div');
+    dropdown.className = 'user-dropdown';
+    dropdown.innerHTML = `
+        <a href="#" class="dropdown-item">Profile</a>
+        <a href="#" class="dropdown-item">Bookmarks</a>
+        <a href="#" class="dropdown-item">Reading History</a>
+        <hr class="dropdown-divider">
+        <a href="#" class="dropdown-item" onclick="logout()">Logout</a>
+    `;
+    
+    // Position dropdown
+    const authBtn = document.getElementById('auth-btn');
+    const rect = authBtn.getBoundingClientRect();
+    dropdown.style.cssText = `
+        position: absolute;
+        top: ${rect.bottom + 5}px;
+        right: ${window.innerWidth - rect.right}px;
+        background: white;
+        border: 1px solid #e1e5e9;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        z-index: 1000;
+        min-width: 150px;
+    `;
+    
+    // Add styles for dropdown items
+    const style = document.createElement('style');
+    style.textContent = `
+        .user-dropdown .dropdown-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: #333;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        .user-dropdown .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        .user-dropdown .dropdown-divider {
+            margin: 0.5rem 0;
+            border: none;
+            border-top: 1px solid #e1e5e9;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(dropdown);
+    
+    // Close dropdown when clicking outside
+    const closeDropdown = (e) => {
+        if (!dropdown.contains(e.target) && e.target !== authBtn) {
+            dropdown.remove();
+            style.remove();
+            document.removeEventListener('click', closeDropdown);
+        }
+    };
+    
+    setTimeout(() => {
+        document.addEventListener('click', closeDropdown);
+    }, 100);
+}
+
+/**
+ * Logout function
+ */
+function logout() {
+    if (window.auth) {
+        window.auth.logout();
+    }
+}
+
+// Initialize auth UI when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Wait for auth.js to load
+    setTimeout(initializeAuthUI, 100);
+});
