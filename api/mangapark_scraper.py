@@ -272,18 +272,36 @@ def scrape_mangapark_details(detail_url):
             logger.warning(f"Page returned 404 or not found for {detail_url}")
             return None
         
+        # Debug: Log what elements we can find
+        logger.info(f"Looking for title elements...")
+        title_candidates = soup.select('h1, h2, h3, .title')
+        for i, elem in enumerate(title_candidates[:5]):  # Log first 5 candidates
+            logger.info(f"Title candidate {i}: {elem.get_text(strip=True)[:50]}...")
+        
+        logger.info(f"Looking for image elements...")
+        img_candidates = soup.select('img[src*="/thumb/"]')
+        logger.info(f"Found {len(img_candidates)} image candidates")
+        for i, elem in enumerate(img_candidates[:3]):  # Log first 3 candidates
+            logger.info(f"Image candidate {i}: {elem.get('src', '')[:50]}...")
+        
+        logger.info(f"Looking for chapter elements...")
+        chapter_candidates = soup.select('a[href*="chapter"], a[href*="ch-"]')
+        logger.info(f"Found {len(chapter_candidates)} chapter candidates")
+        
         # Extract title - based on actual HTML structure
         title = "Unknown Title"
         title_elem = soup.select_one('h3.text-lg.md\\:text-2xl.font-bold a')
         if title_elem:
             title = title_elem.get_text(strip=True)
+            logger.info(f"Found title with specific selector: {title}")
         else:
             # Fallback selectors
-            title_selectors = ['h1', '.title', 'h1.entry-title']
+            title_selectors = ['h1', '.title', 'h1.entry-title', 'h3 a', 'h2 a']
             for selector in title_selectors:
                 title_elem = soup.select_one(selector)
                 if title_elem:
                     title = title_elem.get_text(strip=True)
+                    logger.info(f"Found title with fallback selector {selector}: {title}")
                     break
         
         # Extract cover image - based on actual HTML structure
@@ -292,6 +310,7 @@ def scrape_mangapark_details(detail_url):
         cover_elem = soup.select_one('div.w-24.md\\:w-52 img')
         if cover_elem:
             cover_image = cover_elem.get('src', '')
+            logger.info(f"Found cover image with specific selector: {cover_image[:50]}...")
         else:
             # Fallback selectors
             cover_selectors = [
@@ -304,6 +323,7 @@ def scrape_mangapark_details(detail_url):
                 cover_elem = soup.select_one(selector)
                 if cover_elem:
                     cover_image = cover_elem.get('src', '')
+                    logger.info(f"Found cover image with fallback selector {selector}: {cover_image[:50]}...")
                     break
         
         # Handle relative URLs
@@ -418,6 +438,7 @@ def scrape_mangapark_details(detail_url):
         chapters = []
         # Try the specific selector from the HTML
         chapter_elements = soup.select('div.scrollable-panel a.link-hover.link-primary.visited\\:text-accent')
+        logger.info(f"Found {len(chapter_elements)} chapters with specific selector")
         if not chapter_elements:
             # Fallback selectors
             chapter_selectors = [
