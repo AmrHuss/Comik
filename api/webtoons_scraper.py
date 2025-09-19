@@ -40,13 +40,16 @@ def get_headers():
         'Upgrade-Insecure-Requests': '1'
     }
 
-def make_request(url, retries=MAX_RETRIES):
+def make_request(url, retries=MAX_RETRIES, headers=None):
     """Make HTTP request with retry logic and proper error handling."""
+    if headers is None:
+        headers = get_headers()
+    
     for attempt in range(retries):
         try:
             response = requests.get(
                 url, 
-                headers=get_headers(), 
+                headers=headers, 
                 timeout=REQUEST_TIMEOUT,
                 allow_redirects=True
             )
@@ -473,33 +476,57 @@ def scrape_webtoons_chapter_images(chapter_url):
     try:
         logger.info(f"Scraping Webtoons chapter images for: {chapter_url}")
         
-        # Make request to the chapter URL
-        response = make_request(chapter_url)
+        # Make request to the chapter URL with proper headers
+        headers = get_headers()
+        headers['Referer'] = 'https://www.webtoons.com/'
+        
+        response = make_request(chapter_url, headers=headers)
         if not response:
             logger.error(f"Failed to fetch chapter URL: {chapter_url}")
             return []
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Find the image container
-        image_container = soup.find('div', {'id': '_imageList'})
+        # Find the image container using the correct selector
+        # Look for div with classes containing both viewer_img and _img_viewer_area
+        image_container = soup.find('div', class_=lambda x: x and 'viewer_img' in x and '_img_viewer_area' in x)
         if not image_container:
-            logger.error("Could not find image container with id '_imageList'")
-            return []
+            # Fallback to the old selector if the new one doesn't work
+            image_container = soup.find('div', {'id': '_imageList'})
+            if not image_container:
+                logger.error("Could not find image container with viewer_img and _img_viewer_area classes")
+                return []
         
-        # Extract all images
+        # Extract all images using data-url attribute
         images = []
         img_elements = image_container.find_all('img', class_='_images')
         
         for img in img_elements:
-            img_src = img.get('src') or img.get('data-url')
-            if img_src:
+            # Get data-url attribute (not src) for actual images
+            img_url = img.get('data-url')
+            if not img_url:
+                # Fallback to src if data-url is not available
+                img_url = img.get('src')
+            
+            if img_url:
+                # Filter out placeholder/loading images
+                if any(placeholder in img_url.lower() for placeholder in [
+                    'bg_transparency.png', 'placeholder', 'default', 'loading', 'transparent'
+                ]):
+                    logger.debug(f"Skipping placeholder image: {img_url}")
+                    continue
+                
+                # Remove quality compression to get full quality images
+                if '?type=q90' in img_url:
+                    img_url = img_url.split('?type=q90')[0]
+                
                 # Ensure it's a full URL
-                if not img_src.startswith('http'):
-                    img_src = urljoin(WEBTOONS_BASE_URL, img_src)
-                images.append(img_src)
+                if not img_url.startswith('http'):
+                    img_url = urljoin(WEBTOONS_BASE_URL, img_url)
+                
+                images.append(img_url)
         
-        logger.info(f"Found {len(images)} images for chapter")
+        logger.info(f"Found {len(images)} actual chapter images (filtered out placeholders)")
         return images
         
     except Exception as e:
