@@ -390,7 +390,7 @@ def search_manga():
 def get_manga_details():
     """Get detailed information for a specific manga from the specified source."""
     detail_url = request.args.get('url', '').strip()
-    source = request.args.get('source', 'AsuraScanz').strip()
+    source = request.args.get('source', '').strip()
     
     if not detail_url:
         return jsonify({
@@ -399,6 +399,15 @@ def get_manga_details():
         }), 400
     
     try:
+        # Auto-detect source based on URL if not provided
+        if not source:
+            if 'webtoons.com' in detail_url:
+                source = 'Webtoons'
+            elif 'asurascanz.com' in detail_url:
+                source = 'AsuraScanz'
+            else:
+                source = 'AsuraScanz'  # Default fallback
+        
         logger.info(f"Fetching manga details for: {detail_url} from {source}")
         
         if source.lower() == 'webtoons':

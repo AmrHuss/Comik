@@ -133,36 +133,93 @@ def scrape_webtoons_action_genre():
 def parse_webtoon_item(item):
     """Parse a single webtoon item from the list."""
     try:
-        # Extract title
-        title_element = item.find('strong', class_='title')
-        if not title_element:
-            return None
+        # Extract title - try multiple selectors
+        title = ""
+        title_selectors = [
+            'strong.title',
+            '.title',
+            'strong[class*="title"]',
+            'h3',
+            'h4',
+            'a[title]'
+        ]
         
-        title = title_element.get_text(strip=True)
+        for selector in title_selectors:
+            title_element = item.select_one(selector)
+            if title_element:
+                title = title_element.get_text(strip=True)
+                if not title and title_element.get('title'):
+                    title = title_element.get('title').strip()
+                if title:
+                    break
+        
         if not title:
             return None
         
-        # Extract cover image
-        img_element = item.find('img')
+        # Extract cover image - try multiple selectors and attributes
         cover_url = ""
-        if img_element:
-            cover_url = img_element.get('src', '')
-            if cover_url and not cover_url.startswith('http'):
-                cover_url = urljoin(WEBTOONS_BASE_URL, cover_url)
+        img_selectors = [
+            'img',
+            '.thmb img',
+            'img[src*="webtoon"]',
+            'img[src*="pstatic"]'
+        ]
+        
+        for selector in img_selectors:
+            img_element = item.select_one(selector)
+            if img_element:
+                # Try multiple src attributes
+                for attr in ['src', 'data-src', 'data-lazy-src']:
+                    cover_url = img_element.get(attr, '')
+                    if cover_url:
+                        # Ensure it's a full URL
+                        if not cover_url.startswith('http'):
+                            cover_url = urljoin(WEBTOONS_BASE_URL, cover_url)
+                        break
+                if cover_url:
+                    break
         
         # Extract detail URL
-        link_element = item.find('a', href=True)
         detail_url = ""
+        link_element = item.find('a', href=True)
         if link_element:
             detail_url = link_element['href']
             if detail_url and not detail_url.startswith('http'):
                 detail_url = urljoin(WEBTOONS_BASE_URL, detail_url)
         
-        # Extract author
-        author_element = item.find('div', class_='author')
+        # Extract author - try multiple selectors
         author = "Unknown"
-        if author_element:
-            author = author_element.get_text(strip=True)
+        author_selectors = [
+            'div.author',
+            '.author',
+            'div[class*="author"]',
+            '.creator',
+            '.artist'
+        ]
+        
+        for selector in author_selectors:
+            author_element = item.select_one(selector)
+            if author_element:
+                author = author_element.get_text(strip=True)
+                if author:
+                    break
+        
+        # Extract latest chapter info if available
+        latest_chapter = "N/A"
+        chapter_selectors = [
+            '.episode',
+            '.chapter',
+            '.latest',
+            'span[class*="episode"]',
+            'span[class*="chapter"]'
+        ]
+        
+        for selector in chapter_selectors:
+            chapter_element = item.select_one(selector)
+            if chapter_element:
+                latest_chapter = chapter_element.get_text(strip=True)
+                if latest_chapter:
+                    break
         
         # Create webtoon data
         webtoon_data = {
@@ -171,7 +228,7 @@ def parse_webtoon_item(item):
             'detail_url': detail_url,
             'author': author,
             'source': 'Webtoons',
-            'latest_chapter': 'N/A',  # Will be filled from detail page
+            'latest_chapter': latest_chapter,
             'rating': 'N/A',
             'genres': ['Action'],
             'status': 'Ongoing'
