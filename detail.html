@@ -59,8 +59,57 @@
                         <button id="sort-desc" class="btn btn-outline">↓ Descending</button>
                     </div>
                 </div>
+                
+                <!-- Chapter List Container with Fixed Height -->
+                <div class="chapter-list-wrapper" style="display: none;">
+                    <h3>Chapters</h3>
+                    <div class="chapter-list-container">
+                        <div id="chapter-list" class="chapter-list">
+                            <!-- Chapters will be loaded here -->
+                        </div>
+                    </div>
+                </div>
                 <!-- JS will inject content here -->
                 <p class="loading-message">Loading manhwa details...</p>
+            </div>
+            
+            <!-- Discussion Section -->
+            <div class="discussion-section" id="discussion-section" style="display: none;">
+                <h3>Community Discussion</h3>
+                <div class="discussion-content">
+                    <div class="discussion-stats">
+                        <span class="discussion-count">0 discussions</span>
+                        <button class="btn btn-primary" id="start-discussion-btn">Start Discussion</button>
+                    </div>
+                    
+                    <div class="discussions-list" id="discussions-list">
+                        <div class="empty-discussions">
+                            <p>No discussions yet. Be the first to start one!</p>
+                        </div>
+                    </div>
+                    
+                    <div class="discussion-form" id="discussion-form" style="display: none;">
+                        <h4>Start a Discussion</h4>
+                        <form id="new-discussion-form">
+                            <div class="form-group">
+                                <input type="text" id="discussion-title" placeholder="Discussion title..." class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <textarea id="discussion-content" placeholder="Share your thoughts..." class="form-textarea" rows="4" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="spoiler-warning" class="checkbox">
+                                    <span class="checkbox-text">Contains spoilers</span>
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" id="cancel-discussion">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Post Discussion</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
             
             <!-- Alternate Sources Container -->

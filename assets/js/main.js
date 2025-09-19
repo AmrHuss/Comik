@@ -425,13 +425,11 @@ function displayMangaDetails(data, source = 'AsuraScanz') {
                 <p class="detail-description">${data.description}</p>
             </div>
         </div>
-        <div class="chapter-list-container">
-            <h2>Chapters</h2>
-            <div class="chapter-list-controls">
-                <button id="sort-asc-btn" class="sort-btn">Sort Ascending ↑</button>
-                <button id="sort-desc-btn" class="sort-btn active">Sort Descending ↓</button>
+        <div class="chapter-list-wrapper">
+            <h3>Chapters</h3>
+            <div class="chapter-list-container">
+                <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
             </div>
-            <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
         </div>
     `;
     
@@ -549,18 +547,19 @@ function renderMangaContent(data, container) {
                 <p class="detail-description">${data.description || 'No description available.'}</p>
             </div>
         </div>
-        <div class="chapter-list-container">
-            <h2>Chapters</h2>
-            <div class="chapter-list-controls">
-                <button id="sort-asc-btn" class="sort-btn">Sort Ascending ↑</button>
-                <button id="sort-desc-btn" class="sort-btn active">Sort Descending ↓</button>
+        <div class="chapter-list-wrapper">
+            <h3>Chapters</h3>
+            <div class="chapter-list-container">
+                <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
             </div>
-            <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
         </div>
     `;
     
     // Inject the HTML
     container.innerHTML = html;
+    
+    // Show discussion section
+    showDiscussionSection();
 }
 
 /**
@@ -1950,3 +1949,215 @@ document.addEventListener('DOMContentLoaded', function() {
     // Wait for auth.js to load
     setTimeout(initializeAuthUI, 100);
 });
+
+/**
+ * Show discussion section
+ */
+function showDiscussionSection() {
+    const discussionSection = document.getElementById('discussion-section');
+    if (discussionSection) {
+        discussionSection.style.display = 'block';
+        setupDiscussionHandlers();
+    }
+}
+
+/**
+ * Setup discussion event handlers
+ */
+function setupDiscussionHandlers() {
+    const startDiscussionBtn = document.getElementById('start-discussion-btn');
+    const discussionForm = document.getElementById('discussion-form');
+    const cancelDiscussionBtn = document.getElementById('cancel-discussion');
+    const newDiscussionForm = document.getElementById('new-discussion-form');
+    
+    if (startDiscussionBtn) {
+        startDiscussionBtn.addEventListener('click', () => {
+            if (window.auth && window.auth.isAuthenticated()) {
+                discussionForm.style.display = 'block';
+                startDiscussionBtn.style.display = 'none';
+            } else {
+                window.location.href = 'auth.html';
+            }
+        });
+    }
+    
+    if (cancelDiscussionBtn) {
+        cancelDiscussionBtn.addEventListener('click', () => {
+            discussionForm.style.display = 'none';
+            startDiscussionBtn.style.display = 'block';
+            newDiscussionForm.reset();
+        });
+    }
+    
+    if (newDiscussionForm) {
+        newDiscussionForm.addEventListener('submit', handleDiscussionSubmit);
+    }
+}
+
+/**
+ * Handle discussion form submission
+ */
+async function handleDiscussionSubmit(e) {
+    e.preventDefault();
+    
+    if (!window.auth || !window.auth.isAuthenticated()) {
+        showMessage('Please sign in to create discussions', 'error');
+        return;
+    }
+    
+    const title = document.getElementById('discussion-title').value.trim();
+    const content = document.getElementById('discussion-content').value.trim();
+    const hasSpoilers = document.getElementById('spoiler-warning').checked;
+    
+    if (!title || !content) {
+        showMessage('Please fill in all fields', 'error');
+        return;
+    }
+    
+    try {
+        // For now, just add to the discussions list locally
+        addDiscussionToList({
+            id: Date.now(),
+            title,
+            content,
+            has_spoilers: hasSpoilers,
+            author: {
+                username: window.auth.getCurrentUser().username
+            },
+            created_at: new Date().toISOString(),
+            like_count: 0,
+            comment_count: 0
+        });
+        
+        // Hide form and show success
+        document.getElementById('discussion-form').style.display = 'none';
+        document.getElementById('start-discussion-btn').style.display = 'block';
+        document.getElementById('new-discussion-form').reset();
+        
+        showMessage('Discussion posted successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error posting discussion:', error);
+        showMessage('Failed to post discussion. Please try again.', 'error');
+    }
+}
+
+/**
+ * Add discussion to the list
+ */
+function addDiscussionToList(discussion) {
+    const discussionsList = document.getElementById('discussions-list');
+    const emptyDiscussions = discussionsList.querySelector('.empty-discussions');
+    
+    if (emptyDiscussions) {
+        emptyDiscussions.remove();
+    }
+    
+    const discussionHtml = createDiscussionItem(discussion);
+    discussionsList.insertAdjacentHTML('afterbegin', discussionHtml);
+    
+    // Update discussion count
+    const discussionCount = document.querySelector('.discussion-count');
+    if (discussionCount) {
+        const currentCount = parseInt(discussionCount.textContent) || 0;
+        discussionCount.textContent = `${currentCount + 1} discussions`;
+    }
+}
+
+/**
+ * Create discussion item HTML
+ */
+function createDiscussionItem(discussion) {
+    const timeAgo = formatTimeAgo(discussion.created_at);
+    const spoilerWarning = discussion.has_spoilers ? '<span class="spoiler-warning">SPOILERS</span>' : '';
+    
+    return `
+        <div class="discussion-item">
+            <div class="discussion-item-header">
+                <div>
+                    <h4 class="discussion-item-title">${discussion.title}${spoilerWarning}</h4>
+                    <div class="discussion-item-meta">
+                        <span>${timeAgo}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="discussion-item-content">
+                ${discussion.content}
+            </div>
+            
+            <div class="discussion-item-footer">
+                <div class="discussion-item-author">
+                    <span>by ${discussion.author.username}</span>
+                </div>
+                
+                <div class="discussion-item-actions">
+                    <button class="discussion-action" onclick="likeDiscussion(${discussion.id})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 9V5a3 3 0 0 0-6 0v4"></path>
+                            <rect x="2" y="9" width="20" height="12" rx="2" ry="2"></rect>
+                        </svg>
+                        Like (${discussion.like_count || 0})
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Like discussion
+ */
+function likeDiscussion(discussionId) {
+    if (!window.auth || !window.auth.isAuthenticated()) {
+        showMessage('Please sign in to like discussions', 'error');
+        return;
+    }
+    
+    // For now, just show a message
+    showMessage('Discussion liked!', 'success');
+}
+
+/**
+ * Format time ago
+ */
+function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    
+    return date.toLocaleDateString();
+}
+
+/**
+ * Show message
+ */
+function showMessage(message, type = 'error') {
+    // Create temporary message element
+    const messageEl = document.createElement('div');
+    messageEl.className = `message message-${type}`;
+    messageEl.textContent = message;
+    messageEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+        ${type === 'success' ? 'background: #10b981;' : 'background: #ef4444;'}
+    `;
+    
+    document.body.appendChild(messageEl);
+    
+    setTimeout(() => {
+        messageEl.remove();
+    }, 3000);
+}
