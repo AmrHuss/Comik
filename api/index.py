@@ -22,7 +22,7 @@ import traceback
 # from api.mangapark_scraper import scrape_mangapark_latest, scrape_mangapark_details, search_mangapark_by_title
 
 # Webtoons scraper
-from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, search_webtoons_by_title
+from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, search_webtoons_by_title, scrape_webtoons_chapter_images
 
 # --- Configuration ---
 logging.basicConfig(
@@ -978,11 +978,18 @@ def get_unified_chapter_data():
         elif source.lower() == 'webtoons':
             # Use Webtoons chapter scraper
             try:
-                # For now, return a placeholder since Webtoons chapter reading is complex
-                return jsonify({
-                    'success': False,
-                    'error': 'Webtoons chapter reading not yet implemented'
-                }), 501
+                images = scrape_webtoons_chapter_images(chapter_url)
+                if images:
+                    return jsonify({
+                        'success': True,
+                        'image_urls': images,
+                        'source': 'Webtoons'
+                    })
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'No chapter images found'
+                    }), 404
             except Exception as e:
                 logger.error(f"Error scraping Webtoons chapter: {e}")
                 return jsonify({

@@ -412,6 +412,45 @@ def search_webtoons_by_title(title):
     logger.info(f"Searching Webtoons for: {title}")
     return scrape_webtoons_action_genre()
 
+def scrape_webtoons_chapter_images(chapter_url):
+    """Scrape chapter images from a Webtoons episode URL."""
+    try:
+        logger.info(f"Scraping Webtoons chapter images for: {chapter_url}")
+        
+        # Make request to the chapter URL
+        response = make_request(chapter_url)
+        if not response:
+            logger.error(f"Failed to fetch chapter URL: {chapter_url}")
+            return []
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find the image container
+        image_container = soup.find('div', {'id': '_imageList'})
+        if not image_container:
+            logger.error("Could not find image container with id '_imageList'")
+            return []
+        
+        # Extract all images
+        images = []
+        img_elements = image_container.find_all('img', class_='_images')
+        
+        for img in img_elements:
+            img_src = img.get('src') or img.get('data-url')
+            if img_src:
+                # Ensure it's a full URL
+                if not img_src.startswith('http'):
+                    img_src = urljoin(WEBTOONS_BASE_URL, img_src)
+                images.append(img_src)
+        
+        logger.info(f"Found {len(images)} images for chapter")
+        return images
+        
+    except Exception as e:
+        logger.error(f"Error scraping Webtoons chapter images: {e}")
+        logger.error(traceback.format_exc())
+        return []
+
 # Main execution for testing
 if __name__ == "__main__":
     # Test the scraper

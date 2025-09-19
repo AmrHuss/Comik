@@ -352,7 +352,15 @@ async function handleDetailPage() {
     
     try {
         console.log('Making API request for manga details...');
-        const result = await makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}`);
+        // Auto-detect source from URL
+        let source = 'AsuraScanz'; // default
+        if (detailUrl.includes('webtoons.com')) {
+            source = 'Webtoons';
+        } else if (detailUrl.includes('asurascanz.com')) {
+            source = 'AsuraScanz';
+        }
+        
+        const result = await makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}&source=${source}`);
         console.log('Manga details API response:', result);
         console.log('Calling displayMangaDetails with data:', result.data);
         displayMangaDetails(result.data);
@@ -843,9 +851,9 @@ async function handleReaderPage() {
     showLoadingState(container, 'Loading chapter...');
     
     try {
-        // Load the chapter images using AsuraScanz API
-        const chapterResult = await makeApiRequest(`${API_BASE_URL}/chapter?url=${encodeURIComponent(chapterUrl)}`);
-        displayChapterImages(chapterResult.data, container);
+        // Load the chapter images using unified API
+        const chapterResult = await makeApiRequest(`${API_BASE_URL}/unified-chapter-data?url=${encodeURIComponent(chapterUrl)}&source=${source}`);
+        displayChapterImages(chapterResult.image_urls, container);
         
         // Save reading progress
         const mangaData = JSON.parse(sessionStorage.getItem('current_manga') || '{}');
