@@ -200,11 +200,8 @@ function displayMangaGrid(container, mangaList) {
         return;
     }
     
-    container.innerHTML = '';
-    mangaList.forEach(manga => {
-        const card = createMangaCard(manga);
-        container.appendChild(card);
-    });
+    // Use enhanced card design for consistency
+    container.innerHTML = mangaList.map(manga => createEnhancedMangaCard(manga)).join('');
 }
 
 /**
@@ -924,7 +921,6 @@ function extractMangaTitleFromUrl(chapterUrl) {
         const url = new URL(chapterUrl);
         const pathParts = url.pathname.split('/').filter(part => part);
         
-        // Find the manga part (usually before 'chapter' or similar)
         for (let i = 0; i < pathParts.length; i++) {
             if (pathParts[i].includes('chapter') || pathParts[i].includes('ch')) {
                 if (i > 0) {
@@ -933,7 +929,6 @@ function extractMangaTitleFromUrl(chapterUrl) {
             }
         }
         
-        // Fallback: use the last part before the chapter
         if (pathParts.length > 1) {
             return pathParts[pathParts.length - 2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         }
@@ -1399,7 +1394,8 @@ async function populateSidebar() {
  */
 function createEnhancedMangaCard(manga) {
     const rating = manga.rating || (Math.random() * 1.9 + 8.0).toFixed(1);
-    const chapters = manga.chapters ? manga.chapters.length : Math.floor(Math.random() * 200) + 10;
+    // Get actual chapter count from manga data, fallback to random if not available
+    const chapters = manga.chapters ? manga.chapters.length : (manga.chapter_count || Math.floor(Math.random() * 200) + 10);
     const source = manga.source || 'AsuraScanz';
     const isBookmarked = (storageManager && storageManager.isBookmarked) ? storageManager.isBookmarked(manga.title) : false;
     
