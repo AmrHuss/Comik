@@ -1535,27 +1535,39 @@ function initializeChapterControls() {
     if (sortAscBtn && sortDescBtn) {
         console.log('Adding sort button listeners');
         
-        // Remove any existing listeners
-        sortAscBtn.onclick = null;
-        sortDescBtn.onclick = null;
+        // Remove any existing listeners by cloning the elements
+        const newSortAscBtn = sortAscBtn.cloneNode(true);
+        const newSortDescBtn = sortDescBtn.cloneNode(true);
+        sortAscBtn.parentNode.replaceChild(newSortAscBtn, sortAscBtn);
+        sortDescBtn.parentNode.replaceChild(newSortDescBtn, sortDescBtn);
         
-        sortAscBtn.addEventListener('click', function(e) {
+        // Update references to the new elements
+        const ascBtn = newSortAscBtn;
+        const descBtn = newSortDescBtn;
+        
+        ascBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             console.log('Ascending button clicked');
             sortChapters('asc');
-            sortAscBtn.classList.add('active');
-            sortDescBtn.classList.remove('active');
+            ascBtn.classList.add('active');
+            descBtn.classList.remove('active');
+            console.log('Sort state: ASC active, DESC inactive');
         });
         
-        sortDescBtn.addEventListener('click', function(e) {
+        descBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             console.log('Descending button clicked');
             sortChapters('desc');
-            sortDescBtn.classList.add('active');
-            sortAscBtn.classList.remove('active');
+            descBtn.classList.add('active');
+            ascBtn.classList.remove('active');
+            console.log('Sort state: DESC active, ASC inactive');
         });
+        
+        // Set initial state - descending by default
+        descBtn.classList.add('active');
+        ascBtn.classList.remove('active');
         
         console.log('Sort button listeners added successfully');
     } else {
@@ -1568,10 +1580,12 @@ function initializeChapterControls() {
  * Sort chapters by order
  */
 function sortChapters(order) {
-    console.log('Sorting chapters:', order);
+    console.log('=== SORTING CHAPTERS ===');
+    console.log('Order requested:', order);
+    
     const chapterList = document.getElementById('chapter-list');
     if (!chapterList) {
-        console.log('Chapter list not found');
+        console.log('ERROR: Chapter list not found');
         return;
     }
     
@@ -1579,26 +1593,37 @@ function sortChapters(order) {
     console.log('Found chapter items:', chapterItems.length);
     
     if (chapterItems.length === 0) {
-        console.log('No chapter items found');
+        console.log('ERROR: No chapter items found');
         return;
     }
     
     // Create a copy of the items to avoid modifying the original array
     const sortedItems = [...chapterItems];
     
+    console.log('Before sorting - first 3 items:');
+    sortedItems.slice(0, 3).forEach((item, index) => {
+        const title = item.querySelector('.chapter-title')?.textContent || '';
+        console.log(`  ${index + 1}. ${title}`);
+    });
+    
     sortedItems.sort((a, b) => {
         const aTitle = a.querySelector('.chapter-title')?.textContent || '';
         const bTitle = b.querySelector('.chapter-title')?.textContent || '';
-        
-        console.log('Comparing:', aTitle, 'vs', bTitle);
         
         // Extract chapter numbers
         const aNum = parseFloat(aTitle.match(/(\d+(?:\.\d+)?)/)?.[1] || '0');
         const bNum = parseFloat(bTitle.match(/(\d+(?:\.\d+)?)/)?.[1] || '0');
         
-        console.log('Numbers:', aNum, 'vs', bNum);
+        const result = order === 'asc' ? aNum - bNum : bNum - aNum;
+        console.log(`Comparing: "${aTitle}" (${aNum}) vs "${bTitle}" (${bNum}) = ${result}`);
         
-        return order === 'asc' ? aNum - bNum : bNum - aNum;
+        return result;
+    });
+    
+    console.log('After sorting - first 3 items:');
+    sortedItems.slice(0, 3).forEach((item, index) => {
+        const title = item.querySelector('.chapter-title')?.textContent || '';
+        console.log(`  ${index + 1}. ${title}`);
     });
     
     // Clear the container first
@@ -1607,7 +1632,8 @@ function sortChapters(order) {
     // Re-append sorted items
     sortedItems.forEach(item => chapterList.appendChild(item));
     
-    console.log('Chapters sorted successfully');
+    console.log('Chapters sorted successfully with order:', order);
+    console.log('=== SORTING COMPLETE ===');
 }
 
 /**
