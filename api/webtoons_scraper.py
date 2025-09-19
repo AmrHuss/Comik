@@ -182,6 +182,10 @@ def parse_webtoon_item(item):
                 if cover_url:
                     break
         
+        # Convert cover image to use proxy if it's a Webtoons CDN image
+        if cover_url and 'webtoon-phinf.pstatic.net' in cover_url:
+            cover_url = convert_cover_to_proxy_url(cover_url)
+        
         # Extract detail URL
         detail_url = ""
         link_element = item.find('a', href=True)
@@ -289,6 +293,10 @@ def scrape_webtoons_details(detail_url):
                 if cover_image and not cover_image.startswith('http'):
                     cover_image = urljoin(WEBTOONS_BASE_URL, cover_image)
                 break
+        
+        # Convert cover image to use proxy if it's a Webtoons CDN image
+        if cover_image and 'webtoon-phinf.pstatic.net' in cover_image:
+            cover_image = convert_cover_to_proxy_url(cover_image)
         
         # Extract description - try multiple selectors
         description = "No description available"
@@ -567,6 +575,28 @@ def convert_to_proper_cdn_url(img_url, chapter_url):
         
     except Exception as e:
         logger.warning(f"Failed to convert to proxy URL: {e}")
+        return img_url
+
+def convert_cover_to_proxy_url(img_url):
+    """Convert cover image URL to use our proxy endpoint for card images."""
+    try:
+        if 'webtoon-phinf.pstatic.net' in img_url:
+            # For cover images, we use a generic Webtoons referrer
+            # since we don't have a specific chapter URL
+            import urllib.parse
+            encoded_img_url = urllib.parse.quote(img_url, safe='')
+            generic_chapter_url = urllib.parse.quote('https://www.webtoons.com/', safe='')
+            
+            # Use our API proxy endpoint
+            proxy_url = f"/api/webtoons-image-proxy?img_url={encoded_img_url}&chapter_url={generic_chapter_url}"
+            
+            logger.debug(f"Using cover proxy URL: {proxy_url}")
+            return proxy_url
+            
+        return img_url
+        
+    except Exception as e:
+        logger.warning(f"Failed to convert cover to proxy URL: {e}")
         return img_url
 
 # Main execution for testing
