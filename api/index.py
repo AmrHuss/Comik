@@ -19,6 +19,7 @@ from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
 # MadaraScans scraper removed - keeping only AsuraScanz
+from api.mangapark_scraper import scrape_mangapark_latest, scrape_mangapark_details, search_mangapark_by_title
 
 # --- Configuration ---
 logging.basicConfig(
@@ -397,9 +398,9 @@ def get_manga_details():
     try:
         logger.info(f"Fetching manga details for: {detail_url} from {source}")
         
-        if source.lower() == 'webtoons':
-            # Use Webtoons scraper
-            manga_details = scrape_webtoons_details(detail_url)
+        if source.lower() == 'mangapark':
+            # Use MangaPark scraper
+            manga_details = scrape_mangapark_details(detail_url)
         else:
             # Use AsuraScanz scraper (default)
             manga_details = scrape_manga_details(detail_url)
@@ -773,16 +774,23 @@ def get_unified_popular():
         except Exception as e:
             logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
         
-        # Return only AsuraScanz data
-        all_manga = asura_manga
-        logger.info(f"Returning {len(all_manga)} popular manga from AsuraScanz")
+        # Get popular manga from MangaPark
+        mangapark_manga = []
+        try:
+            mangapark_manga = scrape_mangapark_latest()
+        except Exception as e:
+            logger.warning(f"Failed to fetch MangaPark popular: {e}")
+        
+        # Combine all manga
+        all_manga = asura_manga + mangapark_manga
+        logger.info(f"Returning {len(all_manga)} popular manga from AsuraScanz and MangaPark")
         
         return jsonify({
             'success': True,
             'data': all_manga,
             'sources': {
                 'AsuraScanz': len(asura_manga),
-                'Webtoons': len(webtoons_manga)
+                'MangaPark': len(mangapark_manga)
             }
         })
         
@@ -817,14 +825,35 @@ def get_unified_details():
                 'error': 'AsuraScanz unified details not yet implemented'
             }), 501
             
-        elif source.lower() == 'webtoons':
-            # Use Webtoons detail scraper
-            # For now, we'll need to find the detail URL first
-            # This is a simplified version - in production, you'd want to store/cache URLs
-            return jsonify({
-                'success': False,
-                'error': 'Webtoons unified details not yet implemented'
-            }), 501
+        elif source.lower() == 'mangapark':
+            # Search MangaPark for the title and get details
+            try:
+                search_results = search_mangapark_by_title(title)
+                if search_results:
+                    # Get details for the first result
+                    detail_url = search_results[0]['detail_url']
+                    manga_details = scrape_mangapark_details(detail_url)
+                    if manga_details:
+                        return jsonify({
+                            'success': True,
+                            'data': manga_details
+                        })
+                    else:
+                        return jsonify({
+                            'success': False,
+                            'error': 'Could not fetch details for the found manga'
+                        }), 404
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'No manga found with that title'
+                    }), 404
+            except Exception as e:
+                logger.error(f"Error fetching MangaPark details: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to fetch MangaPark details'
+                }), 500
             
         else:
             return jsonify({
@@ -869,18 +898,18 @@ def search_manga_sources():
         except Exception as e:
             logger.warning(f"Error searching AsuraScanz: {e}")
         
-        # Search Webtoons
+        # Search MangaPark
         try:
-            webtoons_results = search_webtoons_by_title(title)
-            if webtoons_results:
+            mangapark_results = search_mangapark_by_title(title)
+            if mangapark_results:
                 sources.append({
-                    'source': 'Webtoons',
-                    'detail_url': webtoons_results[0]['detail_url'],
-                    'title': webtoons_results[0]['title'],
-                    'cover_url': webtoons_results[0]['cover_url']
+                    'source': 'MangaPark',
+                    'detail_url': mangapark_results[0]['detail_url'],
+                    'title': mangapark_results[0]['title'],
+                    'cover_url': mangapark_results[0]['cover_url']
                 })
         except Exception as e:
-            logger.warning(f"Error searching Webtoons: {e}")
+            logger.warning(f"Error searching MangaPark: {e}")
         
         return jsonify({
             'success': True,
@@ -966,6 +995,97 @@ def get_unified_chapter_data():
             'error': 'Failed to fetch chapter data'
         }), 500
 
+# MangaPark endpoints
+@app.route('/api/mangapark/popular', methods=['GET'])
+def get_mangapark_popular():
+    """Get popular manga from MangaPark."""
+    try:
+        logger.info("Fetching popular manga from MangaPark")
+        manga_data = scrape_mangapark_latest()
+        
+        if not manga_data:
+            return jsonify({
+                'success': False, 
+                'error': 'No manga data found from MangaPark'
+            }), 404
+        
+        return jsonify({
+            'success': True, 
+            'count': len(manga_data), 
+            'data': manga_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/mangapark/popular: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False, 
+            'error': 'Internal server error occurred'
+        }), 500
+
+@app.route('/api/mangapark/details', methods=['GET'])
+def get_mangapark_details():
+    """Get detailed information for a specific manga from MangaPark."""
+    detail_url = request.args.get('url', '').strip()
+    
+    if not detail_url:
+        return jsonify({
+            'success': False, 
+            'error': 'Manga detail URL is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching MangaPark details for: {detail_url}")
+        manga_details = scrape_mangapark_details(detail_url)
+        
+        if not manga_details:
+            return jsonify({
+                'success': False, 
+                'error': 'Could not scrape details for the provided URL'
+            }), 404
+        
+        return jsonify({
+            'success': True, 
+            'data': manga_details
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/mangapark/details for {detail_url}: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False, 
+            'error': 'Failed to fetch manga details'
+        }), 500
+
+@app.route('/api/mangapark/search', methods=['GET'])
+def search_mangapark():
+    """Search manga by title on MangaPark."""
+    query = request.args.get('query', '').strip()
+    
+    if not query:
+        return jsonify({
+            'success': False, 
+            'error': 'Search query is required'
+        }), 400
+    
+    try:
+        logger.info(f"Searching MangaPark for: {query}")
+        manga_data = search_mangapark_by_title(query)
+        
+        return jsonify({
+            'success': True, 
+            'count': len(manga_data), 
+            'data': manga_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in /api/mangapark/search for query '{query}': {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False, 
+            'error': 'Search failed due to internal error'
+        }), 500
+
 # MadaraScans endpoints removed - keeping only AsuraScanz
 
 @app.route('/api', methods=['GET'])
@@ -985,7 +1105,10 @@ def api_root():
             '/api/unified-popular',
             '/api/unified-details',
             '/api/unified-chapter-data',
-            '/api/source-search'
+            '/api/source-search',
+            '/api/mangapark/popular',
+            '/api/mangapark/details',
+            '/api/mangapark/search'
         ]
     })
 
