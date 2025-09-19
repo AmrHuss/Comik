@@ -410,6 +410,16 @@ body {
     object-fit: cover;
     object-position: center;
     transition: var(--transition-normal);
+    /* Image caching and loading improvements */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    /* Better loading performance */
+    will-change: transform;
+    contain: layout style paint;
 }
 
 .card-overlay {

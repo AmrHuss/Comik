@@ -1434,7 +1434,7 @@ function createEnhancedMangaCard(manga) {
         <div class="manhwa-card enhanced-card" data-source="${source}">
             <a href="detail.html?url=${encodeURIComponent(manga.detail_url)}" class="manhwa-card-content">
                 <div class="card-image">
-                    <img src="${manga.cover_url}" alt="${manga.title}" loading="lazy">
+                    <img src="${manga.cover_url}" alt="${manga.title}" loading="lazy" decoding="async" fetchpriority="low">
                     <div class="bookmark-container">
                         <button class="bookmark-btn ${isBookmarked ? 'bookmarked' : ''}" 
                                 data-manga='${JSON.stringify(manga)}' 

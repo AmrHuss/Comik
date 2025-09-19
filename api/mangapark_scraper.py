@@ -290,41 +290,38 @@ def scrape_mangapark_details(detail_url):
         
         # Extract title - based on actual HTML structure
         title = "Unknown Title"
-        title_elem = soup.select_one('h3.text-lg.md\\:text-2xl.font-bold a')
-        if title_elem:
-            title = title_elem.get_text(strip=True)
-            logger.info(f"Found title with specific selector: {title}")
-        else:
-            # Fallback selectors
-            title_selectors = ['h1', '.title', 'h1.entry-title', 'h3 a', 'h2 a']
-            for selector in title_selectors:
-                title_elem = soup.select_one(selector)
-                if title_elem:
-                    title = title_elem.get_text(strip=True)
-                    logger.info(f"Found title with fallback selector {selector}: {title}")
-                    break
+        # Try multiple selectors for title
+        title_selectors = [
+            'h3.text-lg a',  # Simplified selector
+            'h3 a',
+            'h1',
+            '.title',
+            'h1.entry-title',
+            'h2 a'
+        ]
+        for selector in title_selectors:
+            title_elem = soup.select_one(selector)
+            if title_elem:
+                title = title_elem.get_text(strip=True)
+                logger.info(f"Found title with selector {selector}: {title}")
+                break
         
         # Extract cover image - based on actual HTML structure
         cover_image = ""
-        # Try the specific selector from the HTML
-        cover_elem = soup.select_one('div.w-24.md\\:w-52 img')
-        if cover_elem:
-            cover_image = cover_elem.get('src', '')
-            logger.info(f"Found cover image with specific selector: {cover_image[:50]}...")
-        else:
-            # Fallback selectors
-            cover_selectors = [
-                'img[src*="/thumb/"]',
-                'img[alt*="' + title + '"]',
-                '.cover img',
-                'img'
-            ]
-            for selector in cover_selectors:
-                cover_elem = soup.select_one(selector)
-                if cover_elem:
-                    cover_image = cover_elem.get('src', '')
-                    logger.info(f"Found cover image with fallback selector {selector}: {cover_image[:50]}...")
-                    break
+        # Try multiple selectors for cover image
+        cover_selectors = [
+            'div.w-24 img',  # Simplified selector
+            'img[src*="/thumb/"]',
+            'img[alt*="' + title + '"]',
+            '.cover img',
+            'img'
+        ]
+        for selector in cover_selectors:
+            cover_elem = soup.select_one(selector)
+            if cover_elem:
+                cover_image = cover_elem.get('src', '')
+                logger.info(f"Found cover image with selector {selector}: {cover_image[:50]}...")
+                break
         
         # Handle relative URLs
         if cover_image and not cover_image.startswith('http'):
@@ -436,28 +433,25 @@ def scrape_mangapark_details(detail_url):
         
         # Extract chapters - based on actual HTML structure
         chapters = []
-        # Try the specific selector from the HTML
-        chapter_elements = soup.select('div.scrollable-panel a.link-hover.link-primary.visited\\:text-accent')
-        logger.info(f"Found {len(chapter_elements)} chapters with specific selector")
-        if not chapter_elements:
-            # Fallback selectors
-            chapter_selectors = [
-                'div.chapter-list a',
-                'div.flex.flex-nowrap.justify-between a.link-hover.link-primary',
-                'a[href*="/title/"][href*="ch-"]',
-                'a[href*="chapter"]',
-                'div.flex.border-b.border-b-base-200.pb-3 a'
-            ]
-            
-            for selector in chapter_selectors:
-                elements = soup.select(selector)
-                if elements:
-                    # Filter out non-chapter links
-                    chapter_links = [elem for elem in elements if 'ch-' in elem.get('href', '') or 'chapter' in elem.get('href', '').lower()]
-                    if chapter_links:
-                        chapter_elements = chapter_links
-                        logger.info(f"Found {len(chapter_links)} chapters with selector: {selector}")
-                        break
+        # Try multiple selectors for chapters
+        chapter_selectors = [
+            'div.scrollable-panel a',  # Simplified selector
+            'a[href*="chapter"]',
+            'a[href*="ch-"]',
+            'div.chapter-list a',
+            'div.flex.flex-nowrap.justify-between a.link-hover.link-primary'
+        ]
+        
+        chapter_elements = []
+        for selector in chapter_selectors:
+            elements = soup.select(selector)
+            if elements:
+                # Filter out non-chapter links
+                chapter_links = [elem for elem in elements if 'ch-' in elem.get('href', '') or 'chapter' in elem.get('href', '').lower()]
+                if chapter_links:
+                    chapter_elements = chapter_links
+                    logger.info(f"Found {len(chapter_links)} chapters with selector {selector}")
+                    break
         
         # If no chapters found with specific selectors, try a broader approach
         if not chapter_elements:
