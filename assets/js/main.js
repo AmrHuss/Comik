@@ -1394,8 +1394,21 @@ async function populateSidebar() {
  */
 function createEnhancedMangaCard(manga) {
     const rating = manga.rating || (Math.random() * 1.9 + 8.0).toFixed(1);
-    // Get actual chapter count from manga data, fallback to random if not available
-    const chapters = manga.chapters ? manga.chapters.length : (manga.chapter_count || Math.floor(Math.random() * 200) + 10);
+    
+    // Extract chapter count from latest_chapter string (e.g., "Chapter 150" -> 150)
+    let chapters = 0;
+    if (manga.chapters && Array.isArray(manga.chapters)) {
+        chapters = manga.chapters.length;
+    } else if (manga.chapter_count) {
+        chapters = manga.chapter_count;
+    } else if (manga.latest_chapter) {
+        // Extract number from "Chapter 150" or "Ch. 150" format
+        const chapterMatch = manga.latest_chapter.match(/(\d+(?:\.\d+)?)/);
+        chapters = chapterMatch ? parseInt(chapterMatch[1]) : Math.floor(Math.random() * 200) + 10;
+    } else {
+        chapters = Math.floor(Math.random() * 200) + 10;
+    }
+    
     const source = manga.source || 'AsuraScanz';
     const isBookmarked = (storageManager && storageManager.isBookmarked) ? storageManager.isBookmarked(manga.title) : false;
     
@@ -1522,21 +1535,29 @@ function initializeChapterControls() {
     if (sortAscBtn && sortDescBtn) {
         console.log('Adding sort button listeners');
         
-        sortAscBtn.onclick = function(e) {
+        // Remove any existing listeners
+        sortAscBtn.onclick = null;
+        sortDescBtn.onclick = null;
+        
+        sortAscBtn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             console.log('Ascending button clicked');
             sortChapters('asc');
             sortAscBtn.classList.add('active');
             sortDescBtn.classList.remove('active');
-        };
+        });
         
-        sortDescBtn.onclick = function(e) {
+        sortDescBtn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             console.log('Descending button clicked');
             sortChapters('desc');
             sortDescBtn.classList.add('active');
             sortAscBtn.classList.remove('active');
-        };
+        });
+        
+        console.log('Sort button listeners added successfully');
     } else {
         console.log('Sort buttons not found:', { sortAscBtn, sortDescBtn });
     }
@@ -1562,7 +1583,10 @@ function sortChapters(order) {
         return;
     }
     
-    chapterItems.sort((a, b) => {
+    // Create a copy of the items to avoid modifying the original array
+    const sortedItems = [...chapterItems];
+    
+    sortedItems.sort((a, b) => {
         const aTitle = a.querySelector('.chapter-title')?.textContent || '';
         const bTitle = b.querySelector('.chapter-title')?.textContent || '';
         
@@ -1581,7 +1605,7 @@ function sortChapters(order) {
     chapterList.innerHTML = '';
     
     // Re-append sorted items
-    chapterItems.forEach(item => chapterList.appendChild(item));
+    sortedItems.forEach(item => chapterList.appendChild(item));
     
     console.log('Chapters sorted successfully');
 }
