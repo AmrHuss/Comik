@@ -139,6 +139,42 @@
             <a href="#" id="prev-chapter-footer" class="reader-btn">← Previous Chapter</a>
             <a href="#" id="next-chapter-footer" class="reader-btn">Next Chapter →</a>
         </div>
+        
+        <!-- Chapter Discussion Section -->
+        <div class="discussion-section" id="chapter-discussion-section">
+            <h3>Chapter Discussion</h3>
+            <div class="discussion-content">
+                <div class="discussion-stats">
+                    <span class="discussion-count">0 comments</span>
+                    <button class="btn btn-primary" id="start-chapter-discussion-btn">Add Comment</button>
+                </div>
+                
+                <div class="discussions-list" id="chapter-discussions-list">
+                    <div class="empty-discussions">
+                        <p>No comments yet. Be the first to share your thoughts!</p>
+                    </div>
+                </div>
+                
+                <div class="discussion-form" id="chapter-discussion-form" style="display: none;">
+                    <h4>Add a Comment</h4>
+                    <form id="new-chapter-discussion-form">
+                        <div class="form-group">
+                            <textarea id="chapter-discussion-content" placeholder="Share your thoughts about this chapter..." class="form-textarea" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="chapter-spoiler-warning" class="checkbox">
+                                <span class="checkbox-text">Contains spoilers</span>
+                            </label>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" id="cancel-chapter-discussion">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Post Comment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->

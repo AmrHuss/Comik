@@ -427,6 +427,10 @@ function displayMangaDetails(data, source = 'AsuraScanz') {
         </div>
         <div class="chapter-list-wrapper">
             <h3>Chapters</h3>
+            <div class="chapter-list-controls">
+                <button id="sort-asc" class="btn btn-outline">↑ Ascending</button>
+                <button id="sort-desc" class="btn btn-outline active">↓ Descending</button>
+            </div>
             <div class="chapter-list-container">
                 <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
             </div>
@@ -549,6 +553,10 @@ function renderMangaContent(data, container) {
         </div>
         <div class="chapter-list-wrapper">
             <h3>Chapters</h3>
+            <div class="chapter-list-controls">
+                <button id="sort-asc" class="btn btn-outline">↑ Ascending</button>
+                <button id="sort-desc" class="btn btn-outline active">↓ Descending</button>
+            </div>
             <div class="chapter-list-container">
                 <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
             </div>
@@ -560,20 +568,25 @@ function renderMangaContent(data, container) {
     
     // Show discussion section
     showDiscussionSection();
+    
+    // Initialize chapter sorting
+    initializeChapterSorting();
 }
 
 /**
  * Initialize chapter sorting functionality
  */
 function initializeChapterSorting() {
-    const sortAscBtn = document.getElementById('sort-asc-btn');
-    const sortDescBtn = document.getElementById('sort-desc-btn');
+    const sortAscBtn = document.getElementById('sort-asc');
+    const sortDescBtn = document.getElementById('sort-desc');
     const chapterList = document.getElementById('chapter-list');
     
     if (!sortAscBtn || !sortDescBtn || !chapterList) return;
     
     // Sort ascending (oldest first)
-    sortAscBtn.addEventListener('click', () => {
+    sortAscBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (window.mangaChapters) {
             const sortedChapters = [...window.mangaChapters].reverse();
             renderChapterList(sortedChapters, chapterList, window.currentMangaSource || 'AsuraScanz');
@@ -582,13 +595,19 @@ function initializeChapterSorting() {
     });
     
     // Sort descending (newest first)
-    sortDescBtn.addEventListener('click', () => {
+    sortDescBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (window.mangaChapters) {
             const sortedChapters = [...window.mangaChapters];
             renderChapterList(sortedChapters, chapterList, window.currentMangaSource || 'AsuraScanz');
             updateSortButtons(sortDescBtn, sortAscBtn);
         }
     });
+    
+    // Set initial state - descending by default
+    sortDescBtn.classList.add('active');
+    sortAscBtn.classList.remove('active');
 }
 
 /**
@@ -1948,6 +1967,11 @@ function logout() {
 document.addEventListener('DOMContentLoaded', function() {
     // Wait for auth.js to load
     setTimeout(initializeAuthUI, 100);
+    
+    // Initialize chapter discussion if on reader page
+    if (document.body.dataset.page === 'reader') {
+        setupChapterDiscussionHandlers();
+    }
 });
 
 /**
@@ -2160,4 +2184,158 @@ function showMessage(message, type = 'error') {
     setTimeout(() => {
         messageEl.remove();
     }, 3000);
+}
+
+/**
+ * Setup chapter discussion handlers
+ */
+function setupChapterDiscussionHandlers() {
+    const startDiscussionBtn = document.getElementById('start-chapter-discussion-btn');
+    const discussionForm = document.getElementById('chapter-discussion-form');
+    const cancelDiscussionBtn = document.getElementById('cancel-chapter-discussion');
+    const newDiscussionForm = document.getElementById('new-chapter-discussion-form');
+    
+    if (startDiscussionBtn) {
+        startDiscussionBtn.addEventListener('click', () => {
+            if (window.auth && window.auth.isAuthenticated()) {
+                discussionForm.style.display = 'block';
+                startDiscussionBtn.style.display = 'none';
+            } else {
+                window.location.href = 'auth.html';
+            }
+        });
+    }
+    
+    if (cancelDiscussionBtn) {
+        cancelDiscussionBtn.addEventListener('click', () => {
+            discussionForm.style.display = 'none';
+            startDiscussionBtn.style.display = 'block';
+            newDiscussionForm.reset();
+        });
+    }
+    
+    if (newDiscussionForm) {
+        newDiscussionForm.addEventListener('submit', handleChapterDiscussionSubmit);
+    }
+}
+
+/**
+ * Handle chapter discussion form submission
+ */
+async function handleChapterDiscussionSubmit(e) {
+    e.preventDefault();
+    
+    if (!window.auth || !window.auth.isAuthenticated()) {
+        showMessage('Please sign in to add comments', 'error');
+        return;
+    }
+    
+    const content = document.getElementById('chapter-discussion-content').value.trim();
+    const hasSpoilers = document.getElementById('chapter-spoiler-warning').checked;
+    
+    if (!content) {
+        showMessage('Please enter a comment', 'error');
+        return;
+    }
+    
+    try {
+        // For now, just add to the discussions list locally
+        addChapterDiscussionToList({
+            id: Date.now(),
+            content,
+            has_spoilers: hasSpoilers,
+            author: {
+                username: window.auth.getCurrentUser().username
+            },
+            created_at: new Date().toISOString(),
+            like_count: 0
+        });
+        
+        // Hide form and show success
+        document.getElementById('chapter-discussion-form').style.display = 'none';
+        document.getElementById('start-chapter-discussion-btn').style.display = 'block';
+        document.getElementById('new-chapter-discussion-form').reset();
+        
+        showMessage('Comment posted successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        showMessage('Failed to post comment. Please try again.', 'error');
+    }
+}
+
+/**
+ * Add chapter discussion to the list
+ */
+function addChapterDiscussionToList(comment) {
+    const discussionsList = document.getElementById('chapter-discussions-list');
+    const emptyDiscussions = discussionsList.querySelector('.empty-discussions');
+    
+    if (emptyDiscussions) {
+        emptyDiscussions.remove();
+    }
+    
+    const commentHtml = createChapterCommentItem(comment);
+    discussionsList.insertAdjacentHTML('afterbegin', commentHtml);
+    
+    // Update comment count
+    const discussionCount = document.querySelector('#chapter-discussion-section .discussion-count');
+    if (discussionCount) {
+        const currentCount = parseInt(discussionCount.textContent) || 0;
+        discussionCount.textContent = `${currentCount + 1} comments`;
+    }
+}
+
+/**
+ * Create chapter comment item HTML
+ */
+function createChapterCommentItem(comment) {
+    const timeAgo = formatTimeAgo(comment.created_at);
+    const spoilerWarning = comment.has_spoilers ? '<span class="spoiler-warning">SPOILERS</span>' : '';
+    
+    return `
+        <div class="discussion-item">
+            <div class="discussion-item-header">
+                <div>
+                    <h4 class="discussion-item-title">Chapter Comment ${spoilerWarning}</h4>
+                    <div class="discussion-item-meta">
+                        <span>${timeAgo}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="discussion-item-content">
+                ${comment.content}
+            </div>
+            
+            <div class="discussion-item-footer">
+                <div class="discussion-item-author">
+                    <span>by ${comment.author.username}</span>
+                </div>
+                
+                <div class="discussion-item-actions">
+                    <button class="discussion-action" onclick="likeChapterComment(${comment.id})">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 9V5a3 3 0 0 0-6 0v4"></path>
+                            <rect x="2" y="9" width="20" height="12" rx="2" ry="2"></rect>
+                        </svg>
+                        Like (${comment.like_count || 0})
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Like chapter comment
+ */
+function likeChapterComment(commentId) {
+    if (!window.auth || !window.auth.isAuthenticated()) {
+        showMessage('Please sign in to like comments', 'error');
+        return;
+    }
+    
+    // For now, just show a message
+    showMessage('Comment liked!', 'success');
 }
