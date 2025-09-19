@@ -257,64 +257,137 @@ def scrape_mangapark_details(detail_url):
             logger.warning(f"Failed to fetch details for {detail_url}")
             return None
         
+        # Log response status for debugging
+        logger.info(f"Response status: {response.status_code}")
+        
         soup = BeautifulSoup(response.content, 'lxml')
         
-        # Extract title
+        # Log page title for debugging
+        page_title = soup.select_one('title')
+        if page_title:
+            logger.info(f"Page title: {page_title.get_text(strip=True)}")
+        
+        # Check if we got a valid page
+        if "404" in response.text or "not found" in response.text.lower():
+            logger.warning(f"Page returned 404 or not found for {detail_url}")
+            return None
+        
+        # Extract title - try multiple selectors
         title = "Unknown Title"
-        title_elem = soup.select_one('h1.text-2xl.font-bold')
-        if title_elem:
-            title = title_elem.get_text(strip=True)
+        title_selectors = [
+            'h1.text-2xl.font-bold',
+            'h1',
+            '.title',
+            'h1.entry-title'
+        ]
+        for selector in title_selectors:
+            title_elem = soup.select_one(selector)
+            if title_elem:
+                title = title_elem.get_text(strip=True)
+                break
         
-        # Extract cover image
+        # Extract cover image - try multiple selectors
         cover_image = ""
-        cover_elem = soup.select_one('div.relative img')
-        if cover_elem:
-            cover_image = cover_elem.get('src', '')
-            if cover_image and not cover_image.startswith('http'):
-                # Handle relative URLs like /thumb/W600/...
-                if cover_image.startswith('/'):
-                    cover_image = MANGA_PARK_BASE_URL + cover_image
-                else:
-                    cover_image = urljoin(MANGA_PARK_BASE_URL, cover_image)
+        cover_selectors = [
+            'div.relative img',
+            'img[alt*="' + title + '"]',
+            '.cover img',
+            'img[src*="/thumb/"]',
+            'img'
+        ]
+        for selector in cover_selectors:
+            cover_elem = soup.select_one(selector)
+            if cover_elem:
+                cover_image = cover_elem.get('src', '')
+                if cover_image and not cover_image.startswith('http'):
+                    # Handle relative URLs like /thumb/W600/...
+                    if cover_image.startswith('/'):
+                        cover_image = MANGA_PARK_BASE_URL + cover_image
+                    else:
+                        cover_image = urljoin(MANGA_PARK_BASE_URL, cover_image)
+                break
         
-        # Extract description
+        # Extract description - try multiple selectors
         description = "No description available"
-        desc_elem = soup.select_one('div.prose p')
-        if desc_elem:
-            description = desc_elem.get_text(strip=True)
+        desc_selectors = [
+            'div.prose p',
+            '.description p',
+            '.summary p',
+            'p'
+        ]
+        for selector in desc_selectors:
+            desc_elem = soup.select_one(selector)
+            if desc_elem:
+                description = desc_elem.get_text(strip=True)
+                if description and len(description) > 10:  # Make sure it's not just a short text
+                    break
         
-        # Extract rating
+        # Extract rating - try multiple selectors
         rating = "N/A"
-        rating_elem = soup.select_one('span.text-yellow-500.font-bold')
-        if rating_elem:
-            rating = rating_elem.get_text(strip=True)
+        rating_selectors = [
+            'span.text-yellow-500.font-bold',
+            '.rating',
+            '.score',
+            'span[class*="rating"]'
+        ]
+        for selector in rating_selectors:
+            rating_elem = soup.select_one(selector)
+            if rating_elem:
+                rating = rating_elem.get_text(strip=True)
+                break
         
-        # Extract status
+        # Extract status - try multiple selectors
         status = "Unknown"
-        status_elem = soup.select_one('span.badge')
-        if status_elem:
-            status = status_elem.get_text(strip=True)
+        status_selectors = [
+            'span.badge',
+            '.status',
+            '.state'
+        ]
+        for selector in status_selectors:
+            status_elem = soup.select_one(selector)
+            if status_elem:
+                status = status_elem.get_text(strip=True)
+                break
         
-        # Extract genres
+        # Extract genres - try multiple selectors
         genres = []
-        genre_elements = soup.select('div.flex.flex-wrap a.badge')
-        for genre_elem in genre_elements:
-            genre_text = genre_elem.get_text(strip=True)
-            if genre_text:
-                genres.append(genre_text)
+        genre_selectors = [
+            'div.flex.flex-wrap a.badge',
+            '.genres a',
+            '.tags a',
+            'a[href*="genre"]'
+        ]
+        for selector in genre_selectors:
+            genre_elements = soup.select(selector)
+            if genre_elements:
+                for genre_elem in genre_elements:
+                    genre_text = genre_elem.get_text(strip=True)
+                    if genre_text and genre_text not in ['🇯🇵', '🇰🇷', '🇨🇳']:
+                        genres.append(genre_text)
+                if genres:  # If we found genres, break
+                    break
         
-        # Extract author
+        # Extract author - try multiple selectors
         author = "Unknown"
-        author_elem = soup.select_one('div.text-sm span:contains("Author")')
-        if author_elem:
-            author = author_elem.find_next_sibling().get_text(strip=True)
+        author_selectors = [
+            'div.text-sm span:contains("Author")',
+            '.author',
+            '.creator',
+            'span:contains("Author")'
+        ]
+        for selector in author_selectors:
+            author_elem = soup.select_one(selector)
+            if author_elem:
+                author = author_elem.find_next_sibling().get_text(strip=True) if author_elem.find_next_sibling() else author_elem.get_text(strip=True)
+                break
         
-        # Extract chapters - try multiple selectors
+        # Extract chapters - try multiple selectors and be more specific
         chapters = []
         chapter_selectors = [
             'div.chapter-list a',
             'div.flex.flex-nowrap.justify-between a.link-hover.link-primary',
-            'a[href*="/title/"]',
+            'a[href*="/title/"][href*="ch-"]',
+            'a[href*="chapter"]',
             'div.flex.border-b.border-b-base-200.pb-3 a'
         ]
         
@@ -322,9 +395,20 @@ def scrape_mangapark_details(detail_url):
         for selector in chapter_selectors:
             elements = soup.select(selector)
             if elements:
-                chapter_list_elements = elements
-                logger.info(f"Found {len(elements)} chapters with selector: {selector}")
-                break
+                # Filter out non-chapter links
+                chapter_links = [elem for elem in elements if 'ch-' in elem.get('href', '') or 'chapter' in elem.get('href', '').lower()]
+                if chapter_links:
+                    chapter_list_elements = chapter_links
+                    logger.info(f"Found {len(chapter_links)} chapters with selector: {selector}")
+                    break
+        
+        # If no chapters found with specific selectors, try a broader approach
+        if not chapter_list_elements:
+            all_links = soup.select('a[href*="/title/"]')
+            chapter_links = [link for link in all_links if 'ch-' in link.get('href', '') or 'chapter' in link.get('href', '').lower()]
+            if chapter_links:
+                chapter_list_elements = chapter_links
+                logger.info(f"Found {len(chapter_links)} chapters with broad selector")
         
         for chapter_elem in chapter_list_elements:
             try:
