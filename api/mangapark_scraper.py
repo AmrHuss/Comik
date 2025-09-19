@@ -163,10 +163,20 @@ def parse_single_mangapark_item(item):
         if cover_img:
             cover_url = cover_img.get('src', '')
             if cover_url and not cover_url.startswith('http'):
-                cover_url = urljoin(MANGA_PARK_BASE_URL, cover_url)
+                # Handle relative URLs like /thumb/W600/...
+                if cover_url.startswith('/'):
+                    cover_url = MANGA_PARK_BASE_URL + cover_url
+                else:
+                    cover_url = urljoin(MANGA_PARK_BASE_URL, cover_url)
         
         if not cover_url:
             return None
+        
+        # Extract latest chapter first
+        latest_chapter = "N/A"
+        chapter_link = item.select_one('div.flex.flex-nowrap.justify-between a.link-hover.link-primary')
+        if chapter_link:
+            latest_chapter = chapter_link.get_text(strip=True)
         
         # Extract rating
         rating = "N/A"
@@ -174,35 +184,38 @@ def parse_single_mangapark_item(item):
         if rating_elem:
             rating = rating_elem.get_text(strip=True)
         
-        # Extract chapter count (followers)
+        # Extract chapter count - use a more reliable method
         chapter_count = 0
-        followers_elem = item.select_one('span.swap-off span.ml-1')
-        if followers_elem:
-            followers_text = followers_elem.get_text(strip=True)
-            # Convert "11.3K" to 11300, "3.5K" to 3500, etc.
-            if 'K' in followers_text.upper():
-                try:
-                    chapter_count = int(float(followers_text.replace('K', '').replace('k', '')) * 1000)
-                except:
-                    chapter_count = 0
-            else:
-                try:
-                    chapter_count = int(followers_text.replace(',', ''))
-                except:
-                    chapter_count = 0
+        # Try to get chapter count from the latest chapter text
+        if latest_chapter and latest_chapter != "N/A":
+            import re
+            chapter_match = re.search(r'(\d+(?:\.\d+)?)', latest_chapter)
+            if chapter_match:
+                chapter_count = int(chapter_match.group(1))
         
-        # Extract latest chapter
-        latest_chapter = "N/A"
-        chapter_link = item.select_one('div.flex.flex-nowrap.justify-between a.link-hover.link-primary')
-        if chapter_link:
-            latest_chapter = chapter_link.get_text(strip=True)
+        # Fallback to followers count if no chapter info
+        if chapter_count == 0:
+            followers_elem = item.select_one('span.swap-off span.ml-1')
+            if followers_elem:
+                followers_text = followers_elem.get_text(strip=True)
+                # Convert "11.3K" to 11300, "3.5K" to 3500, etc.
+                if 'K' in followers_text.upper():
+                    try:
+                        chapter_count = int(float(followers_text.replace('K', '').replace('k', '')) * 1000)
+                    except:
+                        chapter_count = 0
+                else:
+                    try:
+                        chapter_count = int(followers_text.replace(',', ''))
+                    except:
+                        chapter_count = 0
         
         # Extract genres
         genres = []
-        genre_elements = item.select('div.flex.flex-wrap.text-xs.opacity-70 span span.whitespace-nowrap')
+        genre_elements = item.select('div.flex.flex-wrap.text-xs.opacity-70 span')
         for genre_elem in genre_elements:
             genre_text = genre_elem.get_text(strip=True)
-            if genre_text and genre_text not in ['🇯🇵', '🇰🇷', '🇨🇳']:  # Skip flag emojis
+            if genre_text and genre_text not in ['🇯🇵', '🇰🇷', '🇨🇳', ',']:  # Skip flag emojis and commas
                 genres.append(genre_text)
         
         # Extract author (if available)
@@ -258,7 +271,11 @@ def scrape_mangapark_details(detail_url):
         if cover_elem:
             cover_image = cover_elem.get('src', '')
             if cover_image and not cover_image.startswith('http'):
-                cover_image = urljoin(MANGA_PARK_BASE_URL, cover_image)
+                # Handle relative URLs like /thumb/W600/...
+                if cover_image.startswith('/'):
+                    cover_image = MANGA_PARK_BASE_URL + cover_image
+                else:
+                    cover_image = urljoin(MANGA_PARK_BASE_URL, cover_image)
         
         # Extract description
         description = "No description available"
@@ -292,9 +309,22 @@ def scrape_mangapark_details(detail_url):
         if author_elem:
             author = author_elem.find_next_sibling().get_text(strip=True)
         
-        # Extract chapters
+        # Extract chapters - try multiple selectors
         chapters = []
-        chapter_list_elements = soup.select('div.chapter-list a')
+        chapter_selectors = [
+            'div.chapter-list a',
+            'div.flex.flex-nowrap.justify-between a.link-hover.link-primary',
+            'a[href*="/title/"]',
+            'div.flex.border-b.border-b-base-200.pb-3 a'
+        ]
+        
+        chapter_list_elements = []
+        for selector in chapter_selectors:
+            elements = soup.select(selector)
+            if elements:
+                chapter_list_elements = elements
+                logger.info(f"Found {len(elements)} chapters with selector: {selector}")
+                break
         
         for chapter_elem in chapter_list_elements:
             try:
