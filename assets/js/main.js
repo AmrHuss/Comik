@@ -276,15 +276,38 @@ async function loadHomepageContent() {
     }
     
     try {
-        console.log('Making API request to:', `${API_BASE_URL}/unified-popular`);
-        const result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
-        console.log('API response received:', result);
+        // Try quick load first for faster initial response
+        console.log('Making API request to:', `${API_BASE_URL}/quick-load`);
+        let result = await makeApiRequest(`${API_BASE_URL}/quick-load`);
+        console.log('Quick load response received:', result);
         
-        if (trendingGrid) {
-            displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
-        }
-        if (updatesGrid) {
-            displayEnhancedMangaGrid(result.data, updatesGrid);
+        // If quick load returned cached data, use it
+        if (result.data && result.data.length > 0) {
+            if (trendingGrid) {
+                displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
+            }
+            if (updatesGrid) {
+                displayEnhancedMangaGrid(result.data, updatesGrid);
+            }
+        } else {
+            // If no cached data, show loading and fetch full data
+            if (trendingGrid) {
+                showLoadingState(trendingGrid, 'Loading trending manga...');
+            }
+            if (updatesGrid) {
+                showLoadingState(updatesGrid, 'Loading latest updates...');
+            }
+            
+            console.log('Fetching full data from:', `${API_BASE_URL}/unified-popular`);
+            result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+            console.log('Full API response received:', result);
+            
+            if (trendingGrid) {
+                displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
+            }
+            if (updatesGrid) {
+                displayEnhancedMangaGrid(result.data, updatesGrid);
+            }
         }
     } catch (error) {
         console.error('Error loading homepage content:', error);

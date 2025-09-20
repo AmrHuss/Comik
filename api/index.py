@@ -23,8 +23,44 @@ from bs4 import BeautifulSoup
 import traceback
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from cachetools import TTLCache
 import threading
+
+# Fallback cache implementation if cachetools is not available
+try:
+    from cachetools import TTLCache
+    CACHETOOLS_AVAILABLE = True
+except ImportError:
+    CACHETOOLS_AVAILABLE = False
+    logger.warning("cachetools not available, using fallback cache implementation")
+    
+    class TTLCache:
+        def __init__(self, maxsize=100, ttl=3600):
+            self.maxsize = maxsize
+            self.ttl = ttl
+            self._cache = {}
+            self._timestamps = {}
+        
+        def get(self, key):
+            if key in self._cache:
+                if time.time() - self._timestamps[key] < self.ttl:
+                    return self._cache[key]
+                else:
+                    del self._cache[key]
+                    del self._timestamps[key]
+            return None
+        
+        def __setitem__(self, key, value):
+            if len(self._cache) >= self.maxsize:
+                # Remove oldest entry
+                oldest_key = min(self._timestamps.keys(), key=lambda k: self._timestamps[k])
+                del self._cache[oldest_key]
+                del self._timestamps[oldest_key]
+            
+            self._cache[key] = value
+            self._timestamps[key] = time.time()
+        
+        def __len__(self):
+            return len(self._cache)
 # MangaPark scraper temporarily disabled
 # from api.mangapark_scraper import scrape_mangapark_latest, scrape_mangapark_details, search_mangapark_by_title
 
@@ -81,6 +117,83 @@ performance_stats = {
     'total_requests': 0,
     'avg_response_time': 0
 }
+
+# Warm-up flag
+cache_warmed_up = False
+
+def warm_up_cache():
+    """Warm up the cache with popular data on startup."""
+    global cache_warmed_up
+    if cache_warmed_up:
+        return
+    
+    try:
+        logger.info("Starting cache warm-up...")
+        
+        # Warm up popular manga cache
+        def warm_popular():
+            try:
+                # Get AsuraScanz data
+                asura_response = make_request('https://asurascanz.com/')
+                if asura_response:
+                    asura_soup = BeautifulSoup(asura_response.content, 'lxml')
+                    asura_manga = parse_manga_cards_from_soup(asura_soup)
+                    for manga in asura_manga:
+                        manga['source'] = 'AsuraScanz'
+                    return asura_manga
+                return []
+            except Exception as e:
+                logger.warning(f"Failed to warm AsuraScanz cache: {e}")
+                return []
+        
+        def warm_webtoons():
+            try:
+                return scrape_webtoons_action_genre()
+            except Exception as e:
+                logger.warning(f"Failed to warm Webtoons cache: {e}")
+                return []
+        
+        # Execute warm-up concurrently
+        future_to_source = {
+            thread_pool.submit(warm_popular): 'AsuraScanz',
+            thread_pool.submit(warm_webtoons): 'Webtoons'
+        }
+        
+        asura_manga = []
+        webtoons_manga = []
+        
+        for future in as_completed(future_to_source):
+            source = future_to_source[future]
+            try:
+                result = future.result()
+                if source == 'AsuraScanz':
+                    asura_manga = result
+                else:
+                    webtoons_manga = result
+                logger.info(f"Warmed {source} cache: {len(result)} items")
+            except Exception as e:
+                logger.error(f"Error warming {source} cache: {e}")
+        
+        # Cache the combined result
+        all_manga = asura_manga + webtoons_manga
+        response_data = {
+            'success': True,
+            'data': all_manga,
+            'sources': {
+                'AsuraScanz': len(asura_manga),
+                'Webtoons': len(webtoons_manga)
+            }
+        }
+        
+        set_cached_data(popular_cache, 'unified_popular', response_data)
+        cache_warmed_up = True
+        logger.info(f"Cache warm-up completed: {len(all_manga)} items cached")
+        
+    except Exception as e:
+        logger.error(f"Cache warm-up failed: {e}")
+
+# Start warm-up in background
+thread_pool.submit(warm_up_cache)
 
 def get_headers():
     """Get standardized headers for HTTP requests."""
@@ -515,12 +628,16 @@ def get_manga_details():
         
         logger.info(f"Fetching manga details for: {detail_url} from {source}")
         
-        if source.lower() == 'webtoons':
-            # Use Webtoons scraper
-            manga_details = scrape_webtoons_details(detail_url)
-        else:
-            # Use AsuraScanz scraper (default)
-            manga_details = scrape_manga_details(detail_url)
+        # Use concurrent execution for faster response
+        def fetch_manga_details():
+            if source.lower() == 'webtoons':
+                return scrape_webtoons_details(detail_url)
+            else:
+                return scrape_manga_details(detail_url)
+        
+        # Execute in thread pool for non-blocking response
+        future = thread_pool.submit(fetch_manga_details)
+        manga_details = future.result(timeout=30)  # 30 second timeout
         
         if not manga_details:
             return jsonify({
@@ -1278,6 +1395,36 @@ def get_performance_stats():
         return jsonify({
             'success': False,
             'error': 'Failed to get performance statistics'
+        }), 500
+
+@app.route('/api/quick-load', methods=['GET'])
+def get_quick_load():
+    """Get quick loading data for initial page load."""
+    try:
+        # Return cached popular data immediately if available
+        cached_data = get_cached_data(popular_cache, 'unified_popular')
+        if cached_data:
+            logger.info("Quick load: returning cached popular data")
+            return jsonify(cached_data)
+        
+        # If no cache, return minimal data for fast response
+        logger.info("Quick load: returning minimal data")
+        return jsonify({
+            'success': True,
+            'data': [],
+            'sources': {
+                'AsuraScanz': 0,
+                'Webtoons': 0
+            },
+            'loading': True,
+            'message': 'Loading popular manga...'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in quick load: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to load initial data'
         }), 500
 
 # Webtoons endpoints
