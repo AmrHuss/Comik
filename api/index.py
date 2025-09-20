@@ -954,13 +954,58 @@ def get_unified_chapter_data():
         if source.lower() == 'asurascanz':
             # Use existing AsuraScanz chapter scraper
             try:
-                # Use the existing chapter data endpoint logic
-                # This would need to be implemented or we can use a different approach
-                images = []  # Placeholder - would need proper implementation
-                if images:
+                response = make_request(chapter_url)
+                
+                if not response:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Failed to fetch chapter page'
+                    }), 500
+                
+                soup = BeautifulSoup(response.content, 'lxml')
+                
+                # Find the reader area with multiple possible selectors
+                reader_area = None
+                reader_selectors = [
+                    '#readerarea',
+                    '.reading-content',
+                    '.reader-area',
+                    '#reading-content',
+                    '.chapter-content'
+                ]
+                
+                for selector in reader_selectors:
+                    reader_area = soup.select_one(selector)
+                    if reader_area:
+                        logger.info(f"Found reader area with selector: {selector}")
+                        break
+                
+                if not reader_area:
+                    logger.warning(f"Could not find reader area in chapter: {chapter_url}")
+                    return jsonify({
+                        'success': False,
+                        'error': 'Could not find the reader area on the chapter page'
+                    }), 404
+                
+                # Extract all images from the reader area
+                images = reader_area.select('img')
+                logger.info(f"Found {len(images)} images in reader area")
+                
+                image_urls = []
+                for img in images:
+                    src = img.get('src') or img.get('data-src')
+                    if src:
+                        # Convert relative URLs to absolute
+                        if src.startswith('//'):
+                            src = 'https:' + src
+                        elif src.startswith('/'):
+                            src = urljoin(chapter_url, src)
+                        image_urls.append(src)
+                
+                if image_urls:
                     return jsonify({
                         'success': True,
-                        'image_urls': images,
+                        'image_urls': image_urls,
                         'source': 'AsuraScanz'
                     })
                 else:
@@ -968,6 +1013,7 @@ def get_unified_chapter_data():
                         'success': False,
                         'error': 'No chapter images found'
                     }), 404
+                    
             except Exception as e:
                 logger.error(f"Error scraping AsuraScanz chapter: {e}")
                 return jsonify({
