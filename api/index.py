@@ -103,13 +103,13 @@ session.headers.update({
 # Thread pool for concurrent requests
 thread_pool = ThreadPoolExecutor(max_workers=10, thread_name_prefix="scraper")
 
-# Caching layer with TTL
-# Manga details cache: 2 hours TTL, max 1000 items
-manga_cache = TTLCache(maxsize=1000, ttl=7200)  # 2 hours
-# Chapter data cache: 1 hour TTL, max 500 items  
-chapter_cache = TTLCache(maxsize=500, ttl=3600)  # 1 hour
-# Popular manga cache: 30 minutes TTL, max 100 items
-popular_cache = TTLCache(maxsize=100, ttl=1800)  # 30 minutes
+# Caching layer with TTL - Optimized for faster loading
+# Manga details cache: 4 hours TTL, max 2000 items (more aggressive caching)
+manga_cache = TTLCache(maxsize=2000, ttl=14400)  # 4 hours
+# Chapter data cache: 2 hours TTL, max 1000 items (more aggressive caching)
+chapter_cache = TTLCache(maxsize=1000, ttl=7200)  # 2 hours
+# Popular manga cache: 1 hour TTL, max 200 items (more aggressive caching)
+popular_cache = TTLCache(maxsize=200, ttl=3600)  # 1 hour
 
 # Thread-safe cache access
 cache_lock = threading.Lock()
@@ -190,11 +190,61 @@ def warm_up_cache():
         }
         
         set_cached_data(popular_cache, 'unified_popular', response_data)
+        
+        # Pre-cache details for top 5 popular manga
+        logger.info("Pre-caching details for top popular manga...")
+        for manga in all_manga[:5]:
+            try:
+                if manga.get('source') == 'AsuraScanz' and manga.get('detail_url'):
+                    # Pre-cache AsuraScanz details
+                    cache_key = f"manga_details:AsuraScanz:{manga['detail_url']}"
+                    if not get_cached_data(manga_cache, cache_key):
+                        thread_pool.submit(lambda m=manga: preload_manga_details(m))
+                elif manga.get('source') == 'Webtoons' and manga.get('detail_url'):
+                    # Pre-cache Webtoons details
+                    cache_key = f"manga_details:Webtoons:{manga['detail_url']}"
+                    if not get_cached_data(manga_cache, cache_key):
+                        thread_pool.submit(lambda m=manga: preload_manga_details(m))
+            except Exception as e:
+                logger.warning(f"Failed to pre-cache details for {manga.get('title', 'unknown')}: {e}")
+        
         cache_warmed_up = True
         logger.info(f"Cache warm-up completed: {len(all_manga)} items cached")
         
     except Exception as e:
         logger.error(f"Cache warm-up failed: {e}")
+
+def preload_manga_details(manga):
+    """Preload manga details in background."""
+    try:
+        source = manga.get('source', 'AsuraScanz')
+        detail_url = manga.get('detail_url')
+        if not detail_url:
+            return
+        
+        cache_key = f"manga_details:{source}:{detail_url}"
+        
+        # Check if already cached
+        if get_cached_data(manga_cache, cache_key):
+            return
+        
+        logger.info(f"Pre-loading details for {manga.get('title', 'unknown')}")
+        
+        if source.lower() == 'webtoons':
+            manga_details = scrape_webtoons_details(detail_url)
+        else:
+            manga_details = scrape_manga_details(detail_url)
+        
+        if manga_details:
+            response_data = {
+                'success': True,
+                'data': manga_details
+            }
+            set_cached_data(manga_cache, cache_key, response_data)
+            logger.info(f"Pre-cached details for {manga.get('title', 'unknown')}")
+        
+    except Exception as e:
+        logger.warning(f"Failed to preload details for {manga.get('title', 'unknown')}: {e}")
 
 # Start warm-up in background
 thread_pool.submit(warm_up_cache)

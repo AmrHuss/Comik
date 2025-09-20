@@ -281,16 +281,38 @@ async function loadHomepageContent() {
         let result = await makeApiRequest(`${API_BASE_URL}/quick-load`);
         console.log('Quick load response received:', result);
         
-        // If quick load returned cached data, use it
+        // If quick load returned cached data, use it immediately
         if (result.data && result.data.length > 0) {
+            console.log('Using cached data for instant display');
             if (trendingGrid) {
                 displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
             }
             if (updatesGrid) {
                 displayEnhancedMangaGrid(result.data, updatesGrid);
             }
+            
+            // In background, fetch fresh data and update if different
+            setTimeout(async () => {
+                try {
+                    console.log('Fetching fresh data in background...');
+                    const freshResult = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+                    if (freshResult.data && freshResult.data.length > 0) {
+                        console.log('Updating with fresh data');
+                        if (trendingGrid) {
+                            displayEnhancedMangaGrid(freshResult.data.slice(0, 6), trendingGrid);
+                        }
+                        if (updatesGrid) {
+                            displayEnhancedMangaGrid(freshResult.data, updatesGrid);
+                        }
+                    }
+                } catch (error) {
+                    console.log('Background refresh failed, using cached data');
+                }
+            }, 1000);
+            
         } else {
             // If no cached data, show loading and fetch full data
+            console.log('No cached data, fetching fresh data...');
             if (trendingGrid) {
                 showLoadingState(trendingGrid, 'Loading trending manga...');
             }
@@ -1521,7 +1543,7 @@ function displayEnhancedMangaGrid(mangaList, container) {
  * Initialize chapter filtering and sorting functionality
  */
 function initializeChapterControls() {
-    // Wait for DOM to be ready
+    // Wait for DOM to be ready with a single timeout
     setTimeout(() => {
         const chapterSearch = document.getElementById('chapter-search');
         const clearButton = document.getElementById('clear-chapter-search');
@@ -1530,8 +1552,7 @@ function initializeChapterControls() {
         const sortDescBtn = document.getElementById('sort-desc');
         
         if (!chapterSearch || !chapterList) {
-            console.log('Chapter controls not found, retrying...');
-            setTimeout(initializeChapterControls, 1000);
+            console.log('Chapter controls not found, skipping initialization');
             return;
         }
         
