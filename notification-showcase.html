@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>30 Notification Styles - ManhwaVerse</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="notification-showcase.css">
+    <style>
+        /* Additional inline styles for remaining notifications */
+        .notification-16 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            border-top: 3px solid #10b981;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-17 {
+            position: relative;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-18 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 1.25rem;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-19 {
+            position: relative;
+            background: #1e293b;
+            border-radius: 6px;
+            padding: 1rem 1.5rem;
+            border-left: 5px solid #f59e0b;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-20 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-21 {
+            position: relative;
+            background: linear-gradient(135deg, #1f2937, #374151);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-22 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-23 {
+            position: relative;
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 1.25rem;
+            border: 1px solid #8b5cf6;
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-24 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 14px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-25 {
+            position: relative;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-26 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            border-left: 4px solid #ef4444;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-27 {
+            position: relative;
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-28 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            box-shadow: 0 8px 32px rgba(6, 182, 212, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-29 {
+            position: relative;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border-radius: 10px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .notification-30 {
+            position: relative;
+            background: rgba(15, 15, 35, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 18px;
+            padding: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Common icon and content styles for all notifications */
+        .notification-16 .icon, .notification-17 .icon, .notification-18 .icon, .notification-19 .icon, .notification-20 .icon,
+        .notification-21 .icon, .notification-22 .icon, .notification-23 .icon, .notification-24 .icon, .notification-25 .icon,
+        .notification-26 .icon, .notification-27 .icon, .notification-28 .icon, .notification-29 .icon, .notification-30 .icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .notification-16 .icon { background: #10b981; }
+        .notification-17 .icon { background: linear-gradient(135deg, #8b5cf6, #a855f7); }
+        .notification-18 .icon { background: #8b5cf6; }
+        .notification-19 .icon { background: #f59e0b; }
+        .notification-20 .icon { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .notification-21 .icon { background: #10b981; }
+        .notification-22 .icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .notification-23 .icon { background: #8b5cf6; }
+        .notification-24 .icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .notification-25 .icon { background: #06b6d4; }
+        .notification-26 .icon { background: #ef4444; }
+        .notification-27 .icon { background: linear-gradient(135deg, #be185d, #ec4899); }
+        .notification-28 .icon { background: #06b6d4; }
+        .notification-29 .icon { background: #8b5cf6; }
+        .notification-30 .icon { background: linear-gradient(135deg, #10b981, #059669); }
+
+        .notification-16 .content, .notification-17 .content, .notification-18 .content, .notification-19 .content, .notification-20 .content,
+        .notification-21 .content, .notification-22 .content, .notification-23 .content, .notification-24 .content, .notification-25 .content,
+        .notification-26 .content, .notification-27 .content, .notification-28 .content, .notification-29 .content, .notification-30 .content {
+            flex: 1;
+        }
+
+        .notification-16 .message, .notification-17 .message, .notification-18 .message, .notification-19 .message, .notification-20 .message,
+        .notification-21 .message, .notification-22 .message, .notification-23 .message, .notification-24 .message, .notification-25 .message,
+        .notification-26 .message, .notification-27 .message, .notification-28 .message, .notification-29 .message, .notification-30 .message {
+            color: #f9fafb;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .notification-16 .close, .notification-17 .close, .notification-18 .close, .notification-19 .close, .notification-20 .close,
+        .notification-21 .close, .notification-22 .close, .notification-23 .close, .notification-24 .close, .notification-25 .close,
+        .notification-26 .close, .notification-27 .close, .notification-28 .close, .notification-29 .close, .notification-30 .close {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .notification-16 .close:hover, .notification-17 .close:hover, .notification-18 .close:hover, .notification-19 .close:hover, .notification-20 .close:hover,
+        .notification-21 .close:hover, .notification-22 .close:hover, .notification-23 .close:hover, .notification-24 .close:hover, .notification-25 .close:hover,
+        .notification-26 .close:hover, .notification-27 .close:hover, .notification-28 .close:hover, .notification-29 .close:hover, .notification-30 .close:hover {
+            color: #f9fafb;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .demo-button {
+            background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="notification-showcase">
+        <div class="showcase-container">
+            <h1 class="showcase-title">30 Professional Notification Styles</h1>
+            <p style="text-align: center; color: #a1a1aa; margin-bottom: 3rem; font-size: 1.1rem;">
+                Choose the perfect notification style for your ManhwaVerse bookmark system
+            </p>
+            
+            <div class="notification-grid">
+                <!-- Style 1: Minimal Glass -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">1. Minimal Glass</h3>
+                    <p class="demo-description">Clean glass morphism with subtle backdrop blur</p>
+                    <div class="notification-1">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(1)">Test This Style</button>
+                </div>
+
+                <!-- Style 2: Modern Card -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">2. Modern Card</h3>
+                    <p class="demo-description">Gradient card with left accent border</p>
+                    <div class="notification-2">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                            <div class="subtitle">Solo Leveling</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(2)">Test This Style</button>
+                </div>
+
+                <!-- Style 3: Elegant Slide -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">3. Elegant Slide</h3>
+                    <p class="demo-description">Smooth slide animation with cyan accent</p>
+                    <div class="notification-3">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(3)">Test This Style</button>
+                </div>
+
+                <!-- Style 4: Bubble Modern -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">4. Bubble Modern</h3>
+                    <p class="demo-description">Rounded bubble with red gradient icon</p>
+                    <div class="notification-4">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(4)">Test This Style</button>
+                </div>
+
+                <!-- Style 5: Professional Minimal -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">5. Professional Minimal</h3>
+                    <p class="demo-description">Ultra-clean with green left border</p>
+                    <div class="notification-5">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(5)">Test This Style</button>
+                </div>
+
+                <!-- Style 6: Glass Morphism -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">6. Glass Morphism</h3>
+                    <p class="demo-description">Full glass effect with orange gradient</p>
+                    <div class="notification-6">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(6)">Test This Style</button>
+                </div>
+
+                <!-- Style 7: Neon Accent -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">7. Neon Accent</h3>
+                    <p class="demo-description">Purple neon glow with matching border</p>
+                    <div class="notification-7">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(7)">Test This Style</button>
+                </div>
+
+                <!-- Style 8: Corporate Clean -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">8. Corporate Clean</h3>
+                    <p class="demo-description">Business-grade with cyan left border</p>
+                    <div class="notification-8">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(8)">Test This Style</button>
+                </div>
+
+                <!-- Style 9: Dark Elegant -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">9. Dark Elegant</h3>
+                    <p class="demo-description">Sophisticated dark theme with pink gradient</p>
+                    <div class="notification-9">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(9)">Test This Style</button>
+                </div>
+
+                <!-- Style 10: Tech Modern -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">10. Tech Modern</h3>
+                    <p class="demo-description">Tech industry style with green accent</p>
+                    <div class="notification-10">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(10)">Test This Style</button>
+                </div>
+
+                <!-- Style 11: Minimalist -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">11. Minimalist</h3>
+                    <p class="demo-description">Ultra-minimal with tiny purple accent</p>
+                    <div class="notification-11">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(11)">Test This Style</button>
+                </div>
+
+                <!-- Style 12: Bold Contrast -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">12. Bold Contrast</h3>
+                    <p class="demo-description">High contrast black with purple border</p>
+                    <div class="notification-12">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(12)">Test This Style</button>
+                </div>
+
+                <!-- Style 13: Soft Glow -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">13. Soft Glow</h3>
+                    <p class="demo-description">Gentle glow with cyan gradient icon</p>
+                    <div class="notification-13">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(13)">Test This Style</button>
+                </div>
+
+                <!-- Style 14: Rounded Modern -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">14. Rounded Modern</h3>
+                    <p class="demo-description">Fully rounded with orange circular icon</p>
+                    <div class="notification-14">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(14)">Test This Style</button>
+                </div>
+
+                <!-- Style 15: Edge Glow -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">15. Edge Glow</h3>
+                    <p class="demo-description">Inset glow effect with red gradient</p>
+                    <div class="notification-15">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(15)">Test This Style</button>
+                </div>
+
+                <!-- Style 16: Top Border -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">16. Top Border</h3>
+                    <p class="demo-description">Green top border with clean design</p>
+                    <div class="notification-16">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(16)">Test This Style</button>
+                </div>
+
+                <!-- Style 17: Gradient Border -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">17. Gradient Border</h3>
+                    <p class="demo-description">Transparent border with gradient background</p>
+                    <div class="notification-17">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(17)">Test This Style</button>
+                </div>
+
+                <!-- Style 18: Purple Glow -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">18. Purple Glow</h3>
+                    <p class="demo-description">Purple border with matching glow</p>
+                    <div class="notification-18">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(18)">Test This Style</button>
+                </div>
+
+                <!-- Style 19: Thick Border -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">19. Thick Border</h3>
+                    <p class="demo-description">Thick orange left border for emphasis</p>
+                    <div class="notification-19">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(19)">Test This Style</button>
+                </div>
+
+                <!-- Style 20: Rounded Bubble -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">20. Rounded Bubble</h3>
+                    <p class="demo-description">Fully rounded bubble with cyan gradient</p>
+                    <div class="notification-20">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(20)">Test This Style</button>
+                </div>
+
+                <!-- Style 21: Green Accent -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">21. Green Accent</h3>
+                    <p class="demo-description">Green border with matching icon</p>
+                    <div class="notification-21">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(21)">Test This Style</button>
+                </div>
+
+                <!-- Style 22: Double Glow -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">22. Double Glow</h3>
+                    <p class="demo-description">Double border glow with red gradient</p>
+                    <div class="notification-22">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(22)">Test This Style</button>
+                </div>
+
+                <!-- Style 23: Purple Border -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">23. Purple Border</h3>
+                    <p class="demo-description">Solid purple border with dark background</p>
+                    <div class="notification-23">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(23)">Test This Style</button>
+                </div>
+
+                <!-- Style 24: Subtle Glow -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">24. Subtle Glow</h3>
+                    <p class="demo-description">Subtle glow with orange gradient icon</p>
+                    <div class="notification-24">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(24)">Test This Style</button>
+                </div>
+
+                <!-- Style 25: Gradient Card -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">25. Gradient Card</h3>
+                    <p class="demo-description">Full gradient card with cyan icon</p>
+                    <div class="notification-25">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(25)">Test This Style</button>
+                </div>
+
+                <!-- Style 26: Red Accent -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">26. Red Accent</h3>
+                    <p class="demo-description">Red left border with matching icon</p>
+                    <div class="notification-26">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(26)">Test This Style</button>
+                </div>
+
+                <!-- Style 27: Pink Gradient -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">27. Pink Gradient</h3>
+                    <p class="demo-description">Pink gradient icon with clean design</p>
+                    <div class="notification-27">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(27)">Test This Style</button>
+                </div>
+
+                <!-- Style 28: Cyan Glow -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">28. Cyan Glow</h3>
+                    <p class="demo-description">Cyan border with matching glow effect</p>
+                    <div class="notification-28">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(28)">Test This Style</button>
+                </div>
+
+                <!-- Style 29: Dark Gradient -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">29. Dark Gradient</h3>
+                    <p class="demo-description">Dark gradient background with purple icon</p>
+                    <div class="notification-29">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(29)">Test This Style</button>
+                </div>
+
+                <!-- Style 30: Premium Glow -->
+                <div class="notification-demo">
+                    <h3 class="demo-title">30. Premium Glow</h3>
+                    <p class="demo-description">Premium design with inset glow and green gradient</p>
+                    <div class="notification-30">
+                        <div class="icon">✓</div>
+                        <div class="content">
+                            <div class="message">Added to bookmarks</div>
+                        </div>
+                        <button class="close">×</button>
+                    </div>
+                    <button class="demo-button" onclick="testNotification(30)">Test This Style</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function testNotification(styleNumber) {
+            // Create a test notification with the selected style
+            const notification = document.createElement('div');
+            notification.className = `notification-${styleNumber}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 2rem;
+                right: 2rem;
+                z-index: 10000;
+                max-width: 400px;
+                animation: slideInRight 0.3s ease;
+            `;
+            
+            notification.innerHTML = `
+                <div class="icon">✓</div>
+                <div class="content">
+                    <div class="message">Added to bookmarks</div>
+                </div>
+                <button class="close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.animation = 'slideInRight 0.3s ease reverse';
+                    setTimeout(() => {
+                        if (notification.parentElement) {
+                            notification.remove();
+                        }
+                    }, 300);
+                }
+            }, 3000);
+        }
+
+        // Add slide animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%) scale(0.9);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0) scale(1);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
