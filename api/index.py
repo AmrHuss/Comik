@@ -31,7 +31,7 @@ try:
     CACHETOOLS_AVAILABLE = True
 except ImportError:
     CACHETOOLS_AVAILABLE = False
-    logger.warning("cachetools not available, using fallback cache implementation")
+    # Logger will be defined later, so we'll log this after logger is initialized
     
     class TTLCache:
         def __init__(self, maxsize=100, ttl=3600):
@@ -77,6 +77,10 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+
+# Log cachetools availability after logger is initialized
+if not CACHETOOLS_AVAILABLE:
+    logger.warning("cachetools not available, using fallback cache implementation")
 
 # Constants
 BASE_URL = "https://asurascanz.com/"
