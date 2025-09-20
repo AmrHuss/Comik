@@ -276,38 +276,36 @@ async function loadHomepageContent() {
     }
     
     try {
-        // Load initial batch of 20 manhwa
-        console.log('Loading initial batch of 20 manhwa...');
-        const initialResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=0&limit=20`);
-        console.log('Initial load response received:', initialResult);
+        // Load all data first, then paginate on frontend
+        console.log('Loading popular manga data...');
+        const result = await makeApiRequest(`${API_BASE_URL}/popular`);
+        console.log('Popular API response received:', result);
         
-        if (initialResult && initialResult.data && initialResult.data.length > 0) {
-            console.log(`Loaded ${initialResult.data.length} initial items`);
+        if (result && result.data && result.data.length > 0) {
+            console.log(`Loaded ${result.data.length} total items`);
+            
+            // Store all data for pagination
+            window.allMangaData = result.data;
             
             // Display trending (first 6 items)
             if (trendingGrid) {
-                displayEnhancedMangaGrid(initialResult.data.slice(0, 6), trendingGrid);
+                displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
             }
             
-            // Display updates (all 20 items initially)
+            // Display updates (first 20 items initially)
             if (updatesGrid) {
-                displayEnhancedMangaGrid(initialResult.data, updatesGrid);
+                displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
                 
                 // Set up progressive scroll for loading more
                 setupProgressiveScroll(updatesGrid, 20); // Start from offset 20
             }
         } else {
-            console.log('Initial load failed, trying fallback API');
-            // Fallback to full API if load-more fails
-            const result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
-            if (result && result.data) {
-                if (trendingGrid) {
-                    displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
-                }
-                if (updatesGrid) {
-                    displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
-                    setupProgressiveScroll(updatesGrid, 20);
-                }
+            console.log('No data received from API');
+            if (trendingGrid) {
+                showErrorState(trendingGrid, 'No trending manga available', true);
+            }
+            if (updatesGrid) {
+                showErrorState(updatesGrid, 'No updates available', true);
             }
         }
         
@@ -364,13 +362,16 @@ function setupProgressiveScroll(container, startOffset = 0) {
         
         try {
             console.log(`Loading more content from offset ${currentOffset}`);
-            const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=${currentOffset}&limit=20`);
             
-            if (result && result.data && result.data.length > 0) {
-                console.log(`Loaded ${result.data.length} more items`);
+            // Use stored data instead of API call
+            const allData = window.allMangaData || [];
+            const nextBatch = allData.slice(currentOffset, currentOffset + 20);
+            
+            if (nextBatch.length > 0) {
+                console.log(`Loaded ${nextBatch.length} more items from stored data`);
                 
                 // Add new items to container
-                result.data.forEach(manga => {
+                nextBatch.forEach(manga => {
                     try {
                         const cardHTML = createEnhancedMangaCard(manga);
                         if (cardHTML) {
@@ -386,8 +387,8 @@ function setupProgressiveScroll(container, startOffset = 0) {
                     }
                 });
                 
-                currentOffset += result.data.length;
-                hasMoreData = result.has_more || result.data.length === 20;
+                currentOffset += nextBatch.length;
+                hasMoreData = currentOffset < allData.length;
                 
                 if (!hasMoreData) {
                     console.log('No more data available');
