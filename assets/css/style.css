@@ -121,9 +121,9 @@ body {
     transform: scale(1.05);
 }
 
-/* Logo Image Styles */
+/* Logo Image Styles - Bigger with text */
 .nav-logo .logo-image {
-    max-height: 50px;
+    max-height: 70px;
     width: auto;
     object-fit: contain;
     transition: var(--transition-fast);
@@ -133,7 +133,7 @@ body {
     transform: scale(1.05);
 }
 
-/* Logo Text fallback */
+/* Logo Text - Always visible next to logo */
 .nav-logo .logo-text {
     font-size: var(--font-size-xl);
     font-weight: 700;
@@ -141,6 +141,8 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    display: inline !important; /* Always show text */
+    margin-left: 0.5rem;
 }
 
 .nav-menu {
