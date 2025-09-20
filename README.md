@@ -1,6 +1,6 @@
 # ManhwaVerse
 
-s(https://comik-47n3.vercel.app/)
+[Click here to visit the website](https://comik-47n3.vercel.app/)
 
 > **In Memory of Comik.io** - A modern manhwa reader built with Python & Flask
 
