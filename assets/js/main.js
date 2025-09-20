@@ -305,10 +305,21 @@ async function loadHomepageContent() {
                     if (moreResult && moreResult.data && moreResult.data.length > 0) {
                         console.log('Progressive load: adding more items');
                         if (updatesGrid) {
-                            // Append new items directly
+                            // Append new items directly with error checking
                             moreResult.data.forEach(manga => {
-                                const card = createEnhancedMangaCard(manga);
-                                updatesGrid.appendChild(card);
+                                try {
+                                    const cardHTML = createEnhancedMangaCard(manga);
+                                    if (cardHTML) {
+                                        const tempDiv = document.createElement('div');
+                                        tempDiv.innerHTML = cardHTML;
+                                        const card = tempDiv.firstElementChild;
+                                        if (card) {
+                                            updatesGrid.appendChild(card);
+                                        }
+                                    }
+                                } catch (error) {
+                                    console.error('Error creating card for manga:', manga.title, error);
+                                }
                             });
                             
                             // Update load more button
@@ -400,11 +411,22 @@ function addLoadMoreButton(container, totalCount) {
         
         try {
             const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=${currentOffset}&limit=10`);
-            if (result.data && result.data.length > 0) {
-                // Append new items to existing grid
+            if (result && result.data && result.data.length > 0) {
+                // Append new items to existing grid with error checking
                 result.data.forEach(manga => {
-                    const card = createEnhancedMangaCard(manga);
-                    container.appendChild(card);
+                    try {
+                        const cardHTML = createEnhancedMangaCard(manga);
+                        if (cardHTML) {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = cardHTML;
+                            const card = tempDiv.firstElementChild;
+                            if (card) {
+                                container.appendChild(card);
+                            }
+                        }
+                    } catch (cardError) {
+                        console.error('Error creating card for manga:', manga.title, cardError);
+                    }
                 });
                 
                 currentOffset += result.data.length;
