@@ -115,16 +115,24 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    max-width: 300px; /* Allow logo to be much bigger */
 }
 
 .nav-logo .logo-link:hover {
     transform: scale(1.05);
 }
 
-/* Logo Image Styles - Bigger with text */
+/* Logo Image Styles - Much bigger like the example */
 .nav-logo .logo-image {
-    max-height: 70px;
-    width: auto;
+    max-width: 100%;
+    width: initial;
+    height: initial;
+    background: none;
+    opacity: 1;
+    border: 0px;
+    margin: 0px;
+    padding: 0px;
+    display: block;
     object-fit: contain;
     transition: var(--transition-fast);
 }
