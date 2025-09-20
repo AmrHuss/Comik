@@ -276,53 +276,55 @@ async function loadHomepageContent() {
     }
     
     try {
-        // Try quick load first for faster initial response
-        console.log('Making API request to:', `${API_BASE_URL}/quick-load`);
-        let result = await makeApiRequest(`${API_BASE_URL}/quick-load`);
-        console.log('Quick load response received:', result);
+        // Ultra-fast quick load for instant display
+        console.log('Making ultra-fast API request to:', `${API_BASE_URL}/quick-load`);
+        const quickResult = await makeApiRequest(`${API_BASE_URL}/quick-load`);
+        console.log('Quick load response received:', quickResult);
         
-        // If quick load returned cached data, use it immediately
-        if (result.data && result.data.length > 0) {
-            console.log('Using cached data for instant display');
+        // Display quick data immediately if available
+        if (quickResult.data && quickResult.data.length > 0) {
+            console.log('Using ultra-fast cached data for instant display');
             if (trendingGrid) {
-                displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
+                displayEnhancedMangaGrid(quickResult.data.slice(0, 6), trendingGrid);
             }
             if (updatesGrid) {
-                displayEnhancedMangaGrid(result.data, updatesGrid);
+                displayEnhancedMangaGrid(quickResult.data, updatesGrid);
                 
                 // Add "Load More" button if there's more data
-                if (result.has_more) {
-                    addLoadMoreButton(updatesGrid, result.total_count);
+                if (quickResult.has_more) {
+                    addLoadMoreButton(updatesGrid, quickResult.total_count);
                 }
             }
             
-            // In background, fetch fresh data and update if different
+            // Progressive loading: fetch more data in background
             setTimeout(async () => {
                 try {
-                    console.log('Fetching fresh data in background...');
-                    const freshResult = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
-                    if (freshResult.data && freshResult.data.length > 0) {
-                        console.log('Updating with fresh data');
-                        if (trendingGrid) {
-                            displayEnhancedMangaGrid(freshResult.data.slice(0, 6), trendingGrid);
-                        }
+                    console.log('Progressive loading: fetching additional data...');
+                    const moreResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=8&limit=12`);
+                    if (moreResult.data && moreResult.data.length > 0) {
+                        console.log('Progressive load: adding more items');
                         if (updatesGrid) {
-                            displayEnhancedMangaGrid(freshResult.data, updatesGrid);
+                            // Append new items smoothly
+                            moreResult.data.forEach(manga => {
+                                const card = createEnhancedMangaCard(manga);
+                                updatesGrid.appendChild(card);
+                            });
                             
                             // Update load more button
-                            if (freshResult.data.length > 10) {
-                                addLoadMoreButton(updatesGrid, freshResult.data.length);
+                            const existingItems = updatesGrid.querySelectorAll('.manhwa-card').length;
+                            if (moreResult.has_more) {
+                                addLoadMoreButton(updatesGrid, moreResult.total_count);
                             }
                         }
                     }
                 } catch (error) {
-                    console.log('Background refresh failed, using cached data');
+                    console.log('Progressive loading failed, using quick data');
                 }
-            }, 1000);
+            }, 500); // Faster background loading
             
         } else {
-            // If no cached data, show loading and fetch full data
-            console.log('No cached data, fetching fresh data...');
+            // Fallback: show loading and fetch full data
+            console.log('No quick data available, fetching full data...');
             if (trendingGrid) {
                 showLoadingState(trendingGrid, 'Loading trending manga...');
             }
@@ -331,14 +333,19 @@ async function loadHomepageContent() {
             }
             
             console.log('Fetching full data from:', `${API_BASE_URL}/unified-popular`);
-            result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
-            console.log('Full API response received:', result);
+            const fullResult = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+            console.log('Full API response received:', fullResult);
             
             if (trendingGrid) {
-                displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
+                displayEnhancedMangaGrid(fullResult.data.slice(0, 6), trendingGrid);
             }
             if (updatesGrid) {
-                displayEnhancedMangaGrid(result.data, updatesGrid);
+                displayEnhancedMangaGrid(fullResult.data, updatesGrid);
+                
+                // Add load more button if needed
+                if (fullResult.data.length > 8) {
+                    addLoadMoreButton(updatesGrid, fullResult.data.length);
+                }
             }
         }
     } catch (error) {

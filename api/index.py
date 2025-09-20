@@ -103,24 +103,33 @@ session.headers.update({
 # Thread pool for concurrent requests
 thread_pool = ThreadPoolExecutor(max_workers=10, thread_name_prefix="scraper")
 
-# Caching layer with TTL - Optimized for faster loading
-# Manga details cache: 4 hours TTL, max 2000 items (more aggressive caching)
-manga_cache = TTLCache(maxsize=2000, ttl=14400)  # 4 hours
-# Chapter data cache: 2 hours TTL, max 1000 items (more aggressive caching)
-chapter_cache = TTLCache(maxsize=1000, ttl=7200)  # 2 hours
-# Popular manga cache: 1 hour TTL, max 200 items (more aggressive caching)
-popular_cache = TTLCache(maxsize=200, ttl=3600)  # 1 hour
+# Optimized caching layer with intelligent TTL strategies
+# Manga details cache: 6 hours TTL, max 500 items (balance between performance and memory)
+manga_cache = TTLCache(maxsize=500, ttl=21600)  # 6 hours
+# Chapter data cache: 3 hours TTL, max 200 items (chapters change less frequently)
+chapter_cache = TTLCache(maxsize=200, ttl=10800)  # 3 hours
+# Popular manga cache: 30 minutes TTL, max 50 items (fresher data for homepage)
+popular_cache = TTLCache(maxsize=50, ttl=1800)  # 30 minutes
+# Quick load cache: 5 minutes TTL, max 20 items (ultra-fast initial load)
+quick_cache = TTLCache(maxsize=20, ttl=300)  # 5 minutes
 
 # Thread-safe cache access
 cache_lock = threading.Lock()
 
-# Performance monitoring
+# Advanced performance monitoring
 performance_stats = {
     'cache_hits': 0,
     'cache_misses': 0,
     'total_requests': 0,
-    'avg_response_time': 0
+    'avg_response_time': 0,
+    'api_calls_per_minute': 0,
+    'memory_usage_mb': 0,
+    'error_rate': 0,
+    'slow_queries': 0
 }
+
+# Request timing for performance analysis
+request_times = []
 
 # Warm-up flag
 cache_warmed_up = False
@@ -262,7 +271,7 @@ def get_headers():
 
 def make_request(url, retries=MAX_RETRIES):
     """
-    Make HTTP request with retry logic, connection pooling, and performance monitoring.
+    Optimized HTTP request with advanced performance monitoring and connection pooling.
     
     Args:
         url (str): URL to request
@@ -275,8 +284,6 @@ def make_request(url, retries=MAX_RETRIES):
     
     for attempt in range(retries):
         try:
-            logger.info(f"Making request to: {url} (attempt {attempt + 1}/{retries})")
-            
             # Use global session for connection pooling
             response = session.get(
                 url, 
@@ -287,17 +294,29 @@ def make_request(url, retries=MAX_RETRIES):
             response.raise_for_status()
             
             response_time = time.time() - start_time
-            logger.info(f"Request successful: {url} (took {response_time:.2f}s)")
             
-            # Update performance stats
+            # Advanced performance monitoring
             with cache_lock:
                 performance_stats['total_requests'] += 1
-                # Update average response time
-                current_avg = performance_stats['avg_response_time']
-                total_reqs = performance_stats['total_requests']
-                performance_stats['avg_response_time'] = (
-                    (current_avg * (total_reqs - 1) + response_time) / total_reqs
-                )
+                request_times.append(response_time)
+                
+                # Keep only last 100 request times for rolling average
+                if len(request_times) > 100:
+                    request_times.pop(0)
+                
+                # Update rolling average response time
+                performance_stats['avg_response_time'] = sum(request_times) / len(request_times)
+                
+                # Track slow queries (>5 seconds)
+                if response_time > 5.0:
+                    performance_stats['slow_queries'] += 1
+                
+                # Track API calls per minute (simplified)
+                performance_stats['api_calls_per_minute'] = len(request_times) * 6  # Approximate
+            
+            # Log only slow requests to reduce noise
+            if response_time > 2.0:
+                logger.warning(f"Slow request: {url} (took {response_time:.2f}s)")
             
             return response
             
@@ -305,6 +324,8 @@ def make_request(url, retries=MAX_RETRIES):
             logger.warning(f"Request attempt {attempt + 1} failed for {url}: {e}")
             if attempt == retries - 1:
                 logger.error(f"All {retries} attempts failed for {url}")
+                with cache_lock:
+                    performance_stats['error_rate'] += 1
                 return None
     return None
 
@@ -1446,12 +1467,34 @@ def get_unified_chapter_data():
 
 @app.route('/api/performance-stats', methods=['GET'])
 def get_performance_stats():
-    """Get performance and cache statistics."""
+    """Get comprehensive performance and cache statistics."""
     try:
+        import psutil
+        import os
+        
+        # Get memory usage
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        performance_stats['memory_usage_mb'] = round(memory_info.rss / 1024 / 1024, 2)
+        
+        # Calculate error rate
+        total_requests = performance_stats['total_requests']
+        error_count = performance_stats['error_rate']
+        if total_requests > 0:
+            performance_stats['error_rate'] = round((error_count / total_requests) * 100, 2)
+        
         stats = get_cache_stats()
+        stats['performance'] = performance_stats.copy()
+        stats['system'] = {
+            'memory_usage_mb': performance_stats['memory_usage_mb'],
+            'cpu_percent': psutil.cpu_percent(),
+            'uptime_seconds': time.time() - (getattr(get_performance_stats, 'start_time', time.time()))
+        }
+        
         return jsonify({
             'success': True,
-            'data': stats
+            'data': stats,
+            'timestamp': time.time()
         })
     except Exception as e:
         logger.error(f"Error getting performance stats: {e}")
@@ -1460,35 +1503,56 @@ def get_performance_stats():
             'error': 'Failed to get performance statistics'
         }), 500
 
+# Initialize start time for uptime calculation
+get_performance_stats.start_time = time.time()
+
 @app.route('/api/quick-load', methods=['GET'])
 def get_quick_load():
-    """Get quick loading data for initial page load - first 10 items only."""
+    """Ultra-fast loading data for initial page load - optimized for speed."""
     try:
-        # Return cached popular data immediately if available
+        start_time = time.time()
+        
+        # Check quick cache first (5-minute TTL)
+        quick_data = get_cached_data(quick_cache, 'quick_load')
+        if quick_data:
+            logger.info("Quick load: cache hit - returning instantly")
+            return jsonify(quick_data)
+        
+        # Check popular cache as fallback
         cached_data = get_cached_data(popular_cache, 'unified_popular')
         if cached_data and cached_data.get('data'):
-            # Return only first 10 items for instant loading
-            quick_data = cached_data.copy()
-            quick_data['data'] = cached_data['data'][:10]
-            quick_data['has_more'] = len(cached_data['data']) > 10
-            quick_data['total_count'] = len(cached_data['data'])
-            logger.info(f"Quick load: returning first 10 of {len(cached_data['data'])} cached items")
+            # Return only first 8 items for ultra-fast loading
+            quick_data = {
+                'success': True,
+                'data': cached_data['data'][:8],
+                'sources': cached_data.get('sources', {'AsuraScanz': 0, 'Webtoons': 0}),
+                'has_more': len(cached_data['data']) > 8,
+                'total_count': len(cached_data['data']),
+                'cached': True,
+                'load_time': time.time() - start_time
+            }
+            
+            # Cache for quick access
+            set_cached_data(quick_cache, 'quick_load', quick_data)
+            logger.info(f"Quick load: returning first 8 of {len(cached_data['data'])} cached items")
             return jsonify(quick_data)
         
         # If no cache, return minimal data for fast response
-        logger.info("Quick load: returning minimal data")
-        return jsonify({
+        quick_data = {
             'success': True,
             'data': [],
-            'sources': {
-                'AsuraScanz': 0,
-                'Webtoons': 0
-            },
+            'sources': {'AsuraScanz': 0, 'Webtoons': 0},
             'has_more': False,
             'total_count': 0,
             'loading': True,
-            'message': 'Loading popular manga...'
-        })
+            'message': 'Loading popular manga...',
+            'load_time': time.time() - start_time
+        }
+        
+        # Cache the loading state briefly
+        set_cached_data(quick_cache, 'quick_load', quick_data)
+        logger.info("Quick load: returning minimal data")
+        return jsonify(quick_data)
         
     except Exception as e:
         logger.error(f"Error in quick load: {e}")
@@ -1640,7 +1704,7 @@ def search_webtoons():
 
 @app.route('/api/webtoons-image-proxy', methods=['GET'])
 def webtoons_image_proxy():
-    """Proxy endpoint for Webtoons images to bypass hotlinking protection."""
+    """Optimized proxy endpoint for Webtoons images with advanced filtering."""
     try:
         img_url = request.args.get('img_url')
         chapter_url = request.args.get('chapter_url')
@@ -1656,7 +1720,18 @@ def webtoons_image_proxy():
         img_url = urllib.parse.unquote(img_url)
         chapter_url = urllib.parse.unquote(chapter_url)
         
-        # Set up proper headers to bypass hotlinking protection
+        # Filter out placeholder images before making the request
+        if any(placeholder in img_url.lower() for placeholder in [
+            'bg_transparency.png', 'placeholder', 'default', 'loading', 'transparent',
+            'blank', 'empty', '1x1', 'pixel', 'spacer'
+        ]):
+            logger.debug(f"Blocking placeholder image: {img_url}")
+            return jsonify({
+                'success': False,
+                'error': 'Placeholder image blocked'
+            }), 400
+        
+        # Set up optimized headers to bypass hotlinking protection
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
@@ -1668,23 +1743,34 @@ def webtoons_image_proxy():
             'Sec-Fetch-Mode': 'no-cors',
             'Sec-Fetch-Site': 'cross-site',
             'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+            'Pragma': 'no-cache',
+            'Connection': 'keep-alive'
         }
         
-        # Make the request to get the image
-        response = requests.get(img_url, headers=headers, timeout=30, stream=True)
+        # Make the request with timeout
+        response = requests.get(img_url, headers=headers, timeout=15, stream=True)
         response.raise_for_status()
         
-        # Return the image with proper headers
+        # Check if the response is actually an image
+        content_type = response.headers.get('content-type', '').lower()
+        if not any(img_type in content_type for img_type in ['image/', 'jpeg', 'jpg', 'png', 'webp']):
+            logger.warning(f"Non-image content type received: {content_type}")
+            return jsonify({
+                'success': False,
+                'error': 'Invalid image content type'
+            }), 400
+        
+        # Return the image with optimized headers
         from flask import Response
         return Response(
             response.content,
-            mimetype=response.headers.get('content-type', 'image/jpeg'),
+            mimetype=content_type,
             headers={
-                'Cache-Control': 'public, max-age=3600',
+                'Cache-Control': 'public, max-age=7200',  # 2 hours cache
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET',
-                'Access-Control-Allow-Headers': 'Content-Type'
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'X-Content-Type-Options': 'nosniff'
             }
         )
         

@@ -1,12 +1,5 @@
-/**
- * ManhwaVerse - Basic Code Protection
- * 
- * This script implements basic deterrents against casual source code inspection
- * and content theft. It's not foolproof but makes it more difficult for
- * non-technical users to easily copy the website's functionality.
- * 
- * Note: This is a deterrent only. Determined users can still access the source code.
- */
+
+
 
 (function() {
     'use strict';

@@ -526,9 +526,10 @@ def scrape_webtoons_chapter_images(chapter_url):
                 img_url = img.get('src')
             
             if img_url:
-                # Filter out placeholder/loading images
+                # Filter out placeholder/loading images more aggressively
                 if any(placeholder in img_url.lower() for placeholder in [
-                    'bg_transparency.png', 'placeholder', 'default', 'loading', 'transparent'
+                    'bg_transparency.png', 'placeholder', 'default', 'loading', 'transparent',
+                    'blank', 'empty', '1x1', 'pixel', 'spacer'
                 ]):
                     logger.debug(f"Skipping placeholder image: {img_url}")
                     continue
@@ -536,15 +537,20 @@ def scrape_webtoons_chapter_images(chapter_url):
                 # Remove quality compression to get full quality images
                 if '?type=q90' in img_url:
                     img_url = img_url.split('?type=q90')[0]
+                if '?type=q80' in img_url:
+                    img_url = img_url.split('?type=q80')[0]
                 
                 # Ensure it's a full URL
                 if not img_url.startswith('http'):
                     img_url = urljoin(WEBTOONS_BASE_URL, img_url)
                 
-                # Convert to the proper CDN URL format that bypasses hotlinking protection
-                img_url = convert_to_proper_cdn_url(img_url, chapter_url)
-                
-                images.append(img_url)
+                # Only add if it looks like a real image URL
+                if any(domain in img_url for domain in ['webtoon-phinf.pstatic.net', 'webtoons-static.pstatic.net']):
+                    # Convert to the proper CDN URL format that bypasses hotlinking protection
+                    img_url = convert_to_proper_cdn_url(img_url, chapter_url)
+                    images.append(img_url)
+                else:
+                    logger.debug(f"Skipping non-Webtoons image: {img_url}")
         
         logger.info(f"Found {len(images)} actual chapter images (filtered out placeholders)")
         return images
