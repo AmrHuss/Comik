@@ -1129,7 +1129,7 @@ function extractChapterTitleFromUrl(chapterUrl) {
 }
 
 /**
- * Display chapter images with simple scroll-based loading
+ * Display chapter images with guaranteed first 3 images immediate loading
  */
 function displayChapterImages(images, container) {
     if (!container) return;
@@ -1139,30 +1139,48 @@ function displayChapterImages(images, container) {
         return;
     }
     
+    console.log(`Loading ${images.length} chapter images`);
     container.innerHTML = '';
     
-    // Load first 3 images immediately
+    // ALWAYS load first 3 images immediately - no exceptions
     const firstImages = images.slice(0, 3);
     const remainingImages = images.slice(3);
     
-    // Show first images right away
+    console.log(`Loading first ${firstImages.length} images immediately`);
+    
+    // Show first images right away with priority loading
     firstImages.forEach((imageUrl, index) => {
         const img = document.createElement('img');
         img.src = imageUrl;
         img.alt = `Chapter page ${index + 1}`;
-        img.className = 'reader-image';
+        img.className = 'reader-image immediate-load';
         img.loading = 'eager';
+        img.fetchPriority = 'high'; // High priority for first images
+        
+        // Add load event to track when first images are ready
+        img.onload = function() {
+            console.log(`First image ${index + 1} loaded successfully`);
+            this.classList.add('loaded');
+        };
+        
+        img.onerror = function() {
+            console.warn(`Failed to load first image ${index + 1}: ${imageUrl}`);
+        };
+        
         container.appendChild(img);
     });
     
     // Load remaining images as user scrolls
     if (remainingImages.length > 0) {
+        console.log(`Setting up lazy loading for ${remainingImages.length} remaining images`);
+        
         remainingImages.forEach((imageUrl, index) => {
             const img = document.createElement('img');
             img.alt = `Chapter page ${index + 4}`;
             img.className = 'reader-image lazy-image';
             img.loading = 'lazy';
             img.dataset.src = imageUrl;
+            img.fetchPriority = 'low'; // Low priority for lazy images
             container.appendChild(img);
         });
         
@@ -1171,11 +1189,15 @@ function displayChapterImages(images, container) {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const img = entry.target;
+                    console.log(`Loading lazy image: ${img.dataset.src}`);
                     img.src = img.dataset.src;
                     img.classList.remove('lazy-image');
+                    img.classList.add('loaded');
                     observer.unobserve(img);
                 }
             });
+        }, {
+            rootMargin: '50px' // Start loading 50px before image comes into view
         });
         
         // Observe all lazy images

@@ -829,6 +829,17 @@ body[data-page="reader"] .header--hidden {
     border-radius: var(--radius-md);
 }
 
+.immediate-load {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+}
+
+.immediate-load.loaded {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .lazy-image {
     opacity: 0.6;
     transition: opacity 0.3s ease;
