@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-ManhwaVerse Flask API - Vercel Production Ready
-===============================================
+ManhwaVerse Flask API - Ultra-Fast Performance Optimized
+========================================================
 
-A complete Flask API for scraping manhwa data from Asura Scans.
-Optimized for Vercel serverless deployment with modern configuration.
+A high-performance Flask API for scraping manhwa data with:
+- Concurrent request processing
+- Intelligent caching layer
+- Connection pooling
+- Optimized I/O operations
 
 Author: ManhwaVerse Development Team
 Date: 2025
-Version: Vercel Production v1.0
+Version: Performance Optimized v2.0
 """
 
 import logging
@@ -18,6 +21,10 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from bs4 import BeautifulSoup
 import traceback
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from cachetools import TTLCache
+import threading
 # MangaPark scraper temporarily disabled
 # from api.mangapark_scraper import scrape_mangapark_latest, scrape_mangapark_details, search_mangapark_by_title
 
@@ -40,6 +47,41 @@ BASE_URL = "https://asurascanz.com/"
 REQUEST_TIMEOUT = 15
 MAX_RETRIES = 3
 
+# --- Performance Optimization Components ---
+
+# Global session for connection pooling
+session = requests.Session()
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+})
+
+# Thread pool for concurrent requests
+thread_pool = ThreadPoolExecutor(max_workers=10, thread_name_prefix="scraper")
+
+# Caching layer with TTL
+# Manga details cache: 2 hours TTL, max 1000 items
+manga_cache = TTLCache(maxsize=1000, ttl=7200)  # 2 hours
+# Chapter data cache: 1 hour TTL, max 500 items  
+chapter_cache = TTLCache(maxsize=500, ttl=3600)  # 1 hour
+# Popular manga cache: 30 minutes TTL, max 100 items
+popular_cache = TTLCache(maxsize=100, ttl=1800)  # 30 minutes
+
+# Thread-safe cache access
+cache_lock = threading.Lock()
+
+# Performance monitoring
+performance_stats = {
+    'cache_hits': 0,
+    'cache_misses': 0,
+    'total_requests': 0,
+    'avg_response_time': 0
+}
+
 def get_headers():
     """Get standardized headers for HTTP requests."""
     return {
@@ -52,23 +94,72 @@ def get_headers():
     }
 
 def make_request(url, retries=MAX_RETRIES):
-    """Make HTTP request with retry logic and proper error handling."""
+    """
+    Make HTTP request with retry logic, connection pooling, and performance monitoring.
+    
+    Args:
+        url (str): URL to request
+        retries (int): Number of retry attempts
+        
+    Returns:
+        requests.Response or None: Response object or None if failed
+    """
+    start_time = time.time()
+    
     for attempt in range(retries):
         try:
-            response = requests.get(
+            logger.info(f"Making request to: {url} (attempt {attempt + 1}/{retries})")
+            
+            # Use global session for connection pooling
+            response = session.get(
                 url, 
                 headers=get_headers(), 
                 timeout=REQUEST_TIMEOUT,
                 allow_redirects=True
             )
             response.raise_for_status()
+            
+            response_time = time.time() - start_time
+            logger.info(f"Request successful: {url} (took {response_time:.2f}s)")
+            
+            # Update performance stats
+            with cache_lock:
+                performance_stats['total_requests'] += 1
+                # Update average response time
+                current_avg = performance_stats['avg_response_time']
+                total_reqs = performance_stats['total_requests']
+                performance_stats['avg_response_time'] = (
+                    (current_avg * (total_reqs - 1) + response_time) / total_reqs
+                )
+            
             return response
+            
         except requests.exceptions.RequestException as e:
             logger.warning(f"Request attempt {attempt + 1} failed for {url}: {e}")
             if attempt == retries - 1:
                 logger.error(f"All {retries} attempts failed for {url}")
                 return None
     return None
+
+def get_cached_data(cache, key):
+    """Thread-safe cache get operation."""
+    with cache_lock:
+        return cache.get(key)
+
+def set_cached_data(cache, key, data):
+    """Thread-safe cache set operation."""
+    with cache_lock:
+        cache[key] = data
+
+def get_cache_stats():
+    """Get cache statistics for monitoring."""
+    with cache_lock:
+        return {
+            'manga_cache_size': len(manga_cache),
+            'chapter_cache_size': len(chapter_cache),
+            'popular_cache_size': len(popular_cache),
+            'performance_stats': performance_stats.copy()
+        }
 
 def parse_manga_cards_from_soup(soup):
     """Parse manga cards from BeautifulSoup object."""
@@ -388,7 +479,7 @@ def search_manga():
 
 @app.route('/api/manga-details', methods=['GET'])
 def get_manga_details():
-    """Get detailed information for a specific manga from the specified source."""
+    """Get detailed information for a specific manga with caching."""
     detail_url = request.args.get('url', '').strip()
     source = request.args.get('source', '').strip()
     
@@ -399,6 +490,8 @@ def get_manga_details():
         }), 400
     
     try:
+        start_time = time.time()
+        
         # Auto-detect source based on URL if not provided
         if not source:
             if 'webtoons.com' in detail_url:
@@ -407,6 +500,18 @@ def get_manga_details():
                 source = 'AsuraScanz'
             else:
                 source = 'AsuraScanz'  # Default fallback
+        
+        # Check cache first
+        cache_key = f"manga_details:{source}:{detail_url}"
+        cached_data = get_cached_data(manga_cache, cache_key)
+        if cached_data:
+            logger.info(f"Cache hit for manga details: {detail_url}")
+            with cache_lock:
+                performance_stats['cache_hits'] += 1
+            return jsonify(cached_data)
+        
+        with cache_lock:
+            performance_stats['cache_misses'] += 1
         
         logger.info(f"Fetching manga details for: {detail_url} from {source}")
         
@@ -423,10 +528,18 @@ def get_manga_details():
                 'error': 'Could not scrape details for the provided URL'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True, 
             'data': manga_details
-        })
+        }
+        
+        # Cache the result
+        set_cached_data(manga_cache, cache_key, response_data)
+        
+        total_time = time.time() - start_time
+        logger.info(f"Manga details fetched in {total_time:.2f}s")
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error in /api/manga-details for {detail_url}: {e}")
@@ -769,42 +882,87 @@ def get_chapter_details():
 
 @app.route('/api/unified-popular', methods=['GET'])
 def get_unified_popular():
-    """Get popular manga from multiple sources."""
+    """Get popular manga from multiple sources with caching and concurrency."""
     try:
+        start_time = time.time()
         logger.info("Fetching unified popular manga from multiple sources")
         
-        # Get popular manga from AsuraScanz
-        asura_manga = []
-        try:
-            asura_response = make_request('https://asurascanz.com/')
-            if asura_response:
-                asura_soup = BeautifulSoup(asura_response.content, 'lxml')
-                asura_manga = parse_manga_cards_from_soup(asura_soup)
-                # Add source flag
-                for manga in asura_manga:
-                    manga['source'] = 'AsuraScanz'
-        except Exception as e:
-            logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
+        # Check cache first
+        cache_key = 'unified_popular'
+        cached_data = get_cached_data(popular_cache, cache_key)
+        if cached_data:
+            logger.info("Cache hit for unified popular manga")
+            with cache_lock:
+                performance_stats['cache_hits'] += 1
+            return jsonify(cached_data)
         
-        # Get popular manga from Webtoons
+        with cache_lock:
+            performance_stats['cache_misses'] += 1
+        
+        # Define concurrent tasks
+        def fetch_asura_manga():
+            try:
+                asura_response = make_request('https://asurascanz.com/')
+                if asura_response:
+                    asura_soup = BeautifulSoup(asura_response.content, 'lxml')
+                    asura_manga = parse_manga_cards_from_soup(asura_soup)
+                    # Add source flag
+                    for manga in asura_manga:
+                        manga['source'] = 'AsuraScanz'
+                    return asura_manga
+                return []
+            except Exception as e:
+                logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
+                return []
+        
+        def fetch_webtoons_manga():
+            try:
+                return scrape_webtoons_action_genre()
+            except Exception as e:
+                logger.warning(f"Failed to fetch Webtoons popular: {e}")
+                return []
+        
+        # Execute both tasks concurrently
+        logger.info("Executing concurrent requests for popular manga")
+        future_to_source = {
+            thread_pool.submit(fetch_asura_manga): 'AsuraScanz',
+            thread_pool.submit(fetch_webtoons_manga): 'Webtoons'
+        }
+        
+        asura_manga = []
         webtoons_manga = []
-        try:
-            webtoons_manga = scrape_webtoons_action_genre()
-        except Exception as e:
-            logger.warning(f"Failed to fetch Webtoons popular: {e}")
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_source):
+            source = future_to_source[future]
+            try:
+                result = future.result()
+                if source == 'AsuraScanz':
+                    asura_manga = result
+                else:
+                    webtoons_manga = result
+                logger.info(f"Completed {source} popular manga fetch: {len(result)} items")
+            except Exception as e:
+                logger.error(f"Error fetching {source} popular manga: {e}")
         
         # Combine all manga
         all_manga = asura_manga + webtoons_manga
-        logger.info(f"Returning {len(all_manga)} popular manga from AsuraScanz and Webtoons")
-        
-        return jsonify({
+        response_data = {
             'success': True,
             'data': all_manga,
             'sources': {
                 'AsuraScanz': len(asura_manga),
                 'Webtoons': len(webtoons_manga)
             }
-        })
+        }
+        
+        # Cache the result
+        set_cached_data(popular_cache, cache_key, response_data)
+        
+        total_time = time.time() - start_time
+        logger.info(f"Returning {len(all_manga)} popular manga in {total_time:.2f}s")
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error in unified popular endpoint: {e}")
@@ -938,7 +1096,7 @@ def search_manga_sources():
 
 @app.route('/api/unified-chapter-data', methods=['GET'])
 def get_unified_chapter_data():
-    """Get chapter data from the specified source."""
+    """Get chapter data with optimized caching and smart manga details lookup."""
     chapter_url = request.args.get('url', '').strip()
     source = request.args.get('source', 'AsuraScanz').strip()
     
@@ -949,18 +1107,28 @@ def get_unified_chapter_data():
         }), 400
     
     try:
+        start_time = time.time()
         logger.info(f"Fetching unified chapter data from {source}: {chapter_url}")
         
-        if source.lower() == 'asurascanz':
-            # Use existing AsuraScanz chapter scraper
-            try:
+        # Check chapter cache first
+        chapter_cache_key = f"chapter_data:{source}:{chapter_url}"
+        cached_chapter = get_cached_data(chapter_cache, chapter_cache_key)
+        if cached_chapter:
+            logger.info(f"Cache hit for chapter data: {chapter_url}")
+            with cache_lock:
+                performance_stats['cache_hits'] += 1
+            return jsonify(cached_chapter)
+        
+        with cache_lock:
+            performance_stats['cache_misses'] += 1
+        
+        # Define concurrent tasks
+        def fetch_chapter_images():
+            """Fetch chapter images based on source."""
+            if source.lower() == 'asurascanz':
                 response = make_request(chapter_url)
-                
                 if not response:
-                    return jsonify({
-                        'success': False,
-                        'error': 'Failed to fetch chapter page'
-                    }), 500
+                    return None, "Failed to fetch chapter page"
                 
                 soup = BeautifulSoup(response.content, 'lxml')
                 
@@ -981,11 +1149,7 @@ def get_unified_chapter_data():
                         break
                 
                 if not reader_area:
-                    logger.warning(f"Could not find reader area in chapter: {chapter_url}")
-                    return jsonify({
-                        'success': False,
-                        'error': 'Could not find the reader area on the chapter page'
-                    }), 404
+                    return None, "Could not find the reader area on the chapter page"
                 
                 # Extract all images from the reader area
                 images = reader_area.select('img')
@@ -1002,58 +1166,118 @@ def get_unified_chapter_data():
                             src = urljoin(chapter_url, src)
                         image_urls.append(src)
                 
-                if image_urls:
-                    return jsonify({
-                        'success': True,
-                        'image_urls': image_urls,
-                        'source': 'AsuraScanz'
-                    })
-                else:
-                    return jsonify({
-                        'success': False,
-                        'error': 'No chapter images found'
-                    }), 404
-                    
-            except Exception as e:
-                logger.error(f"Error scraping AsuraScanz chapter: {e}")
-                return jsonify({
-                    'success': False,
-                    'error': f'Failed to scrape chapter: {str(e)}'
-                }), 500
-            
-        elif source.lower() == 'webtoons':
-            # Use Webtoons chapter scraper
-            try:
-                images = scrape_webtoons_chapter_images(chapter_url)
-                if images:
-                    return jsonify({
-                        'success': True,
-                        'image_urls': images,
-                        'source': 'Webtoons'
-                    })
-                else:
-                    return jsonify({
-                        'success': False,
-                        'error': 'No chapter images found'
-                    }), 404
-            except Exception as e:
-                logger.error(f"Error scraping Webtoons chapter: {e}")
-                return jsonify({
-                    'success': False,
-                    'error': f'Failed to scrape chapter: {str(e)}'
-                }), 500
+                return image_urls, None
                 
-        else:
+            elif source.lower() == 'webtoons':
+                images = scrape_webtoons_chapter_images(chapter_url)
+                return images, None
+            else:
+                return None, f"Unknown source: {source}"
+        
+        def fetch_manga_details():
+            """Try to get manga details from cache or derive manga URL."""
+            # Try to derive manga URL from chapter URL
+            manga_url = None
+            if source.lower() == 'asurascanz':
+                # For AsuraScanz: remove chapter-specific part
+                if '/chapter-' in chapter_url:
+                    manga_url = chapter_url.split('/chapter-')[0]
+                elif '/ch-' in chapter_url:
+                    manga_url = chapter_url.split('/ch-')[0]
+            elif source.lower() == 'webtoons':
+                # For Webtoons: remove episode-specific part
+                if '/episode/' in chapter_url:
+                    manga_url = chapter_url.split('/episode/')[0]
+            
+            if manga_url:
+                # Check cache for manga details
+                manga_cache_key = f"manga_details:{source}:{manga_url}"
+                cached_manga = get_cached_data(manga_cache, manga_cache_key)
+                if cached_manga and cached_manga.get('success'):
+                    logger.info(f"Found cached manga details for navigation: {manga_url}")
+                    return cached_manga['data']
+            
+            return None
+        
+        # Execute both tasks concurrently
+        logger.info("Executing concurrent chapter and manga details fetch")
+        future_to_task = {
+            thread_pool.submit(fetch_chapter_images): 'chapter_images',
+            thread_pool.submit(fetch_manga_details): 'manga_details'
+        }
+        
+        chapter_images = None
+        manga_details = None
+        chapter_error = None
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_task):
+            task = future_to_task[future]
+            try:
+                result = future.result()
+                if task == 'chapter_images':
+                    chapter_images, chapter_error = result
+                else:
+                    manga_details = result
+            except Exception as e:
+                logger.error(f"Error in {task}: {e}")
+                if task == 'chapter_images':
+                    chapter_error = str(e)
+        
+        # Handle chapter images result
+        if chapter_error:
             return jsonify({
                 'success': False,
-                'error': f'Unknown source: {source}'
-            }), 400
+                'error': chapter_error
+            }), 404
+        
+        if not chapter_images:
+            return jsonify({
+                'success': False,
+                'error': 'No chapter images found'
+            }), 404
+        
+        # Prepare response
+        response_data = {
+            'success': True,
+            'image_urls': chapter_images,
+            'source': source
+        }
+        
+        # Add manga details if available (for navigation)
+        if manga_details:
+            response_data['manga_details'] = manga_details
+            logger.info("Including manga details for navigation")
+        
+        # Cache the chapter data
+        set_cached_data(chapter_cache, chapter_cache_key, response_data)
+        
+        total_time = time.time() - start_time
+        logger.info(f"Chapter data fetched in {total_time:.2f}s")
+        
+        return jsonify(response_data)
             
     except Exception as e:
         logger.error(f"Error in unified chapter data endpoint: {e}")
         return jsonify({
             'success': False,
             'error': 'Failed to fetch chapter data'
+        }), 500
+
+@app.route('/api/performance-stats', methods=['GET'])
+def get_performance_stats():
+    """Get performance and cache statistics."""
+    try:
+        stats = get_cache_stats()
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting performance stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to get performance statistics'
         }), 500
 
 # Webtoons endpoints
