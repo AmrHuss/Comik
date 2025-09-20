@@ -291,48 +291,13 @@ async function loadHomepageContent() {
                 displayEnhancedMangaGrid(quickResult.data, updatesGrid);
                 
                 // Add "Load More" button if there's more data
-                if (quickResult.has_more) {
-                    addLoadMoreButton(updatesGrid, quickResult.total_count);
-                }
+                // Infinite scroll will handle loading more content automatically
             }
             
-            // Simple progressive loading: fetch more data in background
-            setTimeout(async () => {
-                try {
-                    console.log('Progressive loading: fetching additional data...');
-                    const moreResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=8&limit=12`);
-                    
-                    if (moreResult && moreResult.data && moreResult.data.length > 0) {
-                        console.log('Progressive load: adding more items');
-                        if (updatesGrid) {
-                            // Append new items directly with error checking
-                            moreResult.data.forEach(manga => {
-                                try {
-                                    const cardHTML = createEnhancedMangaCard(manga);
-                                    if (cardHTML) {
-                                        const tempDiv = document.createElement('div');
-                                        tempDiv.innerHTML = cardHTML;
-                                        const card = tempDiv.firstElementChild;
-                                        if (card) {
-                                            updatesGrid.appendChild(card);
-                                        }
-                                    }
-                                } catch (error) {
-                                    console.error('Error creating card for manga:', manga.title, error);
-                                }
-                            });
-                            
-                            // Update load more button
-                            const existingItems = updatesGrid.querySelectorAll('.manhwa-card').length;
-                            if (moreResult.has_more) {
-                                addLoadMoreButton(updatesGrid, moreResult.total_count);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.log('Progressive loading failed, using quick data');
-                }
-            }, 500);
+            // Set up infinite scroll for automatic loading
+            if (updatesGrid) {
+                setupInfiniteScroll(updatesGrid);
+            }
             
         } else {
             // Fallback: show loading and fetch full data
@@ -354,10 +319,8 @@ async function loadHomepageContent() {
             if (updatesGrid) {
                 displayEnhancedMangaGrid(fullResult.data, updatesGrid);
                 
-                // Add load more button if needed
-                if (fullResult.data.length > 8) {
-                    addLoadMoreButton(updatesGrid, fullResult.data.length);
-                }
+                        // Set up infinite scroll for automatic loading
+                        setupInfiniteScroll(updatesGrid);
             }
         }
     } catch (error) {
@@ -372,47 +335,53 @@ async function loadHomepageContent() {
     }
 }
 
-function addLoadMoreButton(container, totalCount) {
-    // Remove existing load more button
+/**
+ * Set up infinite scroll for automatic content loading
+ */
+function setupInfiniteScroll(container) {
+    let isLoading = false;
+    let hasMoreData = true;
+    let currentOffset = 8; // Start after initial 8 items
+    let totalCount = 0;
+    
+    // Remove any existing load more buttons
     const existingButton = container.querySelector('.load-more-btn');
     if (existingButton) {
         existingButton.remove();
     }
     
-    // Count current items
-    const currentItems = container.querySelectorAll('.manhwa-card').length;
-    const remainingCount = totalCount - currentItems;
-    
-    if (remainingCount <= 0) {
-        return; // No need for load more button
-    }
-    
-    const loadMoreBtn = document.createElement('button');
-    loadMoreBtn.className = 'load-more-btn';
-    loadMoreBtn.innerHTML = `Load More (${remainingCount} remaining)`;
-    loadMoreBtn.style.cssText = `
-        width: 100%;
-        padding: 12px;
-        margin: 20px 0;
-        background: var(--accent-color);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-        transition: all 0.3s ease;
+    // Create a loading indicator
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'infinite-scroll-loading';
+    loadingIndicator.innerHTML = `
+        <div class="loading-spinner"></div>
+        <p>Loading more manga...</p>
+    `;
+    loadingIndicator.style.cssText = `
+        display: none;
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
     `;
     
-    let currentOffset = currentItems;
+    // Add loading indicator to container
+    container.appendChild(loadingIndicator);
     
-    loadMoreBtn.addEventListener('click', async () => {
-        loadMoreBtn.innerHTML = 'Loading...';
-        loadMoreBtn.disabled = true;
+    // Function to load more content
+    async function loadMoreContent() {
+        if (isLoading || !hasMoreData) return;
+        
+        isLoading = true;
+        loadingIndicator.style.display = 'block';
         
         try {
-            const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=${currentOffset}&limit=10`);
+            console.log(`Loading more content from offset ${currentOffset}`);
+            const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=${currentOffset}&limit=12`);
+            
             if (result && result.data && result.data.length > 0) {
-                // Append new items to existing grid with error checking
+                console.log(`Loaded ${result.data.length} more items`);
+                
+                // Add new items to container
                 result.data.forEach(manga => {
                     try {
                         const cardHTML = createEnhancedMangaCard(manga);
@@ -421,36 +390,55 @@ function addLoadMoreButton(container, totalCount) {
                             tempDiv.innerHTML = cardHTML;
                             const card = tempDiv.firstElementChild;
                             if (card) {
-                                container.appendChild(card);
+                                container.insertBefore(card, loadingIndicator);
                             }
                         }
-                    } catch (cardError) {
-                        console.error('Error creating card for manga:', manga.title, cardError);
+                    } catch (error) {
+                        console.error('Error creating card for manga:', manga.title, error);
                     }
                 });
                 
                 currentOffset += result.data.length;
+                hasMoreData = result.has_more || result.data.length === 12;
                 
-                // Update button or remove if no more data
-                const newRemainingCount = totalCount - currentOffset;
-                if (newRemainingCount > 0) {
-                    loadMoreBtn.innerHTML = `Load More (${newRemainingCount} remaining)`;
-                    loadMoreBtn.disabled = false;
-                } else {
-                    loadMoreBtn.remove();
+                if (!hasMoreData) {
+                    console.log('No more data available');
+                    loadingIndicator.style.display = 'none';
                 }
             } else {
-                // No more data available
-                loadMoreBtn.remove();
+                hasMoreData = false;
+                loadingIndicator.style.display = 'none';
             }
         } catch (error) {
-            console.error('Error loading more data:', error);
-            loadMoreBtn.innerHTML = 'Error loading more - Click to retry';
-            loadMoreBtn.disabled = false;
+            console.error('Error loading more content:', error);
+            hasMoreData = false;
+            loadingIndicator.style.display = 'none';
+        } finally {
+            isLoading = false;
         }
+    }
+    
+    // Intersection Observer for infinite scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && hasMoreData && !isLoading) {
+                console.log('Loading more content triggered by scroll');
+                loadMoreContent();
+            }
+        });
+    }, {
+        rootMargin: '100px' // Start loading 100px before reaching the bottom
     });
     
-    container.appendChild(loadMoreBtn);
+    // Observe the loading indicator
+    observer.observe(loadingIndicator);
+    
+    // Also load more content after a short delay for initial load
+    setTimeout(() => {
+        if (hasMoreData && !isLoading) {
+            loadMoreContent();
+        }
+    }, 1000);
 }
 
 /**
