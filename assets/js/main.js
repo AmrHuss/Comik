@@ -278,22 +278,30 @@ async function loadHomepageContent() {
     try {
         // Load all data first, then paginate on frontend
         console.log('Loading popular manga data...');
-        const result = await makeApiRequest(`${API_BASE_URL}/popular`);
+        let result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+        
+        // Fallback to regular popular endpoint if unified fails
+        if (!result || !result.data || result.data.length === 0) {
+            console.log('Unified popular failed, trying regular popular endpoint...');
+            result = await makeApiRequest(`${API_BASE_URL}/popular`);
+        }
+        
         console.log('Popular API response received:', result);
         
         if (result && result.data && result.data.length > 0) {
             console.log(`Loaded ${result.data.length} total items`);
+            console.log('First few items:', result.data.slice(0, 3));
             
             // Store all data for pagination
             window.allMangaData = result.data;
             
             // Display trending (first 6 items)
-            if (trendingGrid) {
+        if (trendingGrid) {
                 displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
-            }
+        }
             
             // Display updates (first 20 items initially)
-            if (updatesGrid) {
+        if (updatesGrid) {
                 displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
                 
                 // Set up progressive scroll for loading more
@@ -365,6 +373,9 @@ function setupProgressiveScroll(container, startOffset = 0) {
             
             // Use stored data instead of API call
             const allData = window.allMangaData || [];
+            console.log(`Total stored data: ${allData.length} items`);
+            console.log(`Current offset: ${currentOffset}`);
+            
             const nextBatch = allData.slice(currentOffset, currentOffset + 20);
             
             if (nextBatch.length > 0) {

@@ -172,28 +172,47 @@ class UIComponents {
         return progressBar;
     }
 
-    // Create clean notification system
+    // Create Purple Glow notification system
     showNotification(message, type = 'info', duration = 3000) {
-        // Remove existing notifications
-        const existing = document.querySelectorAll('.notification');
+        // Remove existing notifications of the same type
+        const existing = document.querySelectorAll(`.notification-${type}`);
         existing.forEach(n => n.remove());
 
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
+        
+        // Get appropriate icon based on type
+        const icons = {
+            success: '✓',
+            error: '✕',
+            info: 'ℹ',
+            warning: '⚠'
+        };
+
         notification.innerHTML = `
             <div class="notification-content">
-                <div class="notification-icon"></div>
+                <div class="notification-icon">${icons[type] || icons.info}</div>
                 <span class="notification-message">${message}</span>
-                <button class="notification-close" aria-label="Close notification">×</button>
+                <button class="notification-close" aria-label="Close notification">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
         `;
 
         document.body.appendChild(notification);
 
+        // Trigger entrance animation
+        requestAnimationFrame(() => {
+            notification.classList.add('notification-enter');
+        });
+
         // Auto remove after duration
         setTimeout(() => {
             if (notification.parentNode) {
-                notification.style.animation = 'slideInRight 0.3s ease reverse';
+                notification.classList.add('notification-exit');
                 setTimeout(() => {
                     if (notification.parentNode) {
                         notification.remove();
@@ -204,7 +223,7 @@ class UIComponents {
 
         // Close button functionality
         notification.querySelector('.notification-close').addEventListener('click', () => {
-            notification.style.animation = 'slideInRight 0.3s ease reverse';
+            notification.classList.add('notification-exit');
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.remove();
