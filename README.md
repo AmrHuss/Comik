@@ -1,208 +1,41 @@
-# 🌟 ManhwaVerse - Premium Manhwa & Webtoon Reader
+# ManhwaVerse
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-https://comik-47n3.vercel.app/-blue?style=for-the-badge&logo=vercel)](https://comik-47n3.vercel.app/)
-[![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-2.0+-red?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com/)
-[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com)
 
-> **In Memory of Comik.io** - This project was inspired by the beloved Comik.io platform that served the manhwa community for years. ManhwaVerse continues that legacy with modern technology and enhanced user experience.
+> **In Memory of Comik.io** - A modern manhwa reader built with Python & Flask
 
-## 🚀 Live Application
+## 🌐 [Live Demo](https://comik-47n3.vercel.app/)
 
-**🌐 [Visit ManhwaVerse](https://comik-47n3.vercel.app/)**
+A clean, fast manhwa and webtoon reader that aggregates content from multiple sources.
+
+## Features
+
+- 📚 Multi-source content (AsuraScanz, Webtoons)
+- 🔍 Search and filter manhwa
+- 📱 Responsive design
+- 💬 Discussion sections
+- 🔖 Bookmark favorites
+- ⚡ Fast loading
+
+## Tech Stack
+
+- **Backend**: Python, Flask, BeautifulSoup
+- **Frontend**: HTML, CSS, JavaScript
+- **Deployment**: Vercel
+
+## Quick Start
+
+```bash
+git clone https://github.com/AmrHuss/Comik.git
+cd Comik
+pip install -r requirements.txt
+python api/index.py
+```
+
+## About
+
+Built by [Amr Hussien](https://github.com/AmrHuss) - Full Stack Developer
 
 ---
 
-## 📖 Project Overview
-
-ManhwaVerse is a **full-stack web application** that provides a premium reading experience for manhwa and webtoons. Built with modern web technologies, it offers seamless content discovery, immersive reading, and community features.
-
-### ✨ Key Features
-
-- **📚 Multi-Source Content**: Aggregates content from AsuraScanz and Webtoons
-- **🔍 Advanced Search**: Smart search across titles, genres, and authors
-- **📱 Responsive Design**: Optimized for desktop, tablet, and mobile devices
-- **⚡ Real-time Updates**: Live chapter updates and new releases
-- **💬 Community Features**: Discussion sections for series and chapters
-- **🎨 Modern UI/UX**: Clean, intuitive interface with smooth animations
-- **🔖 Bookmark System**: Save your favorite series for quick access
-- **📊 Reading Analytics**: Track your reading progress and history
-
-## 🛠️ Technical Stack
-
-### Frontend
-- **HTML5** & **CSS3** - Semantic markup and modern styling
-- **Vanilla JavaScript** - No framework dependencies for maximum performance
-- **Responsive Design** - Mobile-first approach with CSS Grid and Flexbox
-- **Progressive Web App** - Offline capabilities and app-like experience
-
-### Backend
-- **Python 3.8+** - Core server logic
-- **Flask** - Lightweight web framework
-- **BeautifulSoup4** - Web scraping and HTML parsing
-- **Requests** - HTTP client for API calls
-- **LXML** - Fast XML/HTML processing
-
-### Infrastructure
-- **Vercel** - Serverless deployment and hosting
-- **GitHub** - Version control and CI/CD
-- **RESTful API** - Clean, scalable API design
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Flask API     │    │   Data Sources  │
-│   (HTML/CSS/JS) │◄──►│   (Python)      │◄──►│   (Web Scraping)│
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │                       │                       │
-    ┌────▼────┐            ┌─────▼─────┐            ┌────▼────┐
-    │ Vercel  │            │  Scrapers │            │ Asura   │
-    │  CDN    │            │           │            │ Webtoons│
-    └─────────┘            └───────────┘            └─────────┘
-```
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Python 3.8 or higher
-- pip (Python package manager)
-- Git
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/AmrHuss/Comik.git
-   cd Comik
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the application**
-   ```bash
-   python api/index.py
-   ```
-
-4. **Open your browser**
-   ```
-   http://localhost:5000
-   ```
-
-## 📁 Project Structure
-
-```
-Comik/
-├── api/
-│   ├── index.py              # Main Flask application
-│   ├── asura_scraper.py      # AsuraScanz content scraper
-│   ├── webtoons_scraper.py   # Webtoons content scraper
-│   └── mangapark_scraper.py  # MangaPark content scraper
-├── assets/
-│   ├── css/
-│   │   ├── style.css         # Main stylesheet
-│   │   └── auth.css          # Authentication styles
-│   └── js/
-│       └── main.js           # Frontend JavaScript
-├── index.html                # Homepage
-├── detail.html               # Manga detail pages
-├── reader.html               # Chapter reader
-├── auth.html                 # Authentication pages
-└── requirements.txt          # Python dependencies
-```
-
-## 🔧 API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/popular` | GET | Get popular manhwa from all sources |
-| `/api/manga-details` | GET | Get detailed manga information |
-| `/api/chapter` | GET | Get chapter images and content |
-| `/api/search` | GET | Search manhwa by title or genre |
-| `/api/webtoons-image-proxy` | GET | Proxy for Webtoons images |
-
-## 🎯 Key Achievements
-
-- **🚀 Performance**: Sub-2 second page load times
-- **📱 Mobile-First**: 100% responsive design across all devices
-- **🔍 SEO Optimized**: Semantic HTML and meta tags for search visibility
-- **♿ Accessibility**: WCAG 2.1 compliant design patterns
-- **🌐 Cross-Platform**: Works on all modern browsers and devices
-- **⚡ Real-time**: Live updates without page refreshes
-
-## 🛡️ Technical Challenges Solved
-
-### Web Scraping & Anti-Bot Protection
-- Implemented robust scraping with retry logic and rate limiting
-- Bypassed anti-hotlinking protection for image content
-- Handled dynamic content loading and JavaScript-rendered pages
-
-### Performance Optimization
-- Implemented efficient caching strategies
-- Optimized image loading with lazy loading and compression
-- Minimized API calls with intelligent data aggregation
-
-### Cross-Origin & Security
-- Resolved CORS issues for multi-source content
-- Implemented secure image proxying
-- Added proper error handling and fallback mechanisms
-
-## 🎨 UI/UX Highlights
-
-- **Modern Design Language**: Clean, minimalist interface inspired by leading platforms
-- **Smooth Animations**: CSS transitions and JavaScript animations for enhanced UX
-- **Intuitive Navigation**: Logical information architecture and user flows
-- **Accessibility**: High contrast ratios, keyboard navigation, and screen reader support
-- **Mobile Optimization**: Touch-friendly interface with gesture support
-
-## 📊 Performance Metrics
-
-- **Page Load Time**: < 2 seconds
-- **First Contentful Paint**: < 1.5 seconds
-- **Largest Contentful Paint**: < 2.5 seconds
-- **Cumulative Layout Shift**: < 0.1
-- **Mobile Performance Score**: 95/100
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 About the Developer
-
-**Amr Hussien** - Full Stack Developer
-
-- 🎓 Computer Science Student
-- 💼 Seeking Graduate Software Engineering Positions
-- 🌐 [Portfolio](https://github.com/AmrHuss)
-- 📧 [Contact](mailto:amr.hussien@example.com)
-
-### Skills Demonstrated in This Project
-- **Backend Development**: Python, Flask, RESTful APIs, Web Scraping
-- **Frontend Development**: HTML5, CSS3, JavaScript, Responsive Design
-- **DevOps**: Vercel Deployment, CI/CD, Version Control
-- **Problem Solving**: Complex technical challenges and optimization
-- **Project Management**: Full-stack development from concept to deployment
-
-## 🌟 Show Your Support
-
-If you found this project helpful, please give it a ⭐️ star!
-
----
-
-**Built with ❤️ for the manhwa community**
-
-*In memory of Comik.io - keeping the spirit of great manhwa platforms alive*
+⭐ **Star this repo if you like it!**
