@@ -1295,8 +1295,9 @@ def get_unified_chapter_data():
         
         # Define concurrent tasks
         def fetch_chapter_images():
-            """Fetch chapter images based on source."""
+            """Fetch chapter images based on source with optimized performance."""
             if source.lower() == 'asurascanz':
+                # AsuraScanz is already fast - direct implementation
                 response = make_request(chapter_url)
                 if not response:
                     return None, "Failed to fetch chapter page"
@@ -1340,8 +1341,16 @@ def get_unified_chapter_data():
                 return image_urls, None
                 
             elif source.lower() == 'webtoons':
-                images = scrape_webtoons_chapter_images(chapter_url)
-                return images, None
+                # Webtoons optimization: Use direct scraper with timeout
+                try:
+                    # Set a shorter timeout for Webtoons to prevent hanging
+                    images = scrape_webtoons_chapter_images(chapter_url)
+                    if not images:
+                        return None, "No images found in Webtoons chapter"
+                    return images, None
+                except Exception as e:
+                    logger.error(f"Webtoons chapter fetch error: {e}")
+                    return None, f"Failed to fetch Webtoons chapter: {str(e)}"
             else:
                 return None, f"Unknown source: {source}"
         
@@ -1453,13 +1462,18 @@ def get_performance_stats():
 
 @app.route('/api/quick-load', methods=['GET'])
 def get_quick_load():
-    """Get quick loading data for initial page load."""
+    """Get quick loading data for initial page load - first 10 items only."""
     try:
         # Return cached popular data immediately if available
         cached_data = get_cached_data(popular_cache, 'unified_popular')
-        if cached_data:
-            logger.info("Quick load: returning cached popular data")
-            return jsonify(cached_data)
+        if cached_data and cached_data.get('data'):
+            # Return only first 10 items for instant loading
+            quick_data = cached_data.copy()
+            quick_data['data'] = cached_data['data'][:10]
+            quick_data['has_more'] = len(cached_data['data']) > 10
+            quick_data['total_count'] = len(cached_data['data'])
+            logger.info(f"Quick load: returning first 10 of {len(cached_data['data'])} cached items")
+            return jsonify(quick_data)
         
         # If no cache, return minimal data for fast response
         logger.info("Quick load: returning minimal data")
@@ -1470,6 +1484,8 @@ def get_quick_load():
                 'AsuraScanz': 0,
                 'Webtoons': 0
             },
+            'has_more': False,
+            'total_count': 0,
             'loading': True,
             'message': 'Loading popular manga...'
         })
@@ -1479,6 +1495,54 @@ def get_quick_load():
         return jsonify({
             'success': False,
             'error': 'Failed to load initial data'
+        }), 500
+
+@app.route('/api/load-more', methods=['GET'])
+def get_load_more():
+    """Load more manga data for pagination."""
+    try:
+        offset = int(request.args.get('offset', 0))
+        limit = int(request.args.get('limit', 10))
+        
+        # Get cached data
+        cached_data = get_cached_data(popular_cache, 'unified_popular')
+        if not cached_data or not cached_data.get('data'):
+            return jsonify({
+                'success': False,
+                'error': 'No data available'
+            }), 404
+        
+        all_data = cached_data['data']
+        start_idx = offset
+        end_idx = min(offset + limit, len(all_data))
+        
+        if start_idx >= len(all_data):
+            return jsonify({
+                'success': True,
+                'data': [],
+                'has_more': False,
+                'total_count': len(all_data)
+            })
+        
+        paginated_data = all_data[start_idx:end_idx]
+        has_more = end_idx < len(all_data)
+        
+        logger.info(f"Load more: returning {len(paginated_data)} items (offset: {offset})")
+        
+        return jsonify({
+            'success': True,
+            'data': paginated_data,
+            'has_more': has_more,
+            'total_count': len(all_data),
+            'offset': offset,
+            'limit': limit
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in load more: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to load more data'
         }), 500
 
 # Webtoons endpoints

@@ -289,6 +289,11 @@ async function loadHomepageContent() {
             }
             if (updatesGrid) {
                 displayEnhancedMangaGrid(result.data, updatesGrid);
+                
+                // Add "Load More" button if there's more data
+                if (result.has_more) {
+                    addLoadMoreButton(updatesGrid, result.total_count);
+                }
             }
             
             // In background, fetch fresh data and update if different
@@ -303,6 +308,11 @@ async function loadHomepageContent() {
                         }
                         if (updatesGrid) {
                             displayEnhancedMangaGrid(freshResult.data, updatesGrid);
+                            
+                            // Update load more button
+                            if (freshResult.data.length > 10) {
+                                addLoadMoreButton(updatesGrid, freshResult.data.length);
+                            }
                         }
                     }
                 } catch (error) {
@@ -341,6 +351,61 @@ async function loadHomepageContent() {
             showErrorState(updatesGrid, 'Failed to load latest updates.', true);
         }
     }
+}
+
+function addLoadMoreButton(container, totalCount) {
+    // Remove existing load more button
+    const existingButton = container.querySelector('.load-more-btn');
+    if (existingButton) {
+        existingButton.remove();
+    }
+    
+    const loadMoreBtn = document.createElement('button');
+    loadMoreBtn.className = 'load-more-btn';
+    loadMoreBtn.innerHTML = `Load More (${totalCount - 10} remaining)`;
+    loadMoreBtn.style.cssText = `
+        width: 100%;
+        padding: 12px;
+        margin: 20px 0;
+        background: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    `;
+    
+    loadMoreBtn.addEventListener('click', async () => {
+        loadMoreBtn.innerHTML = 'Loading...';
+        loadMoreBtn.disabled = true;
+        
+        try {
+            const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=10&limit=10`);
+            if (result.data && result.data.length > 0) {
+                // Append new items to existing grid
+                const existingItems = container.querySelectorAll('.manhwa-card');
+                result.data.forEach(manga => {
+                    const card = createEnhancedMangaCard(manga);
+                    container.appendChild(card);
+                });
+                
+                // Update button or remove if no more data
+                if (result.has_more) {
+                    loadMoreBtn.innerHTML = `Load More (${result.total_count - (existingItems.length + result.data.length)} remaining)`;
+                    loadMoreBtn.disabled = false;
+                } else {
+                    loadMoreBtn.remove();
+                }
+            }
+        } catch (error) {
+            console.error('Error loading more data:', error);
+            loadMoreBtn.innerHTML = 'Error loading more';
+            loadMoreBtn.disabled = false;
+        }
+    });
+    
+    container.appendChild(loadMoreBtn);
 }
 
 /**
