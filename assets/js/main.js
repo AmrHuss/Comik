@@ -276,53 +276,41 @@ async function loadHomepageContent() {
     }
     
     try {
-        // Ultra-fast quick load for instant display
-        console.log('Making ultra-fast API request to:', `${API_BASE_URL}/quick-load`);
-        const quickResult = await makeApiRequest(`${API_BASE_URL}/quick-load`);
-        console.log('Quick load response received:', quickResult);
+        // Load initial batch of 20 manhwa
+        console.log('Loading initial batch of 20 manhwa...');
+        const initialResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=0&limit=20`);
+        console.log('Initial load response received:', initialResult);
         
-        // Display quick data immediately if available
-        if (quickResult.data && quickResult.data.length > 0) {
-            console.log('Using ultra-fast cached data for instant display');
-        if (trendingGrid) {
-                displayEnhancedMangaGrid(quickResult.data.slice(0, 6), trendingGrid);
-        }
-        if (updatesGrid) {
-                displayEnhancedMangaGrid(quickResult.data, updatesGrid);
-                
-                // Add "Load More" button if there's more data
-                // Infinite scroll will handle loading more content automatically
+        if (initialResult && initialResult.data && initialResult.data.length > 0) {
+            console.log(`Loaded ${initialResult.data.length} initial items`);
+            
+            // Display trending (first 6 items)
+            if (trendingGrid) {
+                displayEnhancedMangaGrid(initialResult.data.slice(0, 6), trendingGrid);
             }
             
-            // Set up infinite scroll for automatic loading
+            // Display updates (all 20 items initially)
             if (updatesGrid) {
-                setupInfiniteScroll(updatesGrid);
+                displayEnhancedMangaGrid(initialResult.data, updatesGrid);
+                
+                // Set up progressive scroll for loading more
+                setupProgressiveScroll(updatesGrid, 20); // Start from offset 20
             }
-            
         } else {
-            // Fallback: show loading and fetch full data
-            console.log('No quick data available, fetching full data...');
-            if (trendingGrid) {
-                showLoadingState(trendingGrid, 'Loading trending manga...');
-            }
-            if (updatesGrid) {
-                showLoadingState(updatesGrid, 'Loading latest updates...');
-            }
-            
-            console.log('Fetching full data from:', `${API_BASE_URL}/unified-popular`);
-            const fullResult = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
-            console.log('Full API response received:', fullResult);
-            
-            if (trendingGrid) {
-                displayEnhancedMangaGrid(fullResult.data.slice(0, 6), trendingGrid);
-            }
-            if (updatesGrid) {
-                displayEnhancedMangaGrid(fullResult.data, updatesGrid);
-                
-                        // Set up infinite scroll for automatic loading
-                        setupInfiniteScroll(updatesGrid);
+            console.log('Initial load failed, trying fallback API');
+            // Fallback to full API if load-more fails
+            const result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+            if (result && result.data) {
+                if (trendingGrid) {
+                    displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
+                }
+                if (updatesGrid) {
+                    displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
+                    setupProgressiveScroll(updatesGrid, 20);
+                }
             }
         }
+        
     } catch (error) {
         console.error('Error loading homepage content:', error);
         
@@ -336,7 +324,113 @@ async function loadHomepageContent() {
 }
 
 /**
- * Set up infinite scroll for automatic content loading
+ * Set up progressive scroll for loading content in batches
+ */
+function setupProgressiveScroll(container, startOffset = 0) {
+    let isLoading = false;
+    let hasMoreData = true;
+    let currentOffset = startOffset;
+    let totalCount = 0;
+    
+    // Remove any existing load more buttons
+    const existingButton = container.querySelector('.load-more-btn');
+    if (existingButton) {
+        existingButton.remove();
+    }
+    
+    // Create a loading indicator
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'infinite-scroll-loading';
+    loadingIndicator.innerHTML = `
+        <div class="loading-spinner"></div>
+        <p>Loading more manga...</p>
+    `;
+    loadingIndicator.style.cssText = `
+        display: none;
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    `;
+    
+    // Add loading indicator to container
+    container.appendChild(loadingIndicator);
+    
+    // Function to load more content
+    async function loadMoreContent() {
+        if (isLoading || !hasMoreData) return;
+        
+        isLoading = true;
+        loadingIndicator.style.display = 'block';
+        
+        try {
+            console.log(`Loading more content from offset ${currentOffset}`);
+            const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=${currentOffset}&limit=20`);
+            
+            if (result && result.data && result.data.length > 0) {
+                console.log(`Loaded ${result.data.length} more items`);
+                
+                // Add new items to container
+                result.data.forEach(manga => {
+                    try {
+                        const cardHTML = createEnhancedMangaCard(manga);
+                        if (cardHTML) {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = cardHTML;
+                            const card = tempDiv.firstElementChild;
+                            if (card) {
+                                container.insertBefore(card, loadingIndicator);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error creating card for manga:', manga.title, error);
+                    }
+                });
+                
+                currentOffset += result.data.length;
+                hasMoreData = result.has_more || result.data.length === 20;
+                
+                if (!hasMoreData) {
+                    console.log('No more data available');
+                    loadingIndicator.style.display = 'none';
+                }
+            } else {
+                hasMoreData = false;
+                loadingIndicator.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading more content:', error);
+            hasMoreData = false;
+            loadingIndicator.style.display = 'none';
+        } finally {
+            isLoading = false;
+        }
+    }
+    
+    // Intersection Observer for progressive scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && hasMoreData && !isLoading) {
+                console.log('Loading more content triggered by scroll');
+                loadMoreContent();
+            }
+        });
+    }, {
+        rootMargin: '200px' // Start loading 200px before reaching the bottom
+    });
+    
+    // Observe the loading indicator
+    observer.observe(loadingIndicator);
+    
+    // Also load more content after a short delay for initial load
+    setTimeout(() => {
+        if (hasMoreData && !isLoading) {
+            loadMoreContent();
+        }
+    }, 1000);
+}
+
+/**
+ * Set up infinite scroll for automatic content loading (legacy)
  */
 function setupInfiniteScroll(container) {
     let isLoading = false;
