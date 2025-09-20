@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logo Preview - ManhwaVerse</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        .logo-preview-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: var(--primary-bg);
+            min-height: 100vh;
+        }
+        
+        .logo-section {
+            margin: 2rem 0;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+        
+        .logo-section h2 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .logo-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .logo-option {
+            text-align: center;
+            padding: 2rem;
+            background: var(--secondary-bg);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+        
+        .logo-option h3 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        
+        .logo-display {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--primary-bg);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+        
+        .logo-image {
+            max-width: 200px;
+            max-height: 80px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+        
+        .current-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-color), #7C3AED);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .implementation-code {
+            background: var(--secondary-bg);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-top: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            overflow-x: auto;
+        }
+        
+        .navbar-preview {
+            background: var(--secondary-bg);
+            padding: 1rem 2rem;
+            border-radius: var(--radius-md);
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .nav-logo img {
+            max-height: 50px;
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo-preview-container">
+        <h1 style="color: var(--text-primary); text-align: center; margin-bottom: 2rem;">ManhwaVerse Logo Preview</h1>
+        
+        <!-- Current Logo -->
+        <div class="logo-section">
+            <h2>Current Logo (Text-based)</h2>
+            <div class="navbar-preview">
+                <div class="nav-logo">
+                    <a href="#" class="logo-link">
+                        <span class="logo-text">ManhwaVerse</span>
+                    </a>
+                </div>
+                <div style="color: var(--text-secondary);">Current Implementation</div>
+            </div>
+        </div>
+        
+        <!-- Logo Options -->
+        <div class="logo-section">
+            <h2>Available Logo Images</h2>
+            <div class="logo-options">
+                <!-- Logo 1 -->
+                <div class="logo-option">
+                    <h3>Logo 1</h3>
+                    <div class="logo-display">
+                        <img src="assets/images/Logo1.png" alt="Logo 1" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div style="display: none; color: var(--error-color);">Logo1.png not found or failed to load</div>
+                    </div>
+                    <div class="navbar-preview">
+                        <div class="nav-logo">
+                            <a href="#" class="logo-link">
+                                <img src="assets/images/Logo1.png" alt="ManhwaVerse" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                <span class="logo-text" style="display: none;">ManhwaVerse</span>
+                            </a>
+                        </div>
+                        <div style="color: var(--text-secondary);">Preview</div>
+                    </div>
+                </div>
+                
+                <!-- Logo 2 -->
+                <div class="logo-option">
+                    <h3>Logo 2</h3>
+                    <div class="logo-display">
+                        <img src="assets/images/Logo2.png" alt="Logo 2" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div style="display: none; color: var(--error-color);">Logo2.png not found or failed to load</div>
+                    </div>
+                    <div class="navbar-preview">
+                        <div class="nav-logo">
+                            <a href="#" class="logo-link">
+                                <img src="assets/images/Logo2.png" alt="ManhwaVerse" class="logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                <span class="logo-text" style="display: none;">ManhwaVerse</span>
+                            </a>
+                        </div>
+                        <div style="color: var(--text-secondary);">Preview</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Implementation Guide -->
+        <div class="logo-section">
+            <h2>Implementation Code</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Choose your preferred logo and I'll implement it for you.</p>
+            
+            <h3 style="color: var(--text-primary);">For Logo 1:</h3>
+            <div class="implementation-code">
+&lt;div class="nav-logo"&gt;
+    &lt;a href="index.html" class="logo-link" aria-label="ManhwaVerse Home"&gt;
+        &lt;img src="assets/images/Logo1.png" alt="ManhwaVerse" class="logo-image"&gt;
+    &lt;/a&gt;
+&lt;/div&gt;
+            </div>
+            
+            <h3 style="color: var(--text-primary);">For Logo 2:</h3>
+            <div class="implementation-code">
+&lt;div class="nav-logo"&gt;
+    &lt;a href="index.html" class="logo-link" aria-label="ManhwaVerse Home"&gt;
+        &lt;img src="assets/images/Logo2.png" alt="ManhwaVerse" class="logo-image"&gt;
+    &lt;/a&gt;
+&lt;/div&gt;
+            </div>
+        </div>
+    </div>
+</body>
+</html>

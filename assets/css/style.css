@@ -112,10 +112,35 @@ body {
     background-clip: text;
     text-decoration: none;
     transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .nav-logo .logo-link:hover {
     transform: scale(1.05);
+}
+
+/* Logo Image Styles */
+.nav-logo .logo-image {
+    max-height: 50px;
+    width: auto;
+    object-fit: contain;
+    transition: var(--transition-fast);
+}
+
+.nav-logo .logo-image:hover {
+    transform: scale(1.05);
+}
+
+/* Logo Text fallback */
+.nav-logo .logo-text {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-color), #7C3AED);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .nav-menu {
