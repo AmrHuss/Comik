@@ -296,61 +296,32 @@ async function loadHomepageContent() {
                 }
             }
             
-            // Progressive loading: fetch more data in background with retry logic
+            // Simple progressive loading: fetch more data in background
             setTimeout(async () => {
                 try {
                     console.log('Progressive loading: fetching additional data...');
-                    
-                    // Try load-more endpoint first
-                    let moreResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=8&limit=12`);
-                    
-                    // If load-more fails, try unified-popular as fallback
-                    if (!moreResult || !moreResult.data || moreResult.data.length === 0) {
-                        console.log('Load-more failed, trying unified-popular...');
-                        moreResult = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
-                        if (moreResult && moreResult.data) {
-                            // Slice to get additional items
-                            moreResult.data = moreResult.data.slice(8, 20);
-                        }
-                    }
+                    const moreResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=8&limit=12`);
                     
                     if (moreResult && moreResult.data && moreResult.data.length > 0) {
                         console.log('Progressive load: adding more items');
                         if (updatesGrid) {
-                            // Create a container for smooth animation
-                            const newItemsContainer = document.createElement('div');
-                            newItemsContainer.className = 'progressive-load-container';
-                            newItemsContainer.style.opacity = '0';
-                            newItemsContainer.style.transition = 'opacity 0.3s ease';
-                            
-                            // Append new items to container first
+                            // Append new items directly
                             moreResult.data.forEach(manga => {
                                 const card = createEnhancedMangaCard(manga);
-                                newItemsContainer.appendChild(card);
+                                updatesGrid.appendChild(card);
                             });
-                            
-                            // Add container to grid
-                            updatesGrid.appendChild(newItemsContainer);
-                            
-                            // Animate in
-                            setTimeout(() => {
-                                newItemsContainer.style.opacity = '1';
-                            }, 50);
                             
                             // Update load more button
                             const existingItems = updatesGrid.querySelectorAll('.manhwa-card').length;
-                            if (moreResult.has_more || existingItems < 20) {
-                                addLoadMoreButton(updatesGrid, moreResult.total_count || existingItems);
+                            if (moreResult.has_more) {
+                                addLoadMoreButton(updatesGrid, moreResult.total_count);
                             }
                         }
-                    } else {
-                        console.log('No additional data available for progressive loading');
                     }
                 } catch (error) {
-                    console.error('Progressive loading failed:', error);
-                    // Don't show error to user, just log it
+                    console.log('Progressive loading failed, using quick data');
                 }
-            }, 300); // Even faster background loading
+            }, 500);
             
         } else {
             // Fallback: show loading and fetch full data
@@ -489,7 +460,7 @@ async function handleMangaListPage() {
 }
 
 /**
- * Handle manga detail page with ultra-fast loading
+ * Handle manga detail page
  */
 async function handleDetailPage() {
     console.log('handleDetailPage called');
@@ -508,9 +479,8 @@ async function handleDetailPage() {
         return;
     }
     
-    // Show skeleton loading for better UX
     if (mangaContent) {
-        showSkeletonLoading(mangaContent);
+        showLoadingState(mangaContent, 'Loading manga details...');
     }
     
     try {
@@ -523,14 +493,7 @@ async function handleDetailPage() {
             source = 'AsuraScanz';
         }
         
-        // Use Promise.race for timeout protection
-        const result = await Promise.race([
-            makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}&source=${source}`),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Request timeout')), 15000)
-            )
-        ]);
-        
+        const result = await makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}&source=${source}`);
         console.log('Manga details API response:', result);
         console.log('Calling displayMangaDetails with data:', result.data);
         displayMangaDetails(result.data);
@@ -539,39 +502,6 @@ async function handleDetailPage() {
         console.error('Error loading manga details:', error);
         showErrorState(container, `Failed to load manga details: ${error.message}`, true);
     }
-}
-
-/**
- * Show skeleton loading for better perceived performance
- */
-function showSkeletonLoading(container) {
-    container.innerHTML = `
-        <div class="skeleton-loading">
-            <div class="skeleton-detail-grid">
-                <div class="skeleton-cover"></div>
-                <div class="skeleton-info">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-meta">
-                        <div class="skeleton-rating"></div>
-                        <div class="skeleton-status"></div>
-                    </div>
-                    <div class="skeleton-genres">
-                        <div class="skeleton-genre"></div>
-                        <div class="skeleton-genre"></div>
-                        <div class="skeleton-genre"></div>
-                    </div>
-                    <div class="skeleton-description"></div>
-                </div>
-            </div>
-            <div class="skeleton-chapters">
-                <div class="skeleton-chapter"></div>
-                <div class="skeleton-chapter"></div>
-                <div class="skeleton-chapter"></div>
-                <div class="skeleton-chapter"></div>
-                <div class="skeleton-chapter"></div>
-            </div>
-        </div>
-    `;
 }
 
 /**
@@ -1199,7 +1129,7 @@ function extractChapterTitleFromUrl(chapterUrl) {
 }
 
 /**
- * Display chapter images with advanced preloading and lazy loading (MangaDex style)
+ * Display chapter images with simple scroll-based loading
  */
 function displayChapterImages(images, container) {
     if (!container) return;
@@ -1211,34 +1141,32 @@ function displayChapterImages(images, container) {
     
     container.innerHTML = '';
     
-    // Create loading indicator
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.className = 'chapter-loading-indicator';
-    loadingIndicator.innerHTML = `
-        <div class="loading-spinner"></div>
-        <p>Loading chapter images... (0/${images.length})</p>
-    `;
-    container.appendChild(loadingIndicator);
+    // Load first 3 images immediately
+    const firstImages = images.slice(0, 3);
+    const remainingImages = images.slice(3);
     
-    let loadedCount = 0;
-    const totalImages = images.length;
-    
-    // Preload first 3 images immediately for instant display
-    const preloadCount = Math.min(3, totalImages);
-    const preloadImages = images.slice(0, preloadCount);
-    const lazyImages = images.slice(preloadCount);
-    
-    // Display preloaded images immediately
-    preloadImages.forEach((imageUrl, index) => {
-        const img = createOptimizedImage(imageUrl, index, () => {
-            loadedCount++;
-            updateLoadingIndicator(loadedCount, totalImages);
-        });
+    // Show first images right away
+    firstImages.forEach((imageUrl, index) => {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = `Chapter page ${index + 1}`;
+        img.className = 'reader-image';
+        img.loading = 'eager';
         container.appendChild(img);
     });
     
-    // Lazy load remaining images with intersection observer
-    if (lazyImages.length > 0) {
+    // Load remaining images as user scrolls
+    if (remainingImages.length > 0) {
+        remainingImages.forEach((imageUrl, index) => {
+            const img = document.createElement('img');
+            img.alt = `Chapter page ${index + 4}`;
+            img.className = 'reader-image lazy-image';
+            img.loading = 'lazy';
+            img.dataset.src = imageUrl;
+            container.appendChild(img);
+        });
+        
+        // Simple intersection observer for lazy loading
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -1248,76 +1176,13 @@ function displayChapterImages(images, container) {
                     observer.unobserve(img);
                 }
             });
-        }, {
-            rootMargin: '100px' // Start loading 100px before image comes into view
         });
         
-        lazyImages.forEach((imageUrl, index) => {
-            const img = createOptimizedImage(imageUrl, preloadCount + index, () => {
-                loadedCount++;
-                updateLoadingIndicator(loadedCount, totalImages);
-            }, true); // Mark as lazy
-            container.appendChild(img);
+        // Observe all lazy images
+        container.querySelectorAll('.lazy-image').forEach(img => {
             observer.observe(img);
         });
     }
-    
-    function updateLoadingIndicator(loaded, total) {
-        const indicator = container.querySelector('.chapter-loading-indicator');
-        if (indicator) {
-            if (loaded >= total) {
-                indicator.style.display = 'none';
-            } else {
-                indicator.querySelector('p').textContent = `Loading chapter images... (${loaded}/${total})`;
-            }
-        }
-    }
-}
-
-/**
- * Create optimized image element with advanced loading
- */
-function createOptimizedImage(imageUrl, index, onLoad, isLazy = false) {
-    const img = document.createElement('img');
-    img.alt = `Chapter page ${index + 1}`;
-    img.className = `reader-image ${isLazy ? 'lazy-image' : ''}`;
-    
-    if (isLazy) {
-        // For lazy loading, store URL in data-src and use placeholder
-        img.dataset.src = imageUrl;
-        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkxvYWRpbmcuLi48L3RleHQ+PC9zdmc+';
-        img.loading = 'lazy';
-    } else {
-        // For immediate loading
-        img.src = imageUrl;
-        img.loading = 'eager';
-    }
-    
-    // Add error handling with retry
-    img.onerror = function() {
-        console.warn(`Failed to load image ${index + 1}, retrying...`);
-        this.style.opacity = '0.5';
-        
-        // Retry once after 1 second
-        setTimeout(() => {
-            this.src = imageUrl;
-            this.onerror = function() {
-                this.style.display = 'none';
-                const placeholder = document.createElement('div');
-                placeholder.className = 'image-placeholder';
-                placeholder.innerHTML = `<span>📄</span><p>Page ${index + 1}</p>`;
-                this.parentNode.insertBefore(placeholder, this.nextSibling);
-            };
-        }, 1000);
-    };
-    
-    // Add load handler
-    img.onload = function() {
-        this.style.opacity = '1';
-        if (onLoad) onLoad();
-    };
-    
-    return img;
 }
 
 /**

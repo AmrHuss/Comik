@@ -1362,29 +1362,12 @@ def get_unified_chapter_data():
                 return image_urls, None
                 
             elif source.lower() == 'webtoons':
-                # Ultra-fast Webtoons optimization with parallel processing
+                # Simple Webtoons optimization
                 try:
-                    # Use thread pool for non-blocking Webtoons scraping
-                    future = thread_pool.submit(scrape_webtoons_chapter_images, chapter_url)
-                    images = future.result(timeout=20)  # 20 second timeout
-                    
+                    images = scrape_webtoons_chapter_images(chapter_url)
                     if not images:
                         return None, "No images found in Webtoons chapter"
-                    
-                    # Filter out any remaining placeholders
-                    filtered_images = []
-                    for img_url in images:
-                        if not any(placeholder in img_url.lower() for placeholder in [
-                            'bg_transparency.png', 'placeholder', 'default', 'loading', 'transparent'
-                        ]):
-                            filtered_images.append(img_url)
-                    
-                    if not filtered_images:
-                        return None, "Only placeholder images found in Webtoons chapter"
-                    
-                    logger.info(f"Webtoons chapter loaded: {len(filtered_images)} images")
-                    return filtered_images, None
-                    
+                    return images, None
                 except Exception as e:
                     logger.error(f"Webtoons chapter fetch error: {e}")
                     return None, f"Failed to fetch Webtoons chapter: {str(e)}"
