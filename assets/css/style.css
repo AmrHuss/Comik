@@ -825,7 +825,7 @@ body[data-page="reader"] .header--hidden {
     width: 100%;
     height: auto;
     display: block;
-    margin: 0 auto 1rem;
+    margin: 0;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
 }
