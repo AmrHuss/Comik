@@ -284,10 +284,10 @@ async function loadHomepageContent() {
         // Display quick data immediately if available
         if (quickResult.data && quickResult.data.length > 0) {
             console.log('Using ultra-fast cached data for instant display');
-            if (trendingGrid) {
+        if (trendingGrid) {
                 displayEnhancedMangaGrid(quickResult.data.slice(0, 6), trendingGrid);
-            }
-            if (updatesGrid) {
+        }
+        if (updatesGrid) {
                 displayEnhancedMangaGrid(quickResult.data, updatesGrid);
                 
                 // Add "Load More" button if there's more data
@@ -296,31 +296,61 @@ async function loadHomepageContent() {
                 }
             }
             
-            // Progressive loading: fetch more data in background
+            // Progressive loading: fetch more data in background with retry logic
             setTimeout(async () => {
                 try {
                     console.log('Progressive loading: fetching additional data...');
-                    const moreResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=8&limit=12`);
-                    if (moreResult.data && moreResult.data.length > 0) {
+                    
+                    // Try load-more endpoint first
+                    let moreResult = await makeApiRequest(`${API_BASE_URL}/load-more?offset=8&limit=12`);
+                    
+                    // If load-more fails, try unified-popular as fallback
+                    if (!moreResult || !moreResult.data || moreResult.data.length === 0) {
+                        console.log('Load-more failed, trying unified-popular...');
+                        moreResult = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+                        if (moreResult && moreResult.data) {
+                            // Slice to get additional items
+                            moreResult.data = moreResult.data.slice(8, 20);
+                        }
+                    }
+                    
+                    if (moreResult && moreResult.data && moreResult.data.length > 0) {
                         console.log('Progressive load: adding more items');
                         if (updatesGrid) {
-                            // Append new items smoothly
+                            // Create a container for smooth animation
+                            const newItemsContainer = document.createElement('div');
+                            newItemsContainer.className = 'progressive-load-container';
+                            newItemsContainer.style.opacity = '0';
+                            newItemsContainer.style.transition = 'opacity 0.3s ease';
+                            
+                            // Append new items to container first
                             moreResult.data.forEach(manga => {
                                 const card = createEnhancedMangaCard(manga);
-                                updatesGrid.appendChild(card);
+                                newItemsContainer.appendChild(card);
                             });
+                            
+                            // Add container to grid
+                            updatesGrid.appendChild(newItemsContainer);
+                            
+                            // Animate in
+                            setTimeout(() => {
+                                newItemsContainer.style.opacity = '1';
+                            }, 50);
                             
                             // Update load more button
                             const existingItems = updatesGrid.querySelectorAll('.manhwa-card').length;
-                            if (moreResult.has_more) {
-                                addLoadMoreButton(updatesGrid, moreResult.total_count);
+                            if (moreResult.has_more || existingItems < 20) {
+                                addLoadMoreButton(updatesGrid, moreResult.total_count || existingItems);
                             }
                         }
+                    } else {
+                        console.log('No additional data available for progressive loading');
                     }
                 } catch (error) {
-                    console.log('Progressive loading failed, using quick data');
+                    console.error('Progressive loading failed:', error);
+                    // Don't show error to user, just log it
                 }
-            }, 500); // Faster background loading
+            }, 300); // Even faster background loading
             
         } else {
             // Fallback: show loading and fetch full data
@@ -367,9 +397,17 @@ function addLoadMoreButton(container, totalCount) {
         existingButton.remove();
     }
     
+    // Count current items
+    const currentItems = container.querySelectorAll('.manhwa-card').length;
+    const remainingCount = totalCount - currentItems;
+    
+    if (remainingCount <= 0) {
+        return; // No need for load more button
+    }
+    
     const loadMoreBtn = document.createElement('button');
     loadMoreBtn.className = 'load-more-btn';
-    loadMoreBtn.innerHTML = `Load More (${totalCount - 10} remaining)`;
+    loadMoreBtn.innerHTML = `Load More (${remainingCount} remaining)`;
     loadMoreBtn.style.cssText = `
         width: 100%;
         padding: 12px;
@@ -383,31 +421,38 @@ function addLoadMoreButton(container, totalCount) {
         transition: all 0.3s ease;
     `;
     
+    let currentOffset = currentItems;
+    
     loadMoreBtn.addEventListener('click', async () => {
         loadMoreBtn.innerHTML = 'Loading...';
         loadMoreBtn.disabled = true;
         
         try {
-            const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=10&limit=10`);
+            const result = await makeApiRequest(`${API_BASE_URL}/load-more?offset=${currentOffset}&limit=10`);
             if (result.data && result.data.length > 0) {
                 // Append new items to existing grid
-                const existingItems = container.querySelectorAll('.manhwa-card');
                 result.data.forEach(manga => {
                     const card = createEnhancedMangaCard(manga);
                     container.appendChild(card);
                 });
                 
+                currentOffset += result.data.length;
+                
                 // Update button or remove if no more data
-                if (result.has_more) {
-                    loadMoreBtn.innerHTML = `Load More (${result.total_count - (existingItems.length + result.data.length)} remaining)`;
+                const newRemainingCount = totalCount - currentOffset;
+                if (newRemainingCount > 0) {
+                    loadMoreBtn.innerHTML = `Load More (${newRemainingCount} remaining)`;
                     loadMoreBtn.disabled = false;
                 } else {
                     loadMoreBtn.remove();
                 }
+            } else {
+                // No more data available
+                loadMoreBtn.remove();
             }
         } catch (error) {
             console.error('Error loading more data:', error);
-            loadMoreBtn.innerHTML = 'Error loading more';
+            loadMoreBtn.innerHTML = 'Error loading more - Click to retry';
             loadMoreBtn.disabled = false;
         }
     });
@@ -444,7 +489,7 @@ async function handleMangaListPage() {
 }
 
 /**
- * Handle manga detail page
+ * Handle manga detail page with ultra-fast loading
  */
 async function handleDetailPage() {
     console.log('handleDetailPage called');
@@ -463,8 +508,9 @@ async function handleDetailPage() {
         return;
     }
     
+    // Show skeleton loading for better UX
     if (mangaContent) {
-        showLoadingState(mangaContent, 'Loading manga details...');
+        showSkeletonLoading(mangaContent);
     }
     
     try {
@@ -477,7 +523,14 @@ async function handleDetailPage() {
             source = 'AsuraScanz';
         }
         
-        const result = await makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}&source=${source}`);
+        // Use Promise.race for timeout protection
+        const result = await Promise.race([
+            makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}&source=${source}`),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Request timeout')), 15000)
+            )
+        ]);
+        
         console.log('Manga details API response:', result);
         console.log('Calling displayMangaDetails with data:', result.data);
         displayMangaDetails(result.data);
@@ -486,6 +539,39 @@ async function handleDetailPage() {
         console.error('Error loading manga details:', error);
         showErrorState(container, `Failed to load manga details: ${error.message}`, true);
     }
+}
+
+/**
+ * Show skeleton loading for better perceived performance
+ */
+function showSkeletonLoading(container) {
+    container.innerHTML = `
+        <div class="skeleton-loading">
+            <div class="skeleton-detail-grid">
+                <div class="skeleton-cover"></div>
+                <div class="skeleton-info">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-meta">
+                        <div class="skeleton-rating"></div>
+                        <div class="skeleton-status"></div>
+                    </div>
+                    <div class="skeleton-genres">
+                        <div class="skeleton-genre"></div>
+                        <div class="skeleton-genre"></div>
+                        <div class="skeleton-genre"></div>
+                    </div>
+                    <div class="skeleton-description"></div>
+                </div>
+            </div>
+            <div class="skeleton-chapters">
+                <div class="skeleton-chapter"></div>
+                <div class="skeleton-chapter"></div>
+                <div class="skeleton-chapter"></div>
+                <div class="skeleton-chapter"></div>
+                <div class="skeleton-chapter"></div>
+            </div>
+        </div>
+    `;
 }
 
 /**
@@ -555,8 +641,8 @@ function displayMangaDetails(data, source = 'AsuraScanz') {
             <div class="chapter-list-controls">
                 <button id="sort-asc" class="btn btn-outline">↑ Ascending</button>
                 <button id="sort-desc" class="btn btn-outline active">↓ Descending</button>
-            </div>
-            <div class="chapter-list-container">
+        </div>
+        <div class="chapter-list-container">
                 <div id="chapter-list" class="chapter-list">${chaptersHtml}</div>
             </div>
         </div>
@@ -1113,7 +1199,7 @@ function extractChapterTitleFromUrl(chapterUrl) {
 }
 
 /**
- * Display chapter images in the reader
+ * Display chapter images with advanced preloading and lazy loading (MangaDex style)
  */
 function displayChapterImages(images, container) {
     if (!container) return;
@@ -1125,24 +1211,113 @@ function displayChapterImages(images, container) {
     
     container.innerHTML = '';
     
-    images.forEach((imageUrl, index) => {
-        const img = document.createElement('img');
-        img.src = imageUrl;
-        img.alt = `Chapter page ${index + 1}`;
-        img.className = 'reader-image';
-        img.loading = 'lazy';
-        
-        // Add error handling for images
-        img.onerror = function() {
-            this.style.display = 'none';
-            const placeholder = document.createElement('div');
-            placeholder.className = 'image-placeholder';
-            placeholder.innerHTML = `<span>📄</span><p>Page ${index + 1}</p>`;
-            this.parentNode.insertBefore(placeholder, this.nextSibling);
-        };
-        
+    // Create loading indicator
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'chapter-loading-indicator';
+    loadingIndicator.innerHTML = `
+        <div class="loading-spinner"></div>
+        <p>Loading chapter images... (0/${images.length})</p>
+    `;
+    container.appendChild(loadingIndicator);
+    
+    let loadedCount = 0;
+    const totalImages = images.length;
+    
+    // Preload first 3 images immediately for instant display
+    const preloadCount = Math.min(3, totalImages);
+    const preloadImages = images.slice(0, preloadCount);
+    const lazyImages = images.slice(preloadCount);
+    
+    // Display preloaded images immediately
+    preloadImages.forEach((imageUrl, index) => {
+        const img = createOptimizedImage(imageUrl, index, () => {
+            loadedCount++;
+            updateLoadingIndicator(loadedCount, totalImages);
+        });
         container.appendChild(img);
     });
+    
+    // Lazy load remaining images with intersection observer
+    if (lazyImages.length > 0) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy-image');
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '100px' // Start loading 100px before image comes into view
+        });
+        
+        lazyImages.forEach((imageUrl, index) => {
+            const img = createOptimizedImage(imageUrl, preloadCount + index, () => {
+                loadedCount++;
+                updateLoadingIndicator(loadedCount, totalImages);
+            }, true); // Mark as lazy
+            container.appendChild(img);
+            observer.observe(img);
+        });
+    }
+    
+    function updateLoadingIndicator(loaded, total) {
+        const indicator = container.querySelector('.chapter-loading-indicator');
+        if (indicator) {
+            if (loaded >= total) {
+                indicator.style.display = 'none';
+            } else {
+                indicator.querySelector('p').textContent = `Loading chapter images... (${loaded}/${total})`;
+            }
+        }
+    }
+}
+
+/**
+ * Create optimized image element with advanced loading
+ */
+function createOptimizedImage(imageUrl, index, onLoad, isLazy = false) {
+    const img = document.createElement('img');
+    img.alt = `Chapter page ${index + 1}`;
+    img.className = `reader-image ${isLazy ? 'lazy-image' : ''}`;
+    
+    if (isLazy) {
+        // For lazy loading, store URL in data-src and use placeholder
+        img.dataset.src = imageUrl;
+        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkxvYWRpbmcuLi48L3RleHQ+PC9zdmc+';
+        img.loading = 'lazy';
+    } else {
+        // For immediate loading
+        img.src = imageUrl;
+        img.loading = 'eager';
+    }
+    
+    // Add error handling with retry
+    img.onerror = function() {
+        console.warn(`Failed to load image ${index + 1}, retrying...`);
+        this.style.opacity = '0.5';
+        
+        // Retry once after 1 second
+        setTimeout(() => {
+            this.src = imageUrl;
+            this.onerror = function() {
+                this.style.display = 'none';
+                const placeholder = document.createElement('div');
+                placeholder.className = 'image-placeholder';
+                placeholder.innerHTML = `<span>📄</span><p>Page ${index + 1}</p>`;
+                this.parentNode.insertBefore(placeholder, this.nextSibling);
+            };
+        }, 1000);
+    };
+    
+    // Add load handler
+    img.onload = function() {
+        this.style.opacity = '1';
+        if (onLoad) onLoad();
+    };
+    
+    return img;
 }
 
 /**
