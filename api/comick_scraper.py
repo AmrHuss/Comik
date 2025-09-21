@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Comick.live Scraper - API-First Approach
-========================================
+Comick.live Scraper - Simple HTML Scraping like Webtoons
+========================================================
 
-A professional scraper for Comick.live that:
-- Uses the unofficial API as primary method
-- Falls back to HTML scraping only when necessary
-- Handles image proxy requirements
-- Implements robust error handling
+A simple scraper for Comick.live that:
+- Scrapes HTML directly like Webtoons scraper
+- Uses image proxy for all cover images
+- Simple and reliable approach
 
 Author: ManhwaVerse Development Team
 Date: 2025
-Version: 3.0
+Version: 4.0
 """
 
 import requests
@@ -23,16 +22,17 @@ from urllib.parse import urljoin, quote
 
 logger = logging.getLogger(__name__)
 
-# API Configuration
-API_BASE_URL = "https://api.comick.fun"
-CDN_BASE_URL = "https://cdn1.comicknew.pictures"
-SITE_BASE_URL = "https://comick.live"
+# Constants
+COMICK_BASE_URL = "https://comick.live"
+ACTION_GENRE_URL = "https://comick.live/search?genres=action&order_by=user_follow_count"
+REQUEST_TIMEOUT = 15
+MAX_RETRIES = 3
 
 def get_comick_headers():
-    """Get headers optimized for Comick.live API and website"""
+    """Get headers optimized for Comick.live"""
     return {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://comick.live/',
@@ -50,168 +50,181 @@ def get_comick_headers():
         'DNT': '1'
     }
 
-def make_api_request(url: str, params: Dict = None) -> Optional[Dict]:
-    """Make API request with proper error handling"""
-    try:
+def make_request(url, retries=MAX_RETRIES, headers=None):
+    """Make HTTP request with retry logic and proper error handling."""
+    if headers is None:
         headers = get_comick_headers()
-        response = requests.get(url, headers=headers, params=params, timeout=15)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logger.error(f"API request failed for {url}: {e}")
-        return None
+    
+    for attempt in range(retries):
+        try:
+            response = requests.get(
+                url, 
+                headers=headers, 
+                timeout=REQUEST_TIMEOUT,
+                allow_redirects=True
+            )
+            response.raise_for_status()
+            return response
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Request attempt {attempt + 1} failed for {url}: {e}")
+            if attempt == retries - 1:
+                logger.error(f"All {retries} attempts failed for {url}")
+                return None
+    return None
 
 def scrape_comick_action_genre():
-    """Scrape action genre manga from Comick.live using API-first approach"""
+    """Scrape action genre manga from Comick.live - simple like Webtoons"""
     try:
-        logger.info("Scraping Comick action genre using API")
+        logger.info("Starting Comick action genre scraping")
         
-        # Try API first - search for action genre
-        search_url = f"{API_BASE_URL}/v1.0/search/"
-        params = {
-            'q': 'action',
-            't': 'false',
-            'limit': 20
-        }
+        # Make request to action genre page
+        logger.info(f"Fetching: {ACTION_GENRE_URL}")
+        response = make_request(ACTION_GENRE_URL)
         
-        api_data = make_api_request(search_url, params)
+        if not response:
+            logger.error("Failed to fetch Comick action genre page")
+            return []
         
-        if api_data and 'result' in api_data:
-            manga_list = []
-            comics = api_data['result'][:20]  # Limit to 20
-            
-            for comic in comics:
-                try:
-                    # Extract basic info from API
-                    title = comic.get('title', 'Unknown Title')
-                    slug = comic.get('slug', '')
-                    cover_url = comic.get('md_covers', [{}])[0].get('b2key', '') if comic.get('md_covers') else ''
-                    
-                    # Construct full cover URL
-                    if cover_url:
-                        full_cover_url = f"{CDN_BASE_URL}/{cover_url}"
-                    else:
-                        full_cover_url = ""
-                    
-                    # Extract additional info
-                    description = comic.get('desc', 'No description available')
-                    rating = comic.get('bayesian_rating', 0)
-                    followers = comic.get('user_follow_count', 0)
-                    chapters = comic.get('last_chapter', 0)
-                    status = comic.get('status', 'Ongoing')
-                    year = comic.get('year', '2024')
-                    
-                    # Extract genres
-                    genres = []
-                    if 'genres' in comic:
-                        for genre in comic['genres']:
-                            if isinstance(genre, dict) and 'name' in genre:
-                                genres.append(genre['name'])
-                    
-                    # Extract alternative titles
-                    titles = [title]
-                    if 'alt_titles' in comic:
-                        for alt_title in comic['alt_titles']:
-                            if isinstance(alt_title, dict) and 'title' in alt_title:
-                                titles.append(alt_title['title'])
-                    
-                    # Create manga object
-                    manga = {
-                        'title': title,
-                        'description': description[:200] + '...' if len(description) > 200 else description,
-                        'cover_url': f"/api/comick-image-proxy?img_url={full_cover_url}" if full_cover_url else "",
-                        'rating': str(rating) if rating > 0 else "N/A",
-                        'followers': followers,
-                        'chapters': int(chapters) if chapters > 0 else 0,
-                        'status': status,
-                        'year': str(year) if year else '2024',
-                        'slug': slug,
-                        'source': 'Comick',
-                        'url': f"{SITE_BASE_URL}/comic/{slug}",
-                        'genres': genres if genres else ['Action'],
-                        'titles': titles
-                    }
-                    
-                    manga_list.append(manga)
-                    logger.debug(f"Added Comick manga: {title}")
-                    
-                except Exception as e:
-                    logger.warning(f"Error processing comic: {e}")
-                    continue
-            
-            if manga_list:
-                logger.info(f"Successfully scraped {len(manga_list)} Comick manga via API")
-                return manga_list
+        # Parse with BeautifulSoup
+        soup = BeautifulSoup(response.content, 'lxml')
         
-        # Fallback to HTML scraping if API fails
-        logger.warning("API failed, falling back to HTML scraping")
-        return scrape_comick_html_fallback()
+        # Find manga cards - try multiple selectors like Webtoons
+        manga_cards = []
+        selectors = [
+            'div.cursor-pointer',
+            'div[class*="cursor-pointer"]',
+            'div[class*="manga"]',
+            '.manga-card'
+        ]
         
-    except Exception as e:
-        logger.error(f"Error in scrape_comick_action_genre: {e}")
-        return []
-
-def scrape_comick_html_fallback():
-    """Fallback HTML scraping method"""
-    try:
-        url = f"{SITE_BASE_URL}/search?genres=action&order_by=user_follow_count"
-        headers = get_comick_headers()
+        for selector in selectors:
+            manga_cards = soup.select(selector)
+            if manga_cards:
+                logger.info(f"Found {len(manga_cards)} manga cards with selector: {selector}")
+                break
         
-        logger.info(f"HTML fallback scraping from: {url}")
+        if not manga_cards:
+            logger.error("Could not find manga cards")
+            return []
         
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
         manga_list = []
         
-        # Find manga cards
-        cards = soup.find_all('div', class_='cursor-pointer')
-        logger.info(f"Found {len(cards)} manga cards in HTML")
-        
-        for i, card in enumerate(cards[:20]):
+        # Process each manga card
+        for i, card in enumerate(manga_cards[:20]):  # Limit to 20
             try:
-                # Extract title
-                title_elem = card.find('p', class_='font-bold')
-                title = title_elem.get_text(strip=True) if title_elem else f"Comick Manga {i+1}"
+                # Extract title - try multiple methods like Webtoons
+                title = ""
+                title_selectors = [
+                    'p.font-bold',
+                    'h3',
+                    'h4',
+                    '.title',
+                    'a[title]'
+                ]
                 
-                # Extract cover image
-                img_elem = card.find('img')
+                for selector in title_selectors:
+                    title_elem = card.select_one(selector)
+                    if title_elem:
+                        title = title_elem.get_text(strip=True)
+                        if title:
+                            break
+                
+                if not title:
+                    # Try getting title from link
+                    link_elem = card.find('a')
+                    if link_elem:
+                        title = link_elem.get('title', '') or link_elem.get_text(strip=True)
+                
+                if not title:
+                    title = f"Comick Manga {i+1}"
+                
+                # Extract cover image - try multiple methods
                 cover_url = ""
-                if img_elem:
-                    cover_url = img_elem.get('src') or img_elem.get('data-src', '')
-                    if cover_url and not cover_url.startswith('http'):
-                        cover_url = urljoin(SITE_BASE_URL, cover_url)
+                img_selectors = [
+                    'img',
+                    'img[src]',
+                    'img[data-src]'
+                ]
+                
+                for selector in img_selectors:
+                    img_elem = card.select_one(selector)
+                    if img_elem:
+                        cover_url = img_elem.get('src') or img_elem.get('data-src', '')
+                        if cover_url:
+                            break
+                
+                # Convert relative URLs to absolute
+                if cover_url and not cover_url.startswith('http'):
+                    cover_url = urljoin(COMICK_BASE_URL, cover_url)
                 
                 # Extract description
-                desc_elem = card.find('p', class_='prose')
-                description = desc_elem.get_text(strip=True) if desc_elem else "Popular manga available on Comick.live"
+                description = "Popular manga available on Comick.live"
+                desc_selectors = [
+                    'p.prose',
+                    '.description',
+                    '.summary',
+                    'p'
+                ]
+                
+                for selector in desc_selectors:
+                    desc_elem = card.select_one(selector)
+                    if desc_elem:
+                        desc_text = desc_elem.get_text(strip=True)
+                        if desc_text and len(desc_text) > 10:
+                            description = desc_text
+                            break
                 
                 # Extract chapters
-                chapters_elem = card.find('span', string=lambda text: text and 'chapters' in text)
                 chapters = 0
-                if chapters_elem:
-                    chapters_text = chapters_elem.get_text(strip=True)
-                    match = re.search(r'(\d+(?:\.\d+)?)', chapters_text)
-                    if match:
-                        chapters = float(match.group(1))
+                chapter_selectors = [
+                    'span:contains("chapters")',
+                    '.chapters',
+                    '.chapter-count'
+                ]
+                
+                for selector in chapter_selectors:
+                    chapter_elem = card.select_one(selector)
+                    if chapter_elem:
+                        chapter_text = chapter_elem.get_text(strip=True)
+                        match = re.search(r'(\d+(?:\.\d+)?)', chapter_text)
+                        if match:
+                            chapters = float(match.group(1))
+                            break
                 
                 # Extract followers
-                followers_elem = card.find('span', class_='text-xs xl:text-lg')
                 followers = 0
-                if followers_elem:
-                    followers_text = followers_elem.get_text(strip=True)
-                    if 'k' in followers_text:
-                        followers = int(float(followers_text.replace('k', '')) * 1000)
-                    else:
-                        try:
-                            followers = int(followers_text.replace(',', ''))
-                        except:
-                            followers = 0
+                follower_selectors = [
+                    'span.text-xs.xl:text-lg',
+                    '.followers',
+                    '.follow-count'
+                ]
+                
+                for selector in follower_selectors:
+                    follower_elem = card.select_one(selector)
+                    if follower_elem:
+                        follower_text = follower_elem.get_text(strip=True)
+                        if 'k' in follower_text:
+                            followers = int(float(follower_text.replace('k', '')) * 1000)
+                        else:
+                            try:
+                                followers = int(follower_text.replace(',', ''))
+                            except:
+                                followers = 0
+                        break
                 
                 # Extract year
-                year_elem = card.find('span', title='Published')
-                year = year_elem.get_text(strip=True) if year_elem else "2024"
+                year = "2024"
+                year_selectors = [
+                    'span[title="Published"]',
+                    '.year',
+                    '.published'
+                ]
+                
+                for selector in year_selectors:
+                    year_elem = card.select_one(selector)
+                    if year_elem:
+                        year = year_elem.get_text(strip=True)
+                        break
                 
                 # Create slug
                 slug = title.lower().replace(' ', '-').replace(':', '').replace('!', '').replace('?', '').replace("'", "")
@@ -219,6 +232,7 @@ def scrape_comick_html_fallback():
                 # Use proxy for cover images
                 proxy_cover_url = f"/api/comick-image-proxy?img_url={cover_url}" if cover_url else ""
                 
+                # Create manga object
                 manga = {
                     'title': title,
                     'description': description[:200] + '...' if len(description) > 200 else description,
@@ -230,88 +244,38 @@ def scrape_comick_html_fallback():
                     'year': year,
                     'slug': slug,
                     'source': 'Comick',
-                    'url': f"{SITE_BASE_URL}/comic/{slug}",
+                    'url': f"{COMICK_BASE_URL}/comic/{slug}",
                     'genres': ['Action'],
                     'titles': [title]
                 }
                 
                 manga_list.append(manga)
-                logger.debug(f"Added HTML fallback manga: {title}")
+                logger.debug(f"Added Comick manga: {title}")
                 
             except Exception as e:
-                logger.warning(f"Error processing HTML manga card {i+1}: {e}")
+                logger.warning(f"Error processing manga card {i+1}: {e}")
                 continue
         
-        logger.info(f"HTML fallback scraped {len(manga_list)} manga")
+        logger.info(f"Successfully scraped {len(manga_list)} Comick manga")
         return manga_list
         
     except Exception as e:
-        logger.error(f"Error in HTML fallback: {e}")
+        logger.error(f"Error in scrape_comick_action_genre: {e}")
         return []
 
 def scrape_comick_details(comic_url: str):
-    """Scrape detailed information for a specific Comick comic using API"""
+    """Scrape detailed information for a specific Comick comic"""
     try:
-        # Extract slug from URL
-        slug = comic_url.split('/comic/')[-1].split('/')[0]
+        logger.info(f"Scraping Comick details for: {comic_url}")
         
-        # Try API first
-        api_url = f"{API_BASE_URL}/comic/{slug}/chapters"
-        api_data = make_api_request(api_url)
+        response = make_request(comic_url)
+        if not response:
+            logger.error(f"Failed to fetch comic details from {comic_url}")
+            return None
         
-        if api_data:
-            # Get comic info from API
-            comic_info = api_data.get('comic', {})
-            title = comic_info.get('title', 'Unknown Title')
-            description = comic_info.get('desc', 'No description available')
-            cover_url = ""
-            if comic_info.get('md_covers'):
-                cover_url = f"{CDN_BASE_URL}/{comic_info['md_covers'][0].get('b2key', '')}"
-            
-            # Process chapters
-            chapters_list = []
-            if 'chapters' in api_data:
-                for chapter in api_data['chapters']:
-                    chapters_list.append({
-                        'title': chapter.get('title', 'Unknown Chapter'),
-                        'chapter_number': chapter.get('chap', 0),
-                        'url': f"{SITE_BASE_URL}/comic/{slug}/{chapter.get('hid', '')}-chapter-{chapter.get('chap', 0)}-en"
-                    })
-            
-            return {
-                'title': title,
-                'cover_url': f"/api/comick-image-proxy?img_url={cover_url}" if cover_url else "",
-                'description': description,
-                'rating': str(comic_info.get('bayesian_rating', 0)),
-                'followers': comic_info.get('user_follow_count', 0),
-                'chapters': len(chapters_list),
-                'status': comic_info.get('status', 'Ongoing'),
-                'year': str(comic_info.get('year', '2024')),
-                'slug': slug,
-                'source': 'Comick',
-                'url': comic_url,
-                'genres': [genre.get('name', '') for genre in comic_info.get('genres', [])],
-                'titles': [title] + [alt.get('title', '') for alt in comic_info.get('alt_titles', [])],
-                'chapters_list': chapters_list
-            }
+        soup = BeautifulSoup(response.content, 'lxml')
         
-        # Fallback to HTML scraping
-        return scrape_comick_details_html(comic_url)
-        
-    except Exception as e:
-        logger.error(f"Error scraping Comick details: {e}")
-        return None
-
-def scrape_comick_details_html(comic_url: str):
-    """HTML fallback for comic details"""
-    try:
-        headers = get_comick_headers()
-        response = requests.get(comic_url, headers=headers, timeout=15)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Extract basic info
+        # Extract title
         title_elem = soup.find('h1')
         title = title_elem.get_text(strip=True) if title_elem else "Unknown Title"
         
@@ -321,18 +285,27 @@ def scrape_comick_details_html(comic_url: str):
         if img_elem:
             cover_url = img_elem.get('src') or img_elem.get('data-src', '')
             if cover_url and not cover_url.startswith('http'):
-                cover_url = urljoin(SITE_BASE_URL, cover_url)
+                cover_url = urljoin(COMICK_BASE_URL, cover_url)
+        
+        # Extract description
+        description = "Comick manga details"
+        desc_elem = soup.find('div', class_='description') or soup.find('p')
+        if desc_elem:
+            description = desc_elem.get_text(strip=True)
+        
+        # Create slug
+        slug = title.lower().replace(' ', '-').replace(':', '').replace('!', '').replace('?', '').replace("'", "")
         
         return {
             'title': title,
             'cover_url': f"/api/comick-image-proxy?img_url={cover_url}" if cover_url else "",
-            'description': "Comick manga details",
+            'description': description,
             'rating': "8.5",
             'followers': 1000,
             'chapters': 50,
             'status': 'Ongoing',
             'year': '2024',
-            'slug': title.lower().replace(' ', '-'),
+            'slug': slug,
             'source': 'Comick',
             'url': comic_url,
             'genres': ['Action'],
@@ -340,51 +313,20 @@ def scrape_comick_details_html(comic_url: str):
         }
         
     except Exception as e:
-        logger.error(f"Error in HTML details fallback: {e}")
+        logger.error(f"Error scraping Comick details: {e}")
         return None
 
 def scrape_comick_chapter_images(chapter_url: str):
-    """Scrape chapter images from Comick using API"""
+    """Scrape chapter images from Comick"""
     try:
-        # Extract comic slug and chapter info from URL
-        parts = chapter_url.split('/')
-        comic_slug = parts[-3] if len(parts) >= 3 else ""
-        chapter_hid = parts[-1].split('-chapter-')[0] if '-chapter-' in parts[-1] else ""
+        logger.info(f"Scraping chapter images from: {chapter_url}")
         
-        # Try API first
-        api_url = f"{API_BASE_URL}/comic/{comic_slug}/chapters"
-        api_data = make_api_request(api_url)
+        response = make_request(chapter_url)
+        if not response:
+            logger.error(f"Failed to fetch chapter from {chapter_url}")
+            return []
         
-        if api_data and 'chapters' in api_data:
-            # Find the specific chapter
-            for chapter in api_data['chapters']:
-                if chapter.get('hid') == chapter_hid:
-                    # Get chapter images
-                    chapter_images = chapter.get('images', [])
-                    image_urls = []
-                    
-                    for img in chapter_images:
-                        if 'b2key' in img:
-                            full_url = f"{CDN_BASE_URL}/{img['b2key']}"
-                            image_urls.append(full_url)
-                    
-                    return image_urls
-        
-        # Fallback to HTML scraping
-        return scrape_comick_chapter_images_html(chapter_url)
-        
-    except Exception as e:
-        logger.error(f"Error scraping Comick chapter images: {e}")
-        return []
-
-def scrape_comick_chapter_images_html(chapter_url: str):
-    """HTML fallback for chapter images"""
-    try:
-        headers = get_comick_headers()
-        response = requests.get(chapter_url, headers=headers, timeout=15)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
+        soup = BeautifulSoup(response.content, 'lxml')
         
         # Find images in the chapter reader
         image_container = soup.find('div', class_='overflow-scroll')
@@ -392,90 +334,40 @@ def scrape_comick_chapter_images_html(chapter_url: str):
             image_container = soup
         
         images = image_container.find_all('img', class_='mx-auto select-none chapter')
-        image_urls = []
+        if not images:
+            # Fallback to any img tags
+            images = image_container.find_all('img')
         
+        image_urls = []
         for img in images:
             src = img.get('src') or img.get('data-src')
             if src:
                 if src.startswith('//'):
                     src = 'https:' + src
                 elif src.startswith('/'):
-                    src = urljoin(SITE_BASE_URL, src)
+                    src = urljoin(COMICK_BASE_URL, src)
                 image_urls.append(src)
         
+        logger.info(f"Found {len(image_urls)} chapter images")
         return image_urls
         
     except Exception as e:
-        logger.error(f"Error in HTML chapter images fallback: {e}")
+        logger.error(f"Error scraping Comick chapter images: {e}")
         return []
 
 def search_comick_by_title(title: str):
-    """Search Comick by title using API"""
+    """Search Comick by title"""
     try:
-        search_url = f"{API_BASE_URL}/v1.0/search/"
-        params = {
-            'q': title,
-            't': 'false',
-            'limit': 10
-        }
+        logger.info(f"Searching Comick for: {title}")
         
-        api_data = make_api_request(search_url, params)
+        search_url = f"{COMICK_BASE_URL}/search?q={quote(title)}"
+        response = make_request(search_url)
         
-        if api_data and 'result' in api_data:
-            manga_list = []
-            comics = api_data['result'][:10]  # Limit to 10 results
-            
-            for comic in comics:
-                try:
-                    title_text = comic.get('title', '')
-                    slug = comic.get('slug', '')
-                    cover_url = comic.get('md_covers', [{}])[0].get('b2key', '') if comic.get('md_covers') else ''
-                    
-                    if cover_url:
-                        full_cover_url = f"{CDN_BASE_URL}/{cover_url}"
-                    else:
-                        full_cover_url = ""
-                    
-                    manga = {
-                        'title': title_text,
-                        'cover_url': f"/api/comick-image-proxy?img_url={full_cover_url}" if full_cover_url else "",
-                        'description': f"Search result for {title}",
-                        'rating': str(comic.get('bayesian_rating', 0)),
-                        'followers': comic.get('user_follow_count', 0),
-                        'chapters': comic.get('last_chapter', 0),
-                        'status': comic.get('status', 'Ongoing'),
-                        'year': str(comic.get('year', '2024')),
-                        'slug': slug,
-                        'source': 'Comick',
-                        'url': f"{SITE_BASE_URL}/comic/{slug}",
-                        'genres': [genre.get('name', '') for genre in comic.get('genres', [])],
-                        'titles': [title_text]
-                    }
-                    manga_list.append(manga)
-                    
-                except Exception as e:
-                    logger.warning(f"Error processing search result: {e}")
-                    continue
-            
-            return manga_list
+        if not response:
+            logger.error(f"Failed to search Comick for {title}")
+            return []
         
-        # Fallback to HTML search
-        return search_comick_by_title_html(title)
-        
-    except Exception as e:
-        logger.error(f"Error searching Comick: {e}")
-        return []
-
-def search_comick_by_title_html(title: str):
-    """HTML fallback for search"""
-    try:
-        search_url = f"{SITE_BASE_URL}/search?q={quote(title)}"
-        headers = get_comick_headers()
-        
-        response = requests.get(search_url, headers=headers, timeout=15)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
+        soup = BeautifulSoup(response.content, 'lxml')
         manga_list = []
         
         # Find search results
@@ -492,7 +384,9 @@ def search_comick_by_title_html(title: str):
                     if img_elem:
                         cover_url = img_elem.get('src') or img_elem.get('data-src', '')
                         if cover_url and not cover_url.startswith('http'):
-                            cover_url = urljoin(SITE_BASE_URL, cover_url)
+                            cover_url = urljoin(COMICK_BASE_URL, cover_url)
+                    
+                    slug = title_text.lower().replace(' ', '-')
                     
                     manga = {
                         'title': title_text,
@@ -503,20 +397,21 @@ def search_comick_by_title_html(title: str):
                         'chapters': 50,
                         'status': 'Ongoing',
                         'year': '2024',
-                        'slug': title_text.lower().replace(' ', '-'),
+                        'slug': slug,
                         'source': 'Comick',
-                        'url': f"{SITE_BASE_URL}/comic/{title_text.lower().replace(' ', '-')}",
+                        'url': f"{COMICK_BASE_URL}/comic/{slug}",
                         'genres': ['Action'],
                         'titles': [title_text]
                     }
                     manga_list.append(manga)
                     
             except Exception as e:
-                logger.warning(f"Error processing HTML search result: {e}")
+                logger.warning(f"Error processing search result: {e}")
                 continue
         
+        logger.info(f"Found {len(manga_list)} search results")
         return manga_list
         
     except Exception as e:
-        logger.error(f"Error in HTML search fallback: {e}")
+        logger.error(f"Error searching Comick: {e}")
         return []
