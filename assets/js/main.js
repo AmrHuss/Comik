@@ -259,17 +259,12 @@ async function loadHomepageContent() {
     const trendingGrid = document.querySelector('.trending-grid');
     const updatesGrid = document.querySelector('.updates-grid');
     
-    console.log('Homepage content loading...');
-    console.log('Trending grid found:', !!trendingGrid);
-    console.log('Updates grid found:', !!updatesGrid);
+    console.log('🏠 Homepage loading...');
     
     if (!trendingGrid && !updatesGrid) {
         console.error('Homepage grid containers not found');
         return;
     }
-    
-    // Test Comick proxy by displaying the image
-    testComickImageDisplay();
     
     if (trendingGrid) {
         showLoadingState(trendingGrid, 'Loading trending manga...');
@@ -282,10 +277,10 @@ async function loadHomepageContent() {
         // Try quick-load first for instant display
         let quickResult = null;
         try {
-            console.log('Trying quick-load for instant display...');
+            console.log('⚡ Quick-load attempt...');
             quickResult = await makeApiRequest(`${API_BASE_URL}/quick-load`);
             if (quickResult && quickResult.data && quickResult.data.length > 0) {
-                console.log('Quick load successful, displaying immediately');
+                console.log('⚡ Quick-load success!');
                 // Display trending (first 6 items) immediately
                 if (trendingGrid) {
                     displayEnhancedMangaGrid(quickResult.data.slice(0, 6), trendingGrid);
@@ -296,23 +291,20 @@ async function loadHomepageContent() {
                 }
             }
         } catch (quickError) {
-            console.log('Quick load failed, proceeding with full load');
+            console.log('⚡ Quick-load failed, loading full data...');
         }
         
         // Load full data in background
-        console.log('Loading full popular manga data...');
         let result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
         
         // Fallback to regular popular endpoint if unified fails
         if (!result || !result.data || result.data.length === 0) {
-            console.log('Unified popular failed, trying regular popular endpoint...');
+            console.log('🔄 Fallback to regular endpoint...');
             result = await makeApiRequest(`${API_BASE_URL}/popular`);
         }
         
-        console.log('Full API response received:', result);
-        
         if (result && result.data && result.data.length > 0) {
-            console.log(`Loaded ${result.data.length} total items`);
+            console.log(`📚 Loaded ${result.data.length} manga (${result.sources?.AsuraScanz || 0} AsuraScanz, ${result.sources?.Webtoons || 0} Webtoons, ${result.sources?.Comick || 0} Comick)`);
             
             // Store all data for pagination
             window.allMangaData = result.data;
