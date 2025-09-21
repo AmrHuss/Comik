@@ -1931,19 +1931,23 @@ async function fetchRealDescription(manga) {
     }
 }
 
-/**
- * Update card description with real data
- */
+
+
+
 function updateCardDescription(title, description) {
-    // Find all cards with this title
+
     const cards = document.querySelectorAll('.manhwa-card');
     cards.forEach(card => {
+
         const cardTitle = card.querySelector('h3');
         if (cardTitle && cardTitle.textContent.trim() === title) {
+
             const synopsisElement = card.querySelector('.manhwa-card-synopsis');
             if (synopsisElement) {
+
                 const truncatedDescription = description.length > 300 ? 
                     description.substring(0, 300) + '...' : description;
+                    
                 synopsisElement.textContent = truncatedDescription;
             }
         }

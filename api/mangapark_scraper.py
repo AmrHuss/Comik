@@ -534,7 +534,7 @@ def search_mangapark_by_title(title):
             return []
         
         soup = BeautifulSoup(response.content, 'lxml')
-        manga_list = parse_mangapark_cards(soup, 1)  # Search results use same format
+        manga_list = parse_mangapark_cards(soup, 1)  # Search results use same formatss
         
         return manga_list
         

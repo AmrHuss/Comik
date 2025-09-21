@@ -114,7 +114,6 @@
         }
     }, 500);
     
-    // Disable console methods (optional - can break legitimate debugging)
     if (typeof console !== 'undefined') {
         
         console.log = function() {};
