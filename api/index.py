@@ -65,7 +65,7 @@ except ImportError:
 # from api.mangapark_scraper import scrape_mangapark_latest, scrape_mangapark_details, search_mangapark_by_title
 
 # Webtoons scraper
-from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
+from webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
 
 # --- Configuration ---
 logging.basicConfig(
@@ -275,8 +275,8 @@ def enhance_manga_with_description(manga, index, all_manga_list):
     except Exception as e:
         logger.warning(f"Error enhancing manga {manga.get('title', 'unknown')}: {e}")
 
-# Start warm-up in background
-thread_pool.submit(warm_up_cache)
+# Start warm-up in background (temporarily disabled)
+# thread_pool.submit(warm_up_cache)
 
 def get_headers():
     """Get standardized headers for HTTP requests."""
