@@ -235,7 +235,7 @@ def scrape_comick_action_genre():
                 # Create manga object
                 manga = {
                     'title': title,
-                    'description': description[:200] + '...' if len(description) > 200 else description,
+                    'description': description[:300] + '...' if len(description) > 300 else description,
                     'cover_url': proxy_cover_url,
                     'rating': "8.5",
                     'followers': followers,

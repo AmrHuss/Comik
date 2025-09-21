@@ -1897,8 +1897,8 @@ function getMangaDescription(manga) {
                       manga.plot;
     
     if (description && description !== 'No description available' && description.trim().length > 0) {
-        // Truncate to 100 characters and add ellipsis
-        return description.length > 100 ? description.substring(0, 100) + '...' : description;
+        // Truncate to 300 characters (3 more lines) and add ellipsis
+        return description.length > 300 ? description.substring(0, 300) + '...' : description;
     }
     
     // If no description available, fetch it from detail page
@@ -1942,8 +1942,8 @@ function updateCardDescription(title, description) {
         if (cardTitle && cardTitle.textContent.trim() === title) {
             const synopsisElement = card.querySelector('.manhwa-card-synopsis');
             if (synopsisElement) {
-                const truncatedDescription = description.length > 100 ? 
-                    description.substring(0, 100) + '...' : description;
+                const truncatedDescription = description.length > 300 ? 
+                    description.substring(0, 300) + '...' : description;
                 synopsisElement.textContent = truncatedDescription;
             }
         }
