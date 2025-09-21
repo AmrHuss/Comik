@@ -67,6 +67,9 @@ except ImportError:
 # Webtoons scraper
 from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
 
+# Comick scraper
+from api.comick_scraper import scrape_comick_action_genre, scrape_comick_details, scrape_comick_chapter_images, search_comick_by_title
+
 # --- Configuration ---
 logging.basicConfig(
     level=logging.INFO, 
@@ -1169,15 +1172,24 @@ def get_unified_popular():
                 logger.warning(f"Failed to fetch Webtoons popular: {e}")
                 return []
         
-        # Execute both tasks concurrently
+        def fetch_comick_manga():
+            try:
+                return scrape_comick_action_genre()
+            except Exception as e:
+                logger.warning(f"Failed to fetch Comick popular: {e}")
+                return []
+        
+        # Execute all tasks concurrently
         logger.info("Executing concurrent requests for popular manga")
         future_to_source = {
             thread_pool.submit(fetch_asura_manga): 'AsuraScanz',
-            thread_pool.submit(fetch_webtoons_manga): 'Webtoons'
+            thread_pool.submit(fetch_webtoons_manga): 'Webtoons',
+            thread_pool.submit(fetch_comick_manga): 'Comick'
         }
         
         asura_manga = []
         webtoons_manga = []
+        comick_manga = []
         
         # Collect results as they complete
         for future in as_completed(future_to_source):
@@ -1186,20 +1198,23 @@ def get_unified_popular():
                 result = future.result()
                 if source == 'AsuraScanz':
                     asura_manga = result
-                else:
+                elif source == 'Webtoons':
                     webtoons_manga = result
+                else:  # Comick
+                    comick_manga = result
                 logger.info(f"Completed {source} popular manga fetch: {len(result)} items")
             except Exception as e:
                 logger.error(f"Error fetching {source} popular manga: {e}")
         
         # Combine all manga
-        all_manga = asura_manga + webtoons_manga
+        all_manga = asura_manga + webtoons_manga + comick_manga
         response_data = {
             'success': True,
             'data': all_manga,
             'sources': {
                 'AsuraScanz': len(asura_manga),
-                'Webtoons': len(webtoons_manga)
+                'Webtoons': len(webtoons_manga),
+                'Comick': len(comick_manga)
             }
         }
         
@@ -1270,6 +1285,37 @@ def get_unified_details():
                 return jsonify({
                     'success': False,
                     'error': 'Failed to fetch Webtoons details'
+                }), 500
+                
+        elif source.lower() == 'comick':
+            # Search Comick for the title and get details
+            try:
+                search_results = search_comick_by_title(title)
+                if search_results:
+                    # Get details for the first result
+                    detail_url = search_results[0]['url']
+                    manga_details = scrape_comick_details(detail_url)
+                    if manga_details:
+                        return jsonify({
+                            'success': True,
+                            'data': manga_details,
+                            'source': 'Comick'
+                        })
+                    else:
+                        return jsonify({
+                            'success': False,
+                            'error': 'Could not fetch details for the found manga'
+                        }), 404
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': 'No manga found with that title'
+                    }), 404
+            except Exception as e:
+                logger.error(f"Error fetching Comick details: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to fetch Comick details'
                 }), 500
             
         else:
@@ -1444,6 +1490,25 @@ def get_unified_chapter_data():
                 except Exception as e:
                     logger.error(f"Webtoons chapter fetch error: {e}")
                     return None, f"Failed to fetch Webtoons chapter: {str(e)}"
+                    
+            elif source.lower() == 'comick':
+                # Comick chapter loading with proxy support
+                try:
+                    # Use thread pool for non-blocking Comick scraping
+                    future = thread_pool.submit(scrape_comick_chapter_images, chapter_url)
+                    images = future.result(timeout=20)  # 20 second timeout for Comick
+                    
+                    if not images:
+                        return None, "No images found in Comick chapter"
+                    
+                    # Images are already proxied in the scraper
+                    logger.info(f"Comick chapter loaded: {len(images)} images")
+                    return images, None
+                    
+                except Exception as e:
+                    logger.error(f"Comick chapter fetch error: {e}")
+                    return None, f"Failed to fetch Comick chapter: {str(e)}"
+                    
             else:
                 return None, f"Unknown source: {source}"
         
@@ -1461,6 +1526,10 @@ def get_unified_chapter_data():
                 # For Webtoons: remove episode-specific part
                 if '/episode/' in chapter_url:
                     manga_url = chapter_url.split('/episode/')[0]
+            elif source.lower() == 'comick':
+                # For Comick: remove chapter-specific part
+                if '-chapter-' in chapter_url:
+                    manga_url = chapter_url.split('-chapter-')[0]
             
             if manga_url:
                 # Check cache for manga details
@@ -1981,6 +2050,148 @@ def webtoons_image_proxy():
             'error': 'Internal server error'
         }), 500
 
+@app.route('/api/comick-popular', methods=['GET'])
+def get_comick_popular():
+    """Get popular manga from Comick.live action genre."""
+    try:
+        logger.info("Fetching popular manga from Comick.live")
+        
+        # Scrape Comick action genre
+        comick_manga = scrape_comick_action_genre()
+        
+        if not comick_manga:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to fetch Comick manga'
+            }), 500
+        
+        logger.info(f"Successfully fetched {len(comick_manga)} Comick manga")
+        
+        return jsonify({
+            'success': True,
+            'data': comick_manga,
+            'source': 'Comick',
+            'count': len(comick_manga)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick popular manga: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick-details', methods=['GET'])
+def get_comick_details():
+    """Get detailed information for a Comick manga."""
+    try:
+        comic_url = request.args.get('url', '').strip()
+        
+        if not comic_url:
+            return jsonify({
+                'success': False,
+                'error': 'Missing comic URL parameter'
+            }), 400
+        
+        logger.info(f"Fetching Comick details for: {comic_url}")
+        
+        # Scrape Comick details
+        manga_details = scrape_comick_details(comic_url)
+        
+        if not manga_details:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to fetch Comick details'
+            }), 500
+        
+        logger.info(f"Successfully fetched Comick details for: {manga_details['title']}")
+        
+        return jsonify({
+            'success': True,
+            'data': manga_details,
+            'source': 'Comick'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick details: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick-chapter-images', methods=['GET'])
+def get_comick_chapter_images():
+    """Get chapter images from Comick.live."""
+    try:
+        chapter_url = request.args.get('url', '').strip()
+        
+        if not chapter_url:
+            return jsonify({
+                'success': False,
+                'error': 'Missing chapter URL parameter'
+            }), 400
+        
+        logger.info(f"Fetching Comick chapter images for: {chapter_url}")
+        
+        # Scrape Comick chapter images
+        images = scrape_comick_chapter_images(chapter_url)
+        
+        if not images:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to fetch Comick chapter images'
+            }), 500
+        
+        logger.info(f"Successfully fetched {len(images)} Comick chapter images")
+        
+        return jsonify({
+            'success': True,
+            'image_urls': images,
+            'source': 'Comick',
+            'count': len(images)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick chapter images: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick-search', methods=['GET'])
+def search_comick():
+    """Search Comick.live by title."""
+    try:
+        query = request.args.get('q', '').strip()
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'Missing search query parameter'
+            }), 400
+        
+        logger.info(f"Searching Comick for: {query}")
+        
+        # Search Comick
+        search_results = search_comick_by_title(query)
+        
+        logger.info(f"Found {len(search_results)} Comick search results for: {query}")
+        
+        return jsonify({
+            'success': True,
+            'data': search_results,
+            'source': 'Comick',
+            'query': query,
+            'count': len(search_results)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching Comick: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/comick-image-proxy', methods=['GET'])
 def comick_image_proxy():
     """Specialized proxy endpoint for Comick images with Cloudflare bypass."""
@@ -2043,6 +2254,7 @@ def comick_image_proxy():
         # Check if the response is actually an image
         content_type = response.headers.get('content-type', '').lower()
         if not any(img_type in content_type for img_type in ['image/', 'jpeg', 'jpg', 'png', 'webp', 'svg']):
+            
             logger.warning(f"Non-image content type received: {content_type}")
             return jsonify({
                 'success': False,
