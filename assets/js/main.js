@@ -637,7 +637,13 @@ async function handleDetailPage() {
             source = 'AsuraScanz';
         }
         
-        const result = await makeApiRequest(`${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}&source=${source}`);
+        // Use fast endpoint for Webtoons to improve loading speed
+        let apiEndpoint = `${API_BASE_URL}/manga-details?url=${encodeURIComponent(detailUrl)}&source=${source}`;
+        if (source === 'Webtoons') {
+            apiEndpoint = `${API_BASE_URL}/webtoons/details-fast?url=${encodeURIComponent(detailUrl)}`;
+        }
+        
+        const result = await makeApiRequest(apiEndpoint);
         console.log('Manga details API response:', result);
         console.log('Calling displayMangaDetails with data:', result.data);
         displayMangaDetails(result.data);

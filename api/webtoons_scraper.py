@@ -472,6 +472,170 @@ def scrape_webtoons_details(detail_url):
         logger.error(traceback.format_exc())
         return None
 
+def scrape_webtoons_details_fast(detail_url):
+    """Scrape Webtoons details quickly with limited chapters for fast loading."""
+    try:
+        logger.info(f"Fast scraping Webtoons details for: {detail_url}")
+        
+        # Make request to detail page
+        response = make_request(detail_url)
+        if not response:
+            logger.error("Failed to fetch Webtoons detail page")
+            return None
+        
+        # Parse with BeautifulSoup
+        soup = BeautifulSoup(response.content, 'lxml')
+        
+        # Extract title - try multiple selectors
+        title = "Unknown Title"
+        title_selectors = [
+            'h1.subj',
+            'h1[class*="subj"]',
+            'h1',
+            '.subj'
+        ]
+        
+        for selector in title_selectors:
+            title_element = soup.select_one(selector)
+            if title_element:
+                title = title_element.get_text(strip=True)
+                break
+        
+        # Extract cover image - try multiple selectors
+        cover_image = ""
+        cover_selectors = [
+            'span.thmb img',
+            '.thmb img',
+            'img[class*="thmb"]',
+            '.cover img',
+            'img[alt*="cover"]'
+        ]
+        
+        for selector in cover_selectors:
+            img_tag = soup.select_one(selector)
+            if img_tag:
+                cover_image = img_tag.get('src', '')
+                if cover_image and not cover_image.startswith('http'):
+                    cover_image = urljoin(WEBTOONS_BASE_URL, cover_image)
+                break
+        
+        # Convert cover image to use proxy if it's a Webtoons CDN image
+        if cover_image and 'webtoon-phinf.pstatic.net' in cover_image:
+            cover_image = convert_cover_to_proxy_url(cover_image)
+        
+        # Extract description - try multiple selectors
+        description = "No description available"
+        desc_selectors = [
+            'p.summary',
+            '.summary',
+            'p[class*="summary"]',
+            '.description',
+            'p[class*="description"]'
+        ]
+        
+        for selector in desc_selectors:
+            desc_element = soup.select_one(selector)
+            if desc_element:
+                description = desc_element.get_text(strip=True)
+                break
+        
+        # Extract genres - try multiple selectors
+        genres = ['Action']  # Default to Action since we're scraping action genre
+        genre_selectors = [
+            'h2.genre',
+            '.genre',
+            'h2[class*="genre"]',
+            '.genres',
+            '.tags'
+        ]
+        
+        for selector in genre_selectors:
+            genre_element = soup.select_one(selector)
+            if genre_element:
+                genre_text = genre_element.get_text(strip=True)
+                if genre_text:
+                    genres = [g.strip() for g in genre_text.split(',') if g.strip()]
+                break
+        
+        # Extract author - try multiple selectors
+        author = "Unknown"
+        author_selectors = [
+            'div.author_area',
+            '.author_area',
+            'div[class*="author"]',
+            '.author',
+            '.creator'
+        ]
+        
+        for selector in author_selectors:
+            author_element = soup.select_one(selector)
+            if author_element:
+                author = author_element.get_text(strip=True)
+                break
+        
+        # Extract only first 20 chapters for fast loading
+        chapters = []
+        logger.info("Fast scraping: loading only first 20 chapters")
+        
+        # Find chapter list
+        chapter_list = soup.find('ul', {'id': '_listUl'})
+        if chapter_list:
+            chapter_items = chapter_list.find_all('li', class_='_episodeItem')[:20]  # Limit to 20 chapters
+            
+            for chapter_item in chapter_items:
+                try:
+                    link = chapter_item.find('a', href=True)
+                    if link:
+                        chapter_title = "Unknown Chapter"
+                        chapter_date = "Unknown Date"
+                        
+                        # Extract chapter title
+                        title_elem = chapter_item.find('span', class_='subj')
+                        if not title_elem:
+                            title_elem = chapter_item.find('span', class_='episode')
+                        if title_elem:
+                            chapter_title = title_elem.get_text(strip=True)
+                        
+                        # Extract chapter date
+                        date_elem = chapter_item.find('span', class_='date')
+                        if date_elem:
+                            chapter_date = date_elem.get_text(strip=True)
+                        
+                        chapter_url = link['href']
+                        if not chapter_url.startswith('http'):
+                            chapter_url = urljoin(WEBTOONS_BASE_URL, chapter_url)
+                        
+                        chapters.append({
+                            'title': chapter_title,
+                            'url': chapter_url,
+                            'date': chapter_date
+                        })
+                        
+                except Exception as e:
+                    logger.warning(f"Error parsing chapter item: {e}")
+                    continue
+        
+        logger.info(f"Fast scraping completed: {len(chapters)} chapters loaded")
+        
+        return {
+            'title': title,
+            'author': author,
+            'cover_image': cover_image,
+            'description': description,
+            'rating': 'N/A',  # Webtoons doesn't show ratings on detail pages
+            'status': 'Ongoing',
+            'genres': genres,
+            'chapters': chapters,
+            'source': 'Webtoons',
+            'detail_url': detail_url,
+            'fast_loaded': True  # Flag to indicate this was fast loaded
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in fast Webtoons details scraping: {e}")
+        logger.error(traceback.format_exc())
+        return None
+
 def search_webtoons_by_title(title):
     """Search for webtoons by title."""
     # This is a placeholder function for future implementation

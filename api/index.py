@@ -65,7 +65,7 @@ except ImportError:
 # from api.mangapark_scraper import scrape_mangapark_latest, scrape_mangapark_details, search_mangapark_by_title
 
 # Webtoons scraper
-from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, search_webtoons_by_title, scrape_webtoons_chapter_images
+from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
 
 # --- Configuration ---
 logging.basicConfig(
@@ -112,6 +112,8 @@ chapter_cache = TTLCache(maxsize=200, ttl=10800)  # 3 hours
 popular_cache = TTLCache(maxsize=50, ttl=1800)  # 30 minutes
 # Quick load cache: 5 minutes TTL, max 20 items (ultra-fast initial load)
 quick_cache = TTLCache(maxsize=20, ttl=300)  # 5 minutes
+# Webtoons details cache: 1 hour TTL, max 100 items (Webtoons data is stable)
+webtoons_details_cache = TTLCache(maxsize=100, ttl=3600)  # 1 hour
 
 # Thread-safe cache access
 cache_lock = threading.Lock()
@@ -720,7 +722,8 @@ def get_manga_details():
         # Use concurrent execution for faster response
         def fetch_manga_details():
             if source.lower() == 'webtoons':
-                return scrape_webtoons_details(detail_url)
+                # Use fast loading for Webtoons to improve performance
+                return scrape_webtoons_details_fast(detail_url)
             else:
                 return scrape_manga_details(detail_url)
         
@@ -1675,12 +1678,26 @@ def get_webtoons_details():
     
     if not detail_url:
         return jsonify({
-            'success': False, 
+            'success': False,
             'error': 'Manga detail URL is required'
         }), 400
     
     try:
+        start_time = time.time()
         logger.info(f"Fetching Webtoons details for: {detail_url}")
+        
+        # Check cache first
+        cache_key = f"webtoons_details_{hash(detail_url)}"
+        cached_data = get_cached_data(webtoons_details_cache, cache_key)
+        if cached_data:
+            logger.info("Cache hit for Webtoons details")
+            with cache_lock:
+                performance_stats['cache_hits'] += 1
+            return jsonify(cached_data)
+        
+        with cache_lock:
+            performance_stats['cache_misses'] += 1
+        
         manga_details = scrape_webtoons_details(detail_url)
         
         if not manga_details:
@@ -1689,13 +1706,78 @@ def get_webtoons_details():
                 'error': 'Could not scrape details for the provided URL'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True, 
-            'data': manga_details
-        })
+            'data': manga_details,
+            'cached': False,
+            'load_time': time.time() - start_time
+        }
+        
+        # Cache the results
+        set_cached_data(webtoons_details_cache, cache_key, response_data)
+        logger.info(f"Webtoons details cached: {manga_details.get('title', 'Unknown')}")
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error in /api/webtoons/details for {detail_url}: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False, 
+            'error': 'Failed to fetch manga details'
+        }), 500
+
+@app.route('/api/webtoons/details-fast', methods=['GET'])
+def get_webtoons_details_fast():
+    """Get fast Webtoons details with limited chapters for quick loading."""
+    detail_url = request.args.get('url', '').strip()
+    
+    if not detail_url:
+        return jsonify({
+            'success': False,
+            'error': 'Manga detail URL is required'
+        }), 400
+    
+    try:
+        start_time = time.time()
+        logger.info(f"Fetching fast Webtoons details for: {detail_url}")
+        
+        # Check cache first
+        cache_key = f"webtoons_fast_{hash(detail_url)}"
+        cached_data = get_cached_data(webtoons_details_cache, cache_key)
+        if cached_data:
+            logger.info("Cache hit for fast Webtoons details")
+            with cache_lock:
+                performance_stats['cache_hits'] += 1
+            return jsonify(cached_data)
+        
+        with cache_lock:
+            performance_stats['cache_misses'] += 1
+        
+        # Use fast scraping with limited chapters
+        manga_details = scrape_webtoons_details_fast(detail_url)
+        
+        if not manga_details:
+            return jsonify({
+                'success': False, 
+                'error': 'Could not scrape details for the provided URL'
+            }), 404
+        
+        response_data = {
+            'success': True, 
+            'data': manga_details,
+            'cached': False,
+            'load_time': time.time() - start_time
+        }
+        
+        # Cache the results
+        set_cached_data(webtoons_details_cache, cache_key, response_data)
+        logger.info(f"Fast Webtoons details cached: {manga_details.get('title', 'Unknown')}")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error in /api/webtoons/details-fast for {detail_url}: {e}")
         logger.error(traceback.format_exc())
         return jsonify({
             'success': False, 
