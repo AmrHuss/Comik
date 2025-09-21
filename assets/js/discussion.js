@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDiscussion();
     setupEventListeners();
     loadDiscussions();
+    addFakeComments(); // Add fake comments for testing
 });
 
 /**
@@ -722,6 +723,65 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+/**
+ * Add fake comments for testing purposes
+ */
+function addFakeComments() {
+    // Check if we're on a discussion page
+    if (!document.getElementById('comments-list')) return;
+    
+    // Create fake comments data
+    const fakeComments = [
+        {
+            id: 1,
+            content: "This chapter was absolutely amazing! The art is getting better and better 🔥",
+            author: { username: "testuser0" },
+            created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+            like_count: 5
+        },
+        {
+            id: 2,
+            content: "CommentTest - I can't wait for the next chapter! The plot twist was unexpected",
+            author: { username: "testuser1" },
+            created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+            like_count: 3
+        },
+        {
+            id: 3,
+            content: "The character development in this series is incredible. Each chapter brings something new!",
+            author: { username: "testuser0" },
+            created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+            like_count: 8
+        },
+        {
+            id: 4,
+            content: "CommentTest - Does anyone else think the MC is getting too overpowered? Still love it though 😅",
+            author: { username: "testuser1" },
+            created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+            like_count: 2
+        },
+        {
+            id: 5,
+            content: "The fight scenes in this chapter were epic! The animation quality is top tier",
+            author: { username: "testuser0" },
+            created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+            like_count: 7
+        },
+        {
+            id: 6,
+            content: "CommentTest - I've been following this series since chapter 1 and it just keeps getting better!",
+            author: { username: "testuser1" },
+            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+            like_count: 12
+        }
+    ];
+    
+    // Render the fake comments
+    renderComments(fakeComments);
+    
+    console.log('Added 6 fake comments for testing');
 }
 
 // Export functions for global access
