@@ -2254,7 +2254,6 @@ def comick_image_proxy():
         # Check if the response is actually an image
         content_type = response.headers.get('content-type', '').lower()
         if not any(img_type in content_type for img_type in ['image/', 'jpeg', 'jpg', 'png', 'webp', 'svg']):
-            
             logger.warning(f"Non-image content type received: {content_type}")
             return jsonify({
                 'success': False,
@@ -2278,16 +2277,36 @@ def comick_image_proxy():
         
     except requests.exceptions.RequestException as e:
         logger.error(f"Error fetching Comick image: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to fetch image: {str(e)}'
-        }), 500
+        # Return a fallback image instead of error
+        from flask import Response
+        fallback_image = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+        return Response(
+            fallback_image,
+            mimetype='image/png',
+            headers={
+                'Cache-Control': 'public, max-age=3600',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'X-Content-Type-Options': 'nosniff'
+            }
+        )
     except Exception as e:
         logger.error(f"Unexpected error in Comick image proxy: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Internal server error'
-        }), 500
+        # Return a fallback image instead of error
+        from flask import Response
+        fallback_image = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+        return Response(
+            fallback_image,
+            mimetype='image/png',
+            headers={
+                'Cache-Control': 'public, max-age=3600',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'X-Content-Type-Options': 'nosniff'
+            }
+        )
 
 @app.route('/api', methods=['GET'])
 def api_root():

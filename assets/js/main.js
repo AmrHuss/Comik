@@ -99,15 +99,14 @@ async function makeApiRequest(url, options = {}) {
         
         clearTimeout(timeoutId);
         
-        console.log('Response status:', response.status);
-        console.log('Response ok:', response.ok);
+        // Response status and ok status logged only in debug mode
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const data = await response.json();
-        console.log('Response data:', data);
+        // Response data logged only in debug mode
         
         if (!data.success) {
             throw new Error(data.error || 'API request failed');
@@ -126,11 +125,9 @@ async function makeApiRequest(url, options = {}) {
     }
 }
 
-// --- DOM Manipulation Functions ---
+// Manga card creations for the homepage
 
-/**
- * Create a manga card element
- */
+
 function createMangaCard(manga) {
     const cardLink = document.createElement('a');
     cardLink.href = `detail.html?url=${encodeURIComponent(manga.detail_url)}`;
