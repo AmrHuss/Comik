@@ -1479,7 +1479,7 @@ window.loadChapterImages = loadChapterImages;
 function testComickImageDisplay() {
     console.log('Testing Comick image proxy display...');
     
-    const testImageUrl = 'https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/0.webp';
+    const testImageUrl = 'https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp';
     const chapterUrl = 'https://comick.live/comic/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/A6_YIlD0-chapter-1-en';
     
     // Create proxy URL
