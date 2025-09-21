@@ -142,8 +142,13 @@ def scrape_comick_action_genre():
                 if manga['cover_url'] and manga['cover_url'].startswith('http'):
                     manga['cover_url'] = f"/api/comick-image-proxy?img_url={manga['cover_url']}"
                 elif not manga['cover_url'] or not manga['cover_url'].startswith('http'):
-                    # Use a placeholder image with proxy for manga without cover
-                    manga['cover_url'] = f"/api/comick-image-proxy?img_url=https://cdn1.comicknew.pictures/placeholder-{i+1}.webp"
+                    # Use a working placeholder image with proxy for manga without cover
+                    placeholder_images = [
+                        "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                        "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp"
+                    ]
+                    placeholder_url = placeholder_images[i % len(placeholder_images)]
+                    manga['cover_url'] = f"/api/comick-image-proxy?img_url={placeholder_url}"
                 
                 manga_list.append(manga)
                 
@@ -187,8 +192,13 @@ def scrape_comick_action_genre():
                     if manga['cover_url'] and manga['cover_url'].startswith('http'):
                         manga['cover_url'] = f"/api/comick-image-proxy?img_url={manga['cover_url']}"
                     elif not manga['cover_url'] or not manga['cover_url'].startswith('http'):
-                        # Use a placeholder image with proxy for manga without cover
-                        manga['cover_url'] = f"/api/comick-image-proxy?img_url=https://cdn1.comicknew.pictures/placeholder-{i+1}.webp"
+                        # Use a working placeholder image with proxy for manga without cover
+                        placeholder_images = [
+                            "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                            "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp"
+                        ]
+                        placeholder_url = placeholder_images[i % len(placeholder_images)]
+                        manga['cover_url'] = f"/api/comick-image-proxy?img_url={placeholder_url}"
                     
                     manga_list.append(manga)
                     
@@ -206,28 +216,28 @@ def scrape_comick_action_genre():
                 "Tokyo Ghoul", "AOT", "Chainsaw Man", "Spy x Family", "Mob Psycho 100"
             ]
             
-            # Real Comick cover images for popular titles
+            # Real Comick cover images for popular titles (using actual working URLs)
             real_covers = [
                 "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
-                "https://cdn1.comicknew.pictures/solo-leveling/covers/solo-leveling-cover.webp", 
-                "https://cdn1.comicknew.pictures/tower-of-god/covers/tower-of-god-cover.webp",
-                "https://cdn1.comicknew.pictures/one-piece/covers/one-piece-cover.webp",
-                "https://cdn1.comicknew.pictures/naruto/covers/naruto-cover.webp",
-                "https://cdn1.comicknew.pictures/attack-on-titan/covers/aot-cover.webp",
-                "https://cdn1.comicknew.pictures/demon-slayer/covers/demon-slayer-cover.webp",
-                "https://cdn1.comicknew.pictures/jujutsu-kaisen/covers/jjk-cover.webp",
-                "https://cdn1.comicknew.pictures/my-hero-academia/covers/mha-cover.webp",
-                "https://cdn1.comicknew.pictures/one-punch-man/covers/opm-cover.webp",
-                "https://cdn1.comicknew.pictures/dragon-ball/covers/dragon-ball-cover.webp",
-                "https://cdn1.comicknew.pictures/bleach/covers/bleach-cover.webp",
-                "https://cdn1.comicknew.pictures/hunter-x-hunter/covers/hxh-cover.webp",
-                "https://cdn1.comicknew.pictures/fullmetal-alchemist/covers/fma-cover.webp",
-                "https://cdn1.comicknew.pictures/death-note/covers/death-note-cover.webp",
-                "https://cdn1.comicknew.pictures/tokyo-ghoul/covers/tokyo-ghoul-cover.webp",
-                "https://cdn1.comicknew.pictures/chainsaw-man/covers/chainsaw-man-cover.webp",
-                "https://cdn1.comicknew.pictures/spy-x-family/covers/spy-x-family-cover.webp",
-                "https://cdn1.comicknew.pictures/mob-psycho-100/covers/mob-psycho-cover.webp",
-                "https://cdn1.comicknew.pictures/placeholder-20.webp"
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp",
+                "https://cdn1.comicknew.pictures/00-the-beginning-after-the-end-1/covers/101b409e.webp",
+                "https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/1.webp"
             ]
             
             for i, title in enumerate(popular_titles[:20]):
