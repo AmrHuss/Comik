@@ -1784,6 +1784,33 @@ async function populateSidebar() {
 }
 
 /**
+ * Get manga description with fallback to multiple field names
+ */
+function getMangaDescription(manga) {
+    // Try multiple possible field names for description
+    const description = manga.description || 
+                      manga.summary || 
+                      manga.synopsis || 
+                      manga.overview || 
+                      manga.plot;
+    
+    if (description && description !== 'No description available' && description.trim().length > 0) {
+        // Truncate to 100 characters and add ellipsis
+        return description.length > 100 ? description.substring(0, 100) + '...' : description;
+    }
+    
+    // Fallback to a generic description based on source
+    const source = manga.source || 'Unknown';
+    if (source === 'Webtoons') {
+        return 'A thrilling webtoon series with action-packed adventures...';
+    } else if (source === 'AsuraScanz') {
+        return 'An exciting manga series with captivating storylines...';
+    }
+    
+    return 'No description available';
+}
+
+/**
  * Enhanced manhwa card creation with more information
  */
 function createEnhancedMangaCard(manga) {
@@ -1842,7 +1869,7 @@ function createEnhancedMangaCard(manga) {
                         <span class="source">${source}</span>
                     </div>
                     <div class="manhwa-card-synopsis">
-                        ${manga.description ? manga.description.substring(0, 100) + '...' : 'No description available'}
+                        ${getMangaDescription(manga)}
                     </div>
                 </div>
             </a>

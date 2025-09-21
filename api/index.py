@@ -435,12 +435,32 @@ def parse_manga_cards_from_soup(soup):
                         if latest_chapter:
                             break
                 
+                # Extract description if available
+                description = "No description available"
+                desc_selectors = [
+                    'div.epxs',
+                    'div.episode',
+                    'p.summary',
+                    '.summary',
+                    'div[class*="desc"]',
+                    'p[class*="desc"]'
+                ]
+                
+                for desc_selector in desc_selectors:
+                    desc_element = container.select_one(desc_selector)
+                    if desc_element:
+                        desc_text = desc_element.get_text(strip=True)
+                        if desc_text and len(desc_text) > 10:
+                            description = desc_text
+                            break
+                
                 # Create manga data object
                 manga_data = {
                     'title': title,
                     'cover_url': cover_url,
                     'detail_url': detail_url,
-                    'latest_chapter': latest_chapter
+                    'latest_chapter': latest_chapter,
+                    'description': description
                 }
                 
                 manga_list.append(manga_data)

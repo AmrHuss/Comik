@@ -228,12 +228,19 @@ def parse_webtoon_item(item):
                 if latest_chapter:
                     break
         
+        # Extract description - try to get from the item or use a default
+        description = "No description available"
+        desc_elem = item.find('p', class_='summary') or item.find('div', class_='summary')
+        if desc_elem:
+            description = desc_elem.get_text(strip=True)
+        
         # Create webtoon data
         webtoon_data = {
             'title': title,
             'cover_url': cover_url,
             'detail_url': detail_url,
             'author': author,
+            'description': description,
             'source': 'Webtoons',
             'latest_chapter': latest_chapter,
             'rating': 'N/A',
