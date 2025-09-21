@@ -2814,13 +2814,13 @@ a:focus {
 }
 
 .manhwa-card-meta .chapters {
-    color: #10b981;
+    color: #0ea5e9;
     font-weight: 500;
 }
 
 .manhwa-card-meta .source {
-    background: #d1fae5;
-    color: #059669;
+    background: #e0f2fe;
+    color: #0284c7;
     padding: 0.125rem 0.375rem;
     border-radius: var(--radius-sm);
     font-size: 0.7rem;
