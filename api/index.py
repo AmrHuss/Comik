@@ -202,22 +202,15 @@ def warm_up_cache():
         
         set_cached_data(popular_cache, 'unified_popular', response_data)
         
-        # Pre-cache details for top 5 popular manga
-        logger.info("Pre-caching details for top popular manga...")
-        for manga in all_manga[:5]:
+        # Pre-cache details and enhance with real descriptions for top 10 popular manga
+        logger.info("Pre-caching details and enhancing with real descriptions for top popular manga...")
+        for i, manga in enumerate(all_manga[:10]):  # Top 10 manga
             try:
-                if manga.get('source') == 'AsuraScanz' and manga.get('detail_url'):
-                    # Pre-cache AsuraScanz details
-                    cache_key = f"manga_details:AsuraScanz:{manga['detail_url']}"
-                    if not get_cached_data(manga_cache, cache_key):
-                        thread_pool.submit(lambda m=manga: preload_manga_details(m))
-                elif manga.get('source') == 'Webtoons' and manga.get('detail_url'):
-                    # Pre-cache Webtoons details
-                    cache_key = f"manga_details:Webtoons:{manga['detail_url']}"
-                    if not get_cached_data(manga_cache, cache_key):
-                        thread_pool.submit(lambda m=manga: preload_manga_details(m))
+                if manga.get('detail_url'):
+                    # Enhance with real description in background
+                    thread_pool.submit(lambda m=manga, idx=i: enhance_manga_with_description(m, idx, all_manga))
             except Exception as e:
-                logger.warning(f"Failed to pre-cache details for {manga.get('title', 'unknown')}: {e}")
+                logger.warning(f"Failed to enhance manga {manga.get('title', 'unknown')}: {e}")
         
         cache_warmed_up = True
         logger.info(f"Cache warm-up completed: {len(all_manga)} items cached")
@@ -256,6 +249,31 @@ def preload_manga_details(manga):
         
     except Exception as e:
         logger.warning(f"Failed to preload details for {manga.get('title', 'unknown')}: {e}")
+
+def enhance_manga_with_description(manga, index, all_manga_list):
+    """Enhance manga data with real description from detail page."""
+    try:
+        detail_url = manga.get('detail_url')
+        source = manga.get('source', 'AsuraScanz')
+        
+        if not detail_url:
+            return
+        
+        logger.info(f"Enhancing manga {manga.get('title', 'unknown')} with real description")
+        
+        # Fetch details based on source
+        if source.lower() == 'webtoons':
+            manga_details = scrape_webtoons_details_fast(detail_url)
+        else:
+            manga_details = scrape_manga_details(detail_url)
+        
+        if manga_details and manga_details.get('description'):
+            # Update the manga in the list with real description
+            all_manga_list[index]['description'] = manga_details['description']
+            logger.info(f"Enhanced {manga.get('title', 'unknown')} with real description")
+        
+    except Exception as e:
+        logger.warning(f"Error enhancing manga {manga.get('title', 'unknown')}: {e}")
 
 # Start warm-up in background
 thread_pool.submit(warm_up_cache)
@@ -1834,6 +1852,49 @@ def search_webtoons():
         }), 500
 
 # MadaraScans endpoints removed - keeping only AsuraScanz
+
+@app.route('/api/manga-description', methods=['GET'])
+def get_manga_description():
+    """Get real description for a specific manga."""
+    detail_url = request.args.get('url', '').strip()
+    source = request.args.get('source', 'AsuraScanz').strip()
+    
+    if not detail_url:
+        return jsonify({
+            'success': False,
+            'error': 'Manga URL is required'
+        }), 400
+    
+    try:
+        logger.info(f"Fetching description for {detail_url} from {source}")
+        
+        # Use appropriate scraper based on source
+        if source.lower() == 'webtoons':
+            manga_details = scrape_webtoons_details_fast(detail_url)
+        else:
+            manga_details = scrape_manga_details(detail_url)
+        
+        if not manga_details:
+            return jsonify({
+                'success': False,
+                'error': 'Could not fetch manga details'
+            }), 404
+        
+        description = manga_details.get('description', 'No description available')
+        
+        return jsonify({
+            'success': True,
+            'description': description,
+            'title': manga_details.get('title', 'Unknown'),
+            'source': source
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching description for {detail_url}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch description'
+        }), 500
 
 @app.route('/api/webtoons-image-proxy', methods=['GET'])
 def webtoons_image_proxy():

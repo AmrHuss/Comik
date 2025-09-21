@@ -1784,7 +1784,7 @@ async function populateSidebar() {
 }
 
 /**
- * Get manga description with fallback to multiple field names
+ * Get manga description with real data fetching
  */
 function getMangaDescription(manga) {
     // Try multiple possible field names for description
@@ -1799,15 +1799,53 @@ function getMangaDescription(manga) {
         return description.length > 100 ? description.substring(0, 100) + '...' : description;
     }
     
-    // Fallback to a generic description based on source
-    const source = manga.source || 'Unknown';
-    if (source === 'Webtoons') {
-        return 'A thrilling webtoon series with action-packed adventures...';
-    } else if (source === 'AsuraScanz') {
-        return 'An exciting manga series with captivating storylines...';
+    // If no description available, fetch it from detail page
+    if (manga.detail_url) {
+        fetchRealDescription(manga);
+        return 'Loading description...';
     }
     
     return 'No description available';
+}
+
+/**
+ * Fetch real description from detail page
+ */
+async function fetchRealDescription(manga) {
+    try {
+        const detailUrl = manga.detail_url;
+        const source = manga.source || 'AsuraScanz';
+        
+        // Use the dedicated description endpoint
+        const apiEndpoint = `${API_BASE_URL}/manga-description?url=${encodeURIComponent(detailUrl)}&source=${source}`;
+        const result = await makeApiRequest(apiEndpoint);
+        
+        if (result && result.description && result.description !== 'No description available') {
+            // Update the card with real description
+            updateCardDescription(manga.title, result.description);
+        }
+    } catch (error) {
+        console.log('Could not fetch description for:', manga.title);
+    }
+}
+
+/**
+ * Update card description with real data
+ */
+function updateCardDescription(title, description) {
+    // Find all cards with this title
+    const cards = document.querySelectorAll('.manhwa-card');
+    cards.forEach(card => {
+        const cardTitle = card.querySelector('h3');
+        if (cardTitle && cardTitle.textContent.trim() === title) {
+            const synopsisElement = card.querySelector('.manhwa-card-synopsis');
+            if (synopsisElement) {
+                const truncatedDescription = description.length > 100 ? 
+                    description.substring(0, 100) + '...' : description;
+                synopsisElement.textContent = truncatedDescription;
+            }
+        }
+    });
 }
 
 /**
