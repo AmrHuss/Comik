@@ -1179,7 +1179,7 @@ def get_unified_popular():
                 logger.warning(f"Failed to fetch Comick popular: {e}")
                 return []
         
-        # Execute all tasks concurrently
+        # Execute all tasks concurrently with timeout
         logger.info("Executing concurrent requests for popular manga")
         future_to_source = {
             thread_pool.submit(fetch_asura_manga): 'AsuraScanz',
@@ -1191,8 +1191,8 @@ def get_unified_popular():
         webtoons_manga = []
         comick_manga = []
         
-        # Collect results as they complete
-        for future in as_completed(future_to_source):
+        # Collect results as they complete with timeout
+        for future in as_completed(future_to_source, timeout=15):  # 15 second timeout
             source = future_to_source[future]
             try:
                 result = future.result()
@@ -1205,6 +1205,16 @@ def get_unified_popular():
                 logger.info(f"Completed {source} popular manga fetch: {len(result)} items")
             except Exception as e:
                 logger.error(f"Error fetching {source} popular manga: {e}")
+                # Continue with other sources even if one fails
+        
+        # Ensure Comick is always included (fallback if API fails)
+        if not comick_manga:
+            logger.warning("Comick data failed, using fallback")
+            try:
+                comick_manga = scrape_comick_action_genre()
+            except Exception as e:
+                logger.error(f"Comick fallback also failed: {e}")
+                comick_manga = []
         
         # Combine all manga with Comick first
         all_manga = comick_manga + asura_manga + webtoons_manga
