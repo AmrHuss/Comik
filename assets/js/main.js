@@ -318,12 +318,12 @@ async function loadHomepageContent() {
             if (!quickResult || quickResult.data.length < 20) {
                 console.log('Updating with full data...');
                 // Display trending (first 6 items)
-                if (trendingGrid) {
+        if (trendingGrid) {
                     displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
-                }
+        }
                 
                 // Display updates (first 20 items initially)
-                if (updatesGrid) {
+        if (updatesGrid) {
                     displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
                     
                     // Set up progressive scroll for loading more
@@ -1121,17 +1121,17 @@ function initializeNavbarScroll() {
         requestAnimationFrame(() => {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             
-            // Show navbar when at top of page
+            // ONLY show navbar when at the very top of the page
             if (scrollTop <= 10) {
                 header.classList.remove('hidden');
             }
-            // Hide navbar when scrolling down
-            else if (scrollTop > lastScrollTop && scrollTop > 100) {
+            // Hide navbar when scrolling down (any amount)
+            else if (scrollTop > lastScrollTop) {
                 header.classList.add('hidden');
             }
-            // Show navbar when scrolling up
-            else if (scrollTop < lastScrollTop) {
-                header.classList.remove('hidden');
+            // Keep navbar hidden when scrolling up (unless at top)
+            else if (scrollTop < lastScrollTop && scrollTop > 10) {
+                header.classList.add('hidden');
             }
             
             lastScrollTop = scrollTop;
