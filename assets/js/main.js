@@ -268,6 +268,9 @@ async function loadHomepageContent() {
         return;
     }
     
+    // Test Comick proxy by displaying the image
+    testComickImageDisplay();
+    
     if (trendingGrid) {
         showLoadingState(trendingGrid, 'Loading trending manga...');
     }
@@ -1469,6 +1472,96 @@ function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl, sou
  * Global function for reader page to load chapter images
  */
 window.loadChapterImages = loadChapterImages;
+
+/**
+ * Test Comick proxy by displaying the specific image on homepage
+ */
+function testComickImageDisplay() {
+    console.log('Testing Comick image proxy display...');
+    
+    const testImageUrl = 'https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/0.webp';
+    const chapterUrl = 'https://comick.live/comic/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/A6_YIlD0-chapter-1-en';
+    
+    // Create proxy URL
+    const proxyUrl = `/api/comick-image-proxy?img_url=${encodeURIComponent(testImageUrl)}&chapter_url=${encodeURIComponent(chapterUrl)}`;
+    
+    // Create test container
+    const testContainer = document.createElement('div');
+    testContainer.id = 'comick-test-container';
+    testContainer.style.cssText = `
+        background: #f8fafc;
+        border: 2px solid #0ea5e9;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    `;
+    
+    testContainer.innerHTML = `
+        <h3 style="color: #0ea5e9; margin-bottom: 15px;">🧪 Comick Image Proxy Test</h3>
+        <div id="comick-test-status" style="margin-bottom: 15px;">
+            <div style="background: #fef3c7; color: #92400e; padding: 10px; border-radius: 6px; border: 1px solid #f59e0b;">
+                ⏳ Testing Comick image proxy... Loading image through proxy...
+            </div>
+        </div>
+        <div id="comick-test-image" style="max-width: 100%; margin: 0 auto;"></div>
+    `;
+    
+    // Insert at the top of the page content
+    const mainContent = document.querySelector('main') || document.querySelector('.main-content') || document.body;
+    mainContent.insertBefore(testContainer, mainContent.firstChild);
+    
+    // Create and test the image
+    const img = document.createElement('img');
+    img.style.cssText = `
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    `;
+    
+    const statusDiv = document.getElementById('comick-test-status');
+    const imageDiv = document.getElementById('comick-test-image');
+    
+    img.onload = function() {
+        console.log('✅ SUCCESS: Comick image proxy is working!');
+        console.log('Image loaded successfully:', this.src);
+        
+        // Update status to success
+        statusDiv.innerHTML = `
+            <div style="background: #d1fae5; color: #065f46; padding: 10px; border-radius: 6px; border: 1px solid #10b981;">
+                ✅ SUCCESS: Comick image proxy is working! Image loaded successfully.
+            </div>
+        `;
+        
+        // Add the image
+        imageDiv.appendChild(img);
+    };
+    
+    img.onerror = function() {
+        console.error('❌ FAILED: Comick image proxy failed to load image');
+        
+        // Update status to error
+        statusDiv.innerHTML = `
+            <div style="background: #fee2e2; color: #991b1b; padding: 10px; border-radius: 6px; border: 1px solid #ef4444;">
+                ❌ FAILED: Comick image proxy failed to load image. Check console for details.
+            </div>
+        `;
+        
+        // Add error message
+        imageDiv.innerHTML = `
+            <div style="color: #6b7280; font-style: italic;">
+                Could not load image through Comick proxy
+            </div>
+        `;
+    };
+    
+    // Set the image source to trigger loading
+    img.src = proxyUrl;
+    
+    console.log('Comick proxy test initiated with URL:', proxyUrl);
+}
 
 
 // --- Initialization ---
