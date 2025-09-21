@@ -276,8 +276,28 @@ async function loadHomepageContent() {
     }
     
     try {
-        // Load all data first, then paginate on frontend
-        console.log('Loading popular manga data...');
+        // Try quick-load first for instant display
+        let quickResult = null;
+        try {
+            console.log('Trying quick-load for instant display...');
+            quickResult = await makeApiRequest(`${API_BASE_URL}/quick-load`);
+            if (quickResult && quickResult.data && quickResult.data.length > 0) {
+                console.log('Quick load successful, displaying immediately');
+                // Display trending (first 6 items) immediately
+                if (trendingGrid) {
+                    displayEnhancedMangaGrid(quickResult.data.slice(0, 6), trendingGrid);
+                }
+                // Display updates (first 10 items) immediately
+                if (updatesGrid) {
+                    displayEnhancedMangaGrid(quickResult.data.slice(0, 10), updatesGrid);
+                }
+            }
+        } catch (quickError) {
+            console.log('Quick load failed, proceeding with full load');
+        }
+        
+        // Load full data in background
+        console.log('Loading full popular manga data...');
         let result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
         
         // Fallback to regular popular endpoint if unified fails
@@ -286,26 +306,34 @@ async function loadHomepageContent() {
             result = await makeApiRequest(`${API_BASE_URL}/popular`);
         }
         
-        console.log('Popular API response received:', result);
+        console.log('Full API response received:', result);
         
         if (result && result.data && result.data.length > 0) {
             console.log(`Loaded ${result.data.length} total items`);
-            console.log('First few items:', result.data.slice(0, 3));
             
             // Store all data for pagination
             window.allMangaData = result.data;
             
-            // Display trending (first 6 items)
-        if (trendingGrid) {
-                displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
-        }
-            
-            // Display updates (first 20 items initially)
-        if (updatesGrid) {
-                displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
+            // Update with full data if quick load didn't work or was incomplete
+            if (!quickResult || quickResult.data.length < 20) {
+                console.log('Updating with full data...');
+                // Display trending (first 6 items)
+                if (trendingGrid) {
+                    displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
+                }
                 
-                // Set up progressive scroll for loading more
-                setupProgressiveScroll(updatesGrid, 20); // Start from offset 20
+                // Display updates (first 20 items initially)
+                if (updatesGrid) {
+                    displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
+                    
+                    // Set up progressive scroll for loading more
+                    setupProgressiveScroll(updatesGrid, 20); // Start from offset 20
+                }
+            } else {
+                // Quick load worked, just set up progressive scroll
+                if (updatesGrid) {
+                    setupProgressiveScroll(updatesGrid, 10); // Start from offset 10
+                }
             }
         } else {
             console.log('No data received from API');
@@ -1258,9 +1286,9 @@ function displayChapterImages(images, container) {
     console.log(`Loading ${images.length} chapter images`);
     container.innerHTML = '';
     
-    // ALWAYS load first 3 images immediately - no exceptions
-    const firstImages = images.slice(0, 3);
-    const remainingImages = images.slice(3);
+    // ALWAYS load first 5 images immediately - no exceptions
+    const firstImages = images.slice(0, 5);
+    const remainingImages = images.slice(5);
     
     console.log(`Loading first ${firstImages.length} images immediately`);
     
@@ -1286,41 +1314,73 @@ function displayChapterImages(images, container) {
         container.appendChild(img);
     });
     
-    // Load remaining images as user scrolls
+    // Start loading remaining images immediately in background
     if (remainingImages.length > 0) {
-        console.log(`Setting up lazy loading for ${remainingImages.length} remaining images`);
+        console.log(`Starting background load of ${remainingImages.length} remaining images`);
+        loadRemainingImages(remainingImages, container);
+    }
+}
+
+/**
+ * Load remaining images in background with lazy loading
+ */
+function loadRemainingImages(images, container) {
+    if (!images || images.length === 0) return;
+    
+    console.log(`Setting up background loading for ${images.length} remaining images`);
+    
+    images.forEach((imageUrl, index) => {
+        const img = document.createElement('img');
+        img.alt = `Chapter page ${index + 6}`;
+        img.className = 'reader-image lazy-image';
+        img.loading = 'lazy';
+        img.dataset.src = imageUrl;
+        img.fetchPriority = 'low';
         
-        remainingImages.forEach((imageUrl, index) => {
-            const img = document.createElement('img');
-            img.alt = `Chapter page ${index + 4}`;
-            img.className = 'reader-image lazy-image';
-            img.loading = 'lazy';
-            img.dataset.src = imageUrl;
-            img.fetchPriority = 'low'; // Low priority for lazy images
-            container.appendChild(img);
-        });
+        // Add placeholder
+        img.style.backgroundColor = '#f3f4f6';
+        img.style.minHeight = '400px';
+        img.style.display = 'flex';
+        img.style.alignItems = 'center';
+        img.style.justifyContent = 'center';
+        img.style.color = '#6b7280';
+        img.textContent = `Loading page ${index + 6}...`;
         
-        // Simple intersection observer for lazy loading
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
+        container.appendChild(img);
+    });
+    
+    // Set up intersection observer for lazy loading
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
                     console.log(`Loading lazy image: ${img.dataset.src}`);
                     img.src = img.dataset.src;
-                    img.classList.remove('lazy-image');
-                    img.classList.add('loaded');
-                    observer.unobserve(img);
+                    img.removeAttribute('data-src');
+                    img.classList.add('loading');
+                    
+                    img.onload = function() {
+                        console.log(`Lazy image loaded: ${img.alt}`);
+                        this.classList.remove('loading');
+                        this.classList.add('loaded');
+                    };
+                    
+                    img.onerror = function() {
+                        console.warn(`Failed to load lazy image: ${img.alt}`);
+                        this.classList.add('error');
+                    };
                 }
-            });
-        }, {
-            rootMargin: '50px' // Start loading 50px before image comes into view
+                observer.unobserve(img);
+            }
         });
-        
-        // Observe all lazy images
-        container.querySelectorAll('.lazy-image').forEach(img => {
-            observer.observe(img);
-        });
-    }
+    }, {
+        rootMargin: '100px' // Start loading 100px before image comes into view
+    });
+    
+    // Observe all lazy images
+    const lazyImages = container.querySelectorAll('.lazy-image');
+    lazyImages.forEach(img => observer.observe(img));
 }
 
 /**
