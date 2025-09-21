@@ -350,13 +350,13 @@ body {
 }
 
 .genre-tag {
-    background: rgba(79, 70, 229, 0.2);
-    color: var(--text-primary);
+    background: var(--accent-hover-faded);
+    color: var(--accent-color);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
     font-weight: 500;
-    border: 1px solid rgba(79, 70, 229, 0.3);
+    border: 1px solid var(--accent-color);
 }
 
 .hero-cta {
