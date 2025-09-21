@@ -1315,7 +1315,8 @@ function extractChapterTitleFromUrl(chapterUrl) {
 }
 
 /**
- * Display chapter images with guaranteed first 3 images immediate loading
+ * Display chapter images with guaranteed first 10 images immediate loading
+ * and preloads remaining images in background for fast scrolling
  */
 function displayChapterImages(images, container) {
     if (!container) return;
@@ -1328,13 +1329,13 @@ function displayChapterImages(images, container) {
     console.log(`Loading ${images.length} chapter images`);
     container.innerHTML = '';
     
-    // ALWAYS load first 5 images immediately - no exceptions
-    const firstImages = images.slice(0, 5);
-    const remainingImages = images.slice(5);
+    // Load first 10 images immediately for fast reading
+    const firstImages = images.slice(0, 10);
+    const remainingImages = images.slice(10);
     
     console.log(`Loading first ${firstImages.length} images immediately`);
     
-    // Show first images right away with priority loading
+    // Show first 10 images right away with priority loading
     firstImages.forEach((imageUrl, index) => {
         const img = document.createElement('img');
         img.src = imageUrl;
@@ -1356,73 +1357,55 @@ function displayChapterImages(images, container) {
         container.appendChild(img);
     });
     
-    // Start loading remaining images immediately in background
+    // Preload remaining images immediately in background (no lazy loading)
     if (remainingImages.length > 0) {
-        console.log(`Starting background load of ${remainingImages.length} remaining images`);
-        loadRemainingImages(remainingImages, container);
+        console.log(`Preloading ${remainingImages.length} remaining images in background`);
+        preloadRemainingImages(remainingImages, container);
     }
 }
 
 /**
- * Load remaining images in background with lazy loading
+ * Preload remaining images immediately in background for fast scrolling
  */
-function loadRemainingImages(images, container) {
+function preloadRemainingImages(images, container) {
     if (!images || images.length === 0) return;
     
-    console.log(`Setting up background loading for ${images.length} remaining images`);
+    console.log(`Preloading ${images.length} remaining images immediately`);
     
     images.forEach((imageUrl, index) => {
         const img = document.createElement('img');
-        img.alt = `Chapter page ${index + 6}`;
-        img.className = 'reader-image lazy-image';
-        img.loading = 'lazy';
-        img.dataset.src = imageUrl;
-        img.fetchPriority = 'low';
+        img.alt = `Chapter page ${index + 11}`;
+        img.className = 'reader-image preloaded-image';
+        img.loading = 'eager'; // Load immediately, not lazy
+        img.src = imageUrl; // Load immediately
+        img.fetchPriority = 'low'; // Lower priority than first 10
         
-        // Add placeholder
+        // Add placeholder styling while loading
         img.style.backgroundColor = '#f3f4f6';
         img.style.minHeight = '400px';
         img.style.display = 'flex';
         img.style.alignItems = 'center';
         img.style.justifyContent = 'center';
         img.style.color = '#6b7280';
-        img.textContent = `Loading page ${index + 6}...`;
+        img.textContent = `Preloading page ${index + 11}...`;
+        
+        // Track loading progress
+        img.onload = function() {
+            console.log(`Preloaded image ${index + 11} ready`);
+            this.classList.add('loaded');
+            this.textContent = ''; // Remove loading text
+        };
+        
+        img.onerror = function() {
+            console.warn(`Failed to preload image ${index + 11}: ${imageUrl}`);
+            this.classList.add('error');
+            this.textContent = `Failed to load page ${index + 11}`;
+        };
         
         container.appendChild(img);
     });
     
-    // Set up intersection observer for lazy loading
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                if (img.dataset.src) {
-                    console.log(`Loading lazy image: ${img.dataset.src}`);
-                    img.src = img.dataset.src;
-                    img.removeAttribute('data-src');
-                    img.classList.add('loading');
-                    
-                    img.onload = function() {
-                        console.log(`Lazy image loaded: ${img.alt}`);
-                        this.classList.remove('loading');
-                        this.classList.add('loaded');
-                    };
-                    
-                    img.onerror = function() {
-                        console.warn(`Failed to load lazy image: ${img.alt}`);
-                        this.classList.add('error');
-                    };
-                }
-                observer.unobserve(img);
-            }
-        });
-    }, {
-        rootMargin: '100px' // Start loading 100px before image comes into view
-    });
-    
-    // Observe all lazy images
-    const lazyImages = container.querySelectorAll('.lazy-image');
-    lazyImages.forEach(img => observer.observe(img));
+    console.log(`All ${images.length} remaining images are now preloading in background`);
 }
 
 /**
