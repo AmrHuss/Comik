@@ -486,9 +486,23 @@ def scrape_manga_details(detail_url):
         desc_element = info_container.select_one('div.entry-content[itemprop="description"] p')
         description = desc_element.get_text(strip=True) if desc_element else "No description available"
         
-        # Extract rating
-        rating_element = info_container.select_one('div.num[itemprop="ratingValue"]')
-        rating = rating_element.get_text(strip=True) if rating_element else "N/A"
+        # Extract rating - try multiple selectors
+        rating = "N/A"
+        rating_selectors = [
+            'div.num[itemprop="ratingValue"]',
+            '.rating-value',
+            '.score',
+            '.rating',
+            'span[class*="rating"]',
+            'div[class*="rating"]'
+        ]
+        for selector in rating_selectors:
+            rating_element = info_container.select_one(selector)
+            if rating_element:
+                rating_text = rating_element.get_text(strip=True)
+                if rating_text and rating_text != 'N/A' and rating_text.replace('.', '').isdigit():
+                    rating = rating_text
+                    break
         
         # Extract status
         status_element = info_container.select_one('.imptdt i')

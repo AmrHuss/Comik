@@ -178,11 +178,25 @@ def parse_single_mangapark_item(item):
         if chapter_link:
             latest_chapter = chapter_link.get_text(strip=True)
         
-        # Extract rating
+        # Extract rating - try multiple selectors
         rating = "N/A"
-        rating_elem = item.select_one('span.flex.flex-nowrap.items-center.text-yellow-500 span.ml-1.font-bold')
-        if rating_elem:
-            rating = rating_elem.get_text(strip=True)
+        rating_selectors = [
+            'span.flex.flex-nowrap.items-center.text-yellow-500 span.ml-1.font-bold',
+            'span.text-yellow-500.font-bold',
+            '.rating',
+            '.score',
+            'span[class*="rating"]',
+            'div[class*="rating"]',
+            '[class*="star"]',
+            '[class*="score"]'
+        ]
+        for selector in rating_selectors:
+            rating_elem = item.select_one(selector)
+            if rating_elem:
+                rating_text = rating_elem.get_text(strip=True)
+                if rating_text and rating_text != 'N/A' and rating_text.replace('.', '').isdigit():
+                    rating = rating_text
+                    break
         
         # Extract chapter count - use a more reliable method
         chapter_count = 0
@@ -357,13 +371,20 @@ def scrape_mangapark_details(detail_url):
             'span.text-yellow-500.font-bold',
             '.rating',
             '.score',
-            'span[class*="rating"]'
+            'span[class*="rating"]',
+            'div[class*="rating"]',
+            '[class*="star"]',
+            '[class*="score"]',
+            'span[class*="yellow"]',
+            'div[class*="yellow"]'
         ]
         for selector in rating_selectors:
             rating_elem = soup.select_one(selector)
             if rating_elem:
-                rating = rating_elem.get_text(strip=True)
-                break
+                rating_text = rating_elem.get_text(strip=True)
+                if rating_text and rating_text != 'N/A' and rating_text.replace('.', '').isdigit():
+                    rating = rating_text
+                    break
         
         # Extract status - try multiple selectors
         status = "Unknown"
