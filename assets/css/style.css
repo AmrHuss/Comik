@@ -349,15 +349,7 @@ body {
     flex-wrap: wrap;
 }
 
-.genre-tag {
-    background: var(--accent-hover-faded);
-    color: var(--accent-color);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-lg);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    border: 1px solid var(--accent-color);
-}
+/* Genre tag styling moved to main .genre-tag definition below */
 
 .hero-cta {
     background: var(--accent-color);
@@ -2669,7 +2661,7 @@ a:focus {
     font-size: 0.8rem;
     font-weight: 500;
     transition: var(--transition-normal);
-    border: 1px solid transparent;
+    border: 1px solid var(--accent-color);
 }
 
 .genre-tag:hover {
