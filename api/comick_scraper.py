@@ -67,50 +67,84 @@ def scrape_comick_action_genre():
         
         manga_list = []
         
-        # Look for manga cards in the HTML
-        manga_cards = soup.find_all('div', class_='cursor-pointer') or soup.find_all('a', href=True)
+        # Look for manga cards using the correct selectors from the HTML structure
+        manga_cards = soup.find_all('div', class_='cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700')
         
-        logger.info(f"Found {len(manga_cards)} potential manga cards")
+        logger.info(f"Found {len(manga_cards)} manga cards")
         
         for i, card in enumerate(manga_cards[:20]):  # Limit to 20
             try:
-                # Extract title
-                title_elem = card.find('p', class_='font-bold') or card.find('h3') or card.find('h2')
+                # Extract title from the correct element
+                title_elem = card.find('p', class_='font-bold truncate dark:text-gray-300')
                 title = title_elem.get_text(strip=True) if title_elem else f"Comick Manga {i+1}"
                 
-                # Extract cover image
-                img_elem = card.find('img')
+                # Extract cover image from the correct element
+                img_elem = card.find('img', class_='select-none rounded-md object-cover')
                 cover_url = ""
                 if img_elem:
                     cover_url = img_elem.get('src') or img_elem.get('data-src', '')
                     if cover_url and not cover_url.startswith('http'):
                         cover_url = "https://comick.live" + cover_url
                 
-                # Extract other details
-                description = "Popular manga available on Comick.live"
-                rating = round(8.0 + (i % 3) * 0.5, 1)
-                followers = 10000 + (i * 5000)
-                chapters = 50 + (i * 10)
-                status = "Ongoing"
-                year = "2024"
+                # Extract description
+                desc_elem = card.find('p', class_='prose prose-sm dark:prose-invert text-gray-600 dark:text-gray-400 text-xs md:text-sm md:pr-12 overflow-ellipsis mt-2 line-clamp-2')
+                description = desc_elem.get_text(strip=True) if desc_elem else "Popular manga available on Comick.live"
+                
+                # Extract additional titles
+                titles_elem = card.find('p', class_='text-xs md:text-sm text-gray-600 dark:text-gray-400 line-clamp-1 truncate')
+                additional_titles = []
+                if titles_elem:
+                    additional_titles = [t.strip() for t in titles_elem.get_text(strip=True).split(',')]
+                
+                # Extract chapters
+                chapters_elem = card.find('span', string=lambda text: text and 'chapters' in text)
+                chapters = 0
+                if chapters_elem:
+                    chapters_text = chapters_elem.get_text(strip=True)
+                    import re
+                    match = re.search(r'(\d+(?:\.\d+)?)', chapters_text)
+                    if match:
+                        chapters = float(match.group(1))
+                
+                # Extract year
+                year_elem = card.find('span', title='Published')
+                year = year_elem.get_text(strip=True) if year_elem else "2024"
+                
+                # Extract followers
+                followers_elem = card.find('span', class_='text-xs xl:text-lg')
+                followers = 0
+                if followers_elem:
+                    followers_text = followers_elem.get_text(strip=True)
+                    if 'k' in followers_text:
+                        followers = int(float(followers_text.replace('k', '')) * 1000)
+                    else:
+                        followers = int(followers_text.replace(',', ''))
+                
+                # Extract rating
+                rating_elem = card.find('div', title='Rating count')
+                rating = 0
+                if rating_elem:
+                    rating_text = rating_elem.find('span', class_='text-xs xl:text-lg')
+                    if rating_text:
+                        rating = float(rating_text.get_text(strip=True))
                 
                 # Create slug from title
-                slug = title.lower().replace(' ', '-').replace(':', '').replace('!', '').replace('?', '')
+                slug = title.lower().replace(' ', '-').replace(':', '').replace('!', '').replace('?', '').replace("'", "")
                 
                 manga = {
                     'title': title,
-                    'description': description,
+                    'description': description[:200] + '...' if len(description) > 200 else description,
                     'cover_url': f"/api/comick-image-proxy?img_url={cover_url}" if cover_url else "",
-                    'rating': str(rating),
+                    'rating': str(rating) if rating > 0 else "N/A",
                     'followers': followers,
-                    'chapters': chapters,
-                    'status': status,
+                    'chapters': int(chapters) if chapters > 0 else 0,
+                    'status': 'Ongoing',
                     'year': year,
                     'slug': slug,
                     'source': 'Comick',
                     'url': f"https://comick.live/comic/{slug}",
                     'genres': ['Action'],
-                    'titles': [title]
+                    'titles': [title] + additional_titles
                 }
                 
                 manga_list.append(manga)
