@@ -268,9 +268,6 @@ async function loadHomepageContent() {
         return;
     }
     
-    // Add Comick proxy test button
-    addComickTestButton();
-    
     if (trendingGrid) {
         showLoadingState(trendingGrid, 'Loading trending manga...');
     }
@@ -1473,118 +1470,6 @@ function updateChapterNavigation(prevElement, nextElement, prevUrl, nextUrl, sou
  */
 window.loadChapterImages = loadChapterImages;
 
-/**
- * Test Comick image proxy with specific image
- */
-async function testComickProxy() {
-    console.log('Testing Comick image proxy...');
-    
-    const testImageUrl = 'https://cdn1.comicknew.pictures/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/0_1/en/8afc0607/0.webp';
-    const chapterUrl = 'https://comick.live/comic/yami-ochi-rasu-bosu-reijou-no-osananajimi-ni-tensei-shita-ore-ga-shindara-bad-end-kakutei-na-node-saikyou-ni-natta-kedo-mou-yami-ochi-yandere-ka-shitemasen-ka/A6_YIlD0-chapter-1-en';
-    
-    // Create proxy URL
-    const proxyUrl = `/api/comick-image-proxy?img_url=${encodeURIComponent(testImageUrl)}&chapter_url=${encodeURIComponent(chapterUrl)}`;
-    
-    console.log('Proxy URL:', proxyUrl);
-    
-    try {
-        // Test the proxy by creating an image element
-        const img = document.createElement('img');
-        img.style.maxWidth = '100%';
-        img.style.height = 'auto';
-        img.style.border = '2px solid #0ea5e9';
-        img.style.borderRadius = '8px';
-        img.style.margin = '20px auto';
-        img.style.display = 'block';
-        
-        img.onload = function() {
-            console.log('✅ SUCCESS: Comick image proxy is working!');
-            console.log('Image loaded successfully:', this.src);
-            
-            // Add success message
-            const successDiv = document.createElement('div');
-            successDiv.innerHTML = `
-                <div style="background: #10b981; color: white; padding: 10px; margin: 10px; border-radius: 5px; text-align: center;">
-                    ✅ Comick Image Proxy Test: SUCCESS! Image loaded successfully.
-                </div>
-            `;
-            document.body.insertBefore(successDiv, document.body.firstChild);
-        };
-        
-        img.onerror = function() {
-            console.error('❌ FAILED: Comick image proxy failed to load image');
-            
-            // Add error message
-            const errorDiv = document.createElement('div');
-            errorDiv.innerHTML = `
-                <div style="background: #ef4444; color: white; padding: 10px; margin: 10px; border-radius: 5px; text-align: center;">
-                    ❌ Comick Image Proxy Test: FAILED! Could not load image.
-                </div>
-            `;
-            document.body.insertBefore(errorDiv, document.body.firstChild);
-        };
-        
-        img.src = proxyUrl;
-        
-        // Add the image to the page for testing
-        const testContainer = document.createElement('div');
-        testContainer.style.textAlign = 'center';
-        testContainer.style.padding = '20px';
-        testContainer.innerHTML = '<h3>Comick Image Proxy Test</h3>';
-        testContainer.appendChild(img);
-        
-        // Insert at the top of the page
-        document.body.insertBefore(testContainer, document.body.firstChild);
-        
-    } catch (error) {
-        console.error('❌ ERROR testing Comick proxy:', error);
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.innerHTML = `
-            <div style="background: #ef4444; color: white; padding: 10px; margin: 10px; border-radius: 5px; text-align: center;">
-                ❌ Comick Image Proxy Test: ERROR! ${error.message}
-            </div>
-        `;
-        document.body.insertBefore(errorDiv, document.body.firstChild);
-    }
-}
-
-// Make test function globally available
-window.testComickProxy = testComickProxy;
-
-/**
- * Add Comick proxy test button to homepage
- */
-function addComickTestButton() {
-    // Check if button already exists
-    if (document.getElementById('comick-test-btn')) return;
-    
-    const testButton = document.createElement('button');
-    testButton.id = 'comick-test-btn';
-    testButton.innerHTML = '🧪 Test Comick Image Proxy';
-    testButton.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 1000;
-        background: #0ea5e9;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    `;
-    
-    testButton.onclick = function() {
-        console.log('Testing Comick proxy...');
-        testComickProxy();
-        this.style.display = 'none'; // Hide button after click
-    };
-    
-    document.body.appendChild(testButton);
-}
 
 // --- Initialization ---
 

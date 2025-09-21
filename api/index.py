@@ -65,7 +65,7 @@ except ImportError:
 # from api.mangapark_scraper import scrape_mangapark_latest, scrape_mangapark_details, search_mangapark_by_title
 
 # Webtoons scraper
-from webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
+from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
 
 # --- Configuration ---
 logging.basicConfig(
