@@ -719,6 +719,9 @@ body {
 
 .detail-genres .genre-tag {
     font-size: var(--font-size-xs);
+    background: var(--accent-hover-faded) !important;
+    color: var(--accent-color) !important;
+    border: 1px solid var(--accent-color) !important;
 }
 
 .detail-description {
@@ -2654,14 +2657,14 @@ a:focus {
 .genre-tag {
     display: inline-block;
     padding: 0.375rem 0.75rem;
-    background: var(--accent-hover-faded);
-    color: var(--accent-color);
+    background: var(--accent-hover-faded) !important;
+    color: var(--accent-color) !important;
     text-decoration: none;
     border-radius: var(--radius-full);
     font-size: 0.8rem;
     font-weight: 500;
     transition: var(--transition-normal);
-    border: 1px solid var(--accent-color);
+    border: 1px solid var(--accent-color) !important;
 }
 
 .genre-tag:hover {
