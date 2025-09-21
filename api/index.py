@@ -1207,6 +1207,7 @@ def get_unified_popular():
         # Comick disabled - no fallback needed
         
         # Combine all manga (Comick disabled)
+        
         all_manga = asura_manga + webtoons_manga
         response_data = {
             'success': True,
