@@ -1206,8 +1206,8 @@ def get_unified_popular():
             except Exception as e:
                 logger.error(f"Error fetching {source} popular manga: {e}")
         
-        # Combine all manga
-        all_manga = asura_manga + webtoons_manga + comick_manga
+        # Combine all manga with Comick first
+        all_manga = comick_manga + asura_manga + webtoons_manga
         response_data = {
             'success': True,
             'data': all_manga,
