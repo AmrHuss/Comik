@@ -729,8 +729,11 @@ function debounce(func, wait) {
  * Add fake comments for testing purposes
  */
 function addFakeComments() {
-    // Check if we're on a discussion page
-    if (!document.getElementById('comments-list')) return;
+    // Check if we're on a chapter discussion page (reader.html)
+    const chapterDiscussionsList = document.getElementById('chapter-discussions-list');
+    const discussionCount = document.querySelector('.discussion-count');
+    
+    if (!chapterDiscussionsList) return;
     
     // Create fake comments data
     const fakeComments = [
@@ -778,10 +781,82 @@ function addFakeComments() {
         }
     ];
     
-    // Render the fake comments
-    renderComments(fakeComments);
+    // Clear the empty state and add fake comments
+    chapterDiscussionsList.innerHTML = '';
+    
+    // Create comment items
+    fakeComments.forEach(comment => {
+        const commentItem = createChapterCommentItem(comment);
+        chapterDiscussionsList.appendChild(commentItem);
+    });
+    
+    // Update the comment count
+    if (discussionCount) {
+        discussionCount.textContent = `${fakeComments.length} comments`;
+    }
     
     console.log('Added 6 fake comments for testing');
+}
+
+/**
+ * Create chapter comment item HTML
+ */
+function createChapterCommentItem(comment) {
+    const timeAgo = formatTimeAgo(comment.created_at);
+    
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'discussion-item';
+    commentDiv.innerHTML = `
+        <div class="discussion-header">
+            <div class="discussion-author">
+                <div class="author-avatar">
+                    ${comment.author.username.charAt(0).toUpperCase()}
+                </div>
+                <div class="author-info">
+                    <div class="author-name">${comment.author.username}</div>
+                    <div class="author-time">${timeAgo}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="discussion-content">
+            <p>${comment.content}</p>
+        </div>
+        
+        <div class="discussion-actions">
+            <button class="action-btn" onclick="likeChapterComment(${comment.id})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 9V5a3 3 0 0 0-6 0v4"></path>
+                    <rect x="2" y="9" width="20" height="12" rx="2" ry="2"></rect>
+                </svg>
+                Like (${comment.like_count || 0})
+            </button>
+        </div>
+    `;
+    
+    return commentDiv;
+}
+
+/**
+ * Format time ago
+ */
+function formatTimeAgo(dateString) {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+}
+
+/**
+ * Like chapter comment (placeholder)
+ */
+function likeChapterComment(commentId) {
+    console.log(`Liked comment ${commentId}`);
+    // Add like functionality here
 }
 
 // Export functions for global access
@@ -793,3 +868,6 @@ window.discussion = {
     likeComment,
     closeModal
 };
+
+// Make likeChapterComment globally available
+window.likeChapterComment = likeChapterComment;
