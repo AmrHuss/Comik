@@ -1981,6 +1981,102 @@ def webtoons_image_proxy():
             'error': 'Internal server error'
         }), 500
 
+@app.route('/api/comick-image-proxy', methods=['GET'])
+def comick_image_proxy():
+    """Specialized proxy endpoint for Comick images with Cloudflare bypass."""
+    try:
+        img_url = request.args.get('img_url')
+        chapter_url = request.args.get('chapter_url')
+        
+        if not img_url:
+            return jsonify({
+                'success': False,
+                'error': 'Missing img_url parameter'
+            }), 400
+        
+        # Decode the URL
+        import urllib.parse
+        img_url = urllib.parse.unquote(img_url)
+        
+        # Filter out placeholder images
+        if any(placeholder in img_url.lower() for placeholder in [
+            'placeholder', 'default', 'loading', 'transparent', 'blank', 'empty', '1x1', 'pixel', 'spacer'
+        ]):
+            logger.debug(f"Blocking placeholder image: {img_url}")
+            return jsonify({
+                'success': False,
+                'error': 'Placeholder image blocked'
+            }), 400
+        
+        # Enhanced headers to bypass Cloudflare protection
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': 'https://comick.live/',
+            'Origin': 'https://comick.live',
+            'Sec-Fetch-Dest': 'image',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'DNT': '1'
+        }
+        
+        # Add chapter URL as referer if provided
+        if chapter_url:
+            headers['Referer'] = urllib.parse.unquote(chapter_url)
+        
+        # Make the request with longer timeout for Cloudflare
+        session = requests.Session()
+        session.headers.update(headers)
+        
+        response = session.get(img_url, timeout=30, stream=True, allow_redirects=True)
+        response.raise_for_status()
+        
+        # Check if the response is actually an image
+        content_type = response.headers.get('content-type', '').lower()
+        if not any(img_type in content_type for img_type in ['image/', 'jpeg', 'jpg', 'png', 'webp', 'svg']):
+            logger.warning(f"Non-image content type received: {content_type}")
+            return jsonify({
+                'success': False,
+                'error': 'Invalid image content type'
+            }), 400
+        
+        # Return the image with optimized headers
+        from flask import Response
+        return Response(
+            response.content,
+            mimetype=content_type,
+            headers={
+                'Cache-Control': 'public, max-age=14400',  # 4 hours cache for Comick
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'SAMEORIGIN'
+            }
+        )
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching Comick image: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to fetch image: {str(e)}'
+        }), 500
+    except Exception as e:
+        logger.error(f"Unexpected error in Comick image proxy: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
 @app.route('/api', methods=['GET'])
 def api_root():
     """API root endpoint for health checks."""
