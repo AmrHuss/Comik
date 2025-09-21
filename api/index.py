@@ -2219,10 +2219,10 @@ def comick_image_proxy():
         import urllib.parse
         img_url = urllib.parse.unquote(img_url)
         
-        # Filter out placeholder images
+        # Filter out placeholder images (but be less strict)
         if any(placeholder in img_url.lower() for placeholder in [
             'placeholder', 'default', 'loading', 'transparent', 'blank', 'empty', '1x1', 'pixel', 'spacer'
-        ]):
+        ]) and 'comick' not in img_url.lower():
             logger.debug(f"Blocking placeholder image: {img_url}")
             return jsonify({
                 'success': False,
@@ -2258,8 +2258,10 @@ def comick_image_proxy():
         session = requests.Session()
         session.headers.update(headers)
         
+        logger.info(f"Fetching Comick image: {img_url}")
         response = session.get(img_url, timeout=30, stream=True, allow_redirects=True)
         response.raise_for_status()
+        logger.info(f"Successfully fetched Comick image: {img_url}")
         
         # Check if the response is actually an image
         content_type = response.headers.get('content-type', '').lower()
@@ -2286,7 +2288,7 @@ def comick_image_proxy():
         )
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching Comick image: {e}")
+        logger.error(f"Error fetching Comick image {img_url}: {e}")
         # Return a fallback image instead of error
         from flask import Response
         fallback_image = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
