@@ -71,6 +71,7 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     overflow-x: hidden;
+    padding-top: 80px; /* Account for fixed header */
 }
 
 .container {
@@ -81,12 +82,16 @@ body {
 
 /* Header & Navigation */
 .header {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 1000;
-    background: rgba(15, 15, 35, 0.95);
-    backdrop-filter: blur(10px);
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: rgba(15, 15, 35, 0.98);
+    backdrop-filter: blur(15px);
     border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    transition: var(--transition-normal);
 }
 
 .navbar {
@@ -779,10 +784,12 @@ body {
 
 /* Immersive Reader - Disappearing Header */
 body[data-page="reader"] .header {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     transition: transform 0.3s ease-in-out;
-    z-index: 1000;
+    z-index: 9999;
 }
 
 body[data-page="reader"] .header--hidden {
