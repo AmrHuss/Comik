@@ -51,7 +51,7 @@ def scrape_comick_action_genre():
     """Scrape action genre manga from Comick.live using real scraping"""
     try:
         # Try to scrape from Comick's actual website
-        url = "https://comick.live/genre/action"
+        url = "https://comick.live/search?genres=action&order_by=user_follow_count"
         headers = get_comick_headers()
         
         logger.info(f"Scraping Comick action genre from: {url}")
