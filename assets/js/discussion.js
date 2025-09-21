@@ -735,49 +735,101 @@ function addFakeComments() {
     
     if (!chapterDiscussionsList) return;
     
-    // Create fake comments data
+    // Create fake comments data with replies
     const fakeComments = [
         {
             id: 1,
             content: "This chapter was absolutely amazing! The art is getting better and better 🔥",
             author: { username: "testuser0" },
             created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-            like_count: 5
+            like_count: 5,
+            replies: [
+                {
+                    id: 11,
+                    content: "I totally agree! The art style has evolved so much since the beginning",
+                    author: { username: "testuser1" },
+                    created_at: new Date(Date.now() - 1.5 * 60 * 60 * 1000).toISOString(),
+                    like_count: 2
+                },
+                {
+                    id: 12,
+                    content: "The fight scenes were incredible too! Can't wait for next week",
+                    author: { username: "testuser0" },
+                    created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+                    like_count: 1
+                }
+            ]
         },
         {
             id: 2,
             content: "CommentTest - I can't wait for the next chapter! The plot twist was unexpected",
             author: { username: "testuser1" },
             created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-            like_count: 3
+            like_count: 3,
+            replies: [
+                {
+                    id: 21,
+                    content: "Right? I never saw that coming! The author is a genius",
+                    author: { username: "testuser0" },
+                    created_at: new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString(),
+                    like_count: 4
+                }
+            ]
         },
         {
             id: 3,
             content: "The character development in this series is incredible. Each chapter brings something new!",
             author: { username: "testuser0" },
             created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-            like_count: 8
+            like_count: 8,
+            replies: []
         },
         {
             id: 4,
             content: "CommentTest - Does anyone else think the MC is getting too overpowered? Still love it though 😅",
             author: { username: "testuser1" },
             created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-            like_count: 2
+            like_count: 2,
+            replies: [
+                {
+                    id: 41,
+                    content: "I think it's fine, the challenges are getting harder too",
+                    author: { username: "testuser0" },
+                    created_at: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(),
+                    like_count: 3
+                },
+                {
+                    id: 42,
+                    content: "Yeah but I miss the struggle from earlier chapters",
+                    author: { username: "testuser1" },
+                    created_at: new Date(Date.now() - 6.5 * 60 * 60 * 1000).toISOString(),
+                    like_count: 1
+                }
+            ]
         },
         {
             id: 5,
             content: "The fight scenes in this chapter were epic! The animation quality is top tier",
             author: { username: "testuser0" },
             created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-            like_count: 7
+            like_count: 7,
+            replies: []
         },
         {
             id: 6,
             content: "CommentTest - I've been following this series since chapter 1 and it just keeps getting better!",
             author: { username: "testuser1" },
             created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-            like_count: 12
+            like_count: 12,
+            replies: [
+                {
+                    id: 61,
+                    content: "Same here! Been a fan since day one and it's only gotten better",
+                    author: { username: "testuser0" },
+                    created_at: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
+                    like_count: 5
+                }
+            ]
         }
     ];
     
@@ -799,7 +851,7 @@ function addFakeComments() {
 }
 
 /**
- * Create chapter comment item HTML
+ * Create chapter comment item HTML with replies
  */
 function createChapterCommentItem(comment) {
     const timeAgo = formatTimeAgo(comment.created_at);
@@ -831,10 +883,69 @@ function createChapterCommentItem(comment) {
                 </svg>
                 Like (${comment.like_count || 0})
             </button>
+            <button class="action-btn" onclick="toggleReplyForm(${comment.id})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Reply (${comment.replies ? comment.replies.length : 0})
+            </button>
+        </div>
+        
+        <div class="replies-container" id="replies-${comment.id}" style="display: none;">
+            <div class="reply-form" id="reply-form-${comment.id}" style="display: none;">
+                <textarea placeholder="Write a reply..." class="reply-textarea" rows="2"></textarea>
+                <div class="reply-actions">
+                    <button class="btn btn-primary" onclick="submitReply(${comment.id})">Reply</button>
+                    <button class="btn btn-secondary" onclick="cancelReply(${comment.id})">Cancel</button>
+                </div>
+            </div>
+            <div class="replies-list" id="replies-list-${comment.id}">
+                ${comment.replies && comment.replies.length > 0 ? 
+                    comment.replies.map(reply => createReplyItem(reply)).join('') : 
+                    ''
+                }
+            </div>
         </div>
     `;
     
     return commentDiv;
+}
+
+/**
+ * Create reply item HTML
+ */
+function createReplyItem(reply) {
+    const timeAgo = formatTimeAgo(reply.created_at);
+    
+    return `
+        <div class="reply-item">
+            <div class="reply-header">
+                <div class="reply-author">
+                    <div class="author-avatar small">
+                        ${reply.author.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="author-info">
+                        <div class="author-name">${reply.author.username}</div>
+                        <div class="author-time">${timeAgo}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="reply-content">
+                <p>${reply.content}</p>
+            </div>
+            
+            <div class="reply-actions">
+                <button class="action-btn small" onclick="likeReply(${reply.id})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 9V5a3 3 0 0 0-6 0v4"></path>
+                        <rect x="2" y="9" width="20" height="12" rx="2" ry="2"></rect>
+                    </svg>
+                    Like (${reply.like_count || 0})
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 /**
@@ -859,6 +970,88 @@ function likeChapterComment(commentId) {
     // Add like functionality here
 }
 
+/**
+ * Toggle reply form for a comment
+ */
+function toggleReplyForm(commentId) {
+    const repliesContainer = document.getElementById(`replies-${commentId}`);
+    const replyForm = document.getElementById(`reply-form-${commentId}`);
+    
+    if (!repliesContainer || !replyForm) return;
+    
+    if (repliesContainer.style.display === 'none') {
+        repliesContainer.style.display = 'block';
+        replyForm.style.display = 'block';
+    } else {
+        replyForm.style.display = replyForm.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+/**
+ * Submit a reply to a comment
+ */
+function submitReply(commentId) {
+    const replyForm = document.getElementById(`reply-form-${commentId}`);
+    const textarea = replyForm.querySelector('.reply-textarea');
+    const repliesList = document.getElementById(`replies-list-${commentId}`);
+    
+    if (!textarea || !textarea.value.trim()) {
+        alert('Please enter a reply');
+        return;
+    }
+    
+    // Create new reply object
+    const newReply = {
+        id: Date.now(), // Simple ID generation
+        content: textarea.value.trim(),
+        author: { username: "testuser0" }, // Default user for demo
+        created_at: new Date().toISOString(),
+        like_count: 0
+    };
+    
+    // Add reply to the list
+    const replyElement = document.createElement('div');
+    replyElement.innerHTML = createReplyItem(newReply);
+    repliesList.appendChild(replyElement.firstElementChild);
+    
+    // Clear the textarea
+    textarea.value = '';
+    
+    // Hide the form
+    replyForm.style.display = 'none';
+    
+    // Update reply count
+    const replyButton = document.querySelector(`button[onclick="toggleReplyForm(${commentId})"]`);
+    if (replyButton) {
+        const currentCount = parseInt(replyButton.textContent.match(/\d+/)[0]) || 0;
+        replyButton.innerHTML = replyButton.innerHTML.replace(/Reply \(\d+\)/, `Reply (${currentCount + 1})`);
+    }
+    
+    console.log(`Added reply to comment ${commentId}`);
+}
+
+/**
+ * Cancel reply form
+ */
+function cancelReply(commentId) {
+    const replyForm = document.getElementById(`reply-form-${commentId}`);
+    const textarea = replyForm.querySelector('.reply-textarea');
+    
+    if (textarea) {
+        textarea.value = '';
+    }
+    
+    replyForm.style.display = 'none';
+}
+
+/**
+ * Like a reply (placeholder)
+ */
+function likeReply(replyId) {
+    console.log(`Liked reply ${replyId}`);
+    // Add like functionality here
+}
+
 // Export functions for global access
 window.discussion = {
     showCreateDiscussionForm,
@@ -869,5 +1062,9 @@ window.discussion = {
     closeModal
 };
 
-// Make likeChapterComment globally available
+// Make functions globally available
 window.likeChapterComment = likeChapterComment;
+window.toggleReplyForm = toggleReplyForm;
+window.submitReply = submitReply;
+window.cancelReply = cancelReply;
+window.likeReply = likeReply;
