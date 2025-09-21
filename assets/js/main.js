@@ -1721,7 +1721,7 @@ async function populateSidebar() {
  * Enhanced manhwa card creation with more information
  */
 function createEnhancedMangaCard(manga) {
-    const rating = manga.rating || (Math.random() * 1.9 + 8.0).toFixed(1);
+    const rating = manga.rating || 'N/A';
     
     // Extract chapter count from latest_chapter string (e.g., "Chapter 150" -> 150)
     let chapters = 0;
