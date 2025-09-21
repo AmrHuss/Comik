@@ -1102,6 +1102,42 @@ function initializeEventListeners() {
             }
         });
     }
+    
+    // Initialize navbar scroll behavior
+    initializeNavbarScroll();
+}
+
+function initializeNavbarScroll() {
+    let lastScrollTop = 0;
+    let isScrolling = false;
+    const header = document.querySelector('.header');
+    
+    if (!header) return;
+    
+    window.addEventListener('scroll', () => {
+        if (isScrolling) return;
+        
+        isScrolling = true;
+        requestAnimationFrame(() => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Show navbar when at top of page
+            if (scrollTop <= 10) {
+                header.classList.remove('hidden');
+            }
+            // Hide navbar when scrolling down
+            else if (scrollTop > lastScrollTop && scrollTop > 100) {
+                header.classList.add('hidden');
+            }
+            // Show navbar when scrolling up
+            else if (scrollTop < lastScrollTop) {
+                header.classList.remove('hidden');
+            }
+            
+            lastScrollTop = scrollTop;
+            isScrolling = false;
+        });
+    });
 }
 
 // --- Chapter Navigation Functions ---
