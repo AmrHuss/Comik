@@ -142,15 +142,15 @@ def extract_comick_data_from_scripts(html_content):
                 # Convert to our format
                 processed_comic = {
                     'title': comic.get('title', 'Unknown'),
-                    'cover_url': f"https://cdn1.comicknew.pictures/{comic.get('hid', '')}/covers/101b409e.webp" if comic.get('hid') else '',
+                    'cover_url': comic.get('default_thumbnail', ''),
                     'detail_url': f"https://comick.live/comic/{comic.get('slug', '')}" if comic.get('slug') else '',
                     'author': 'Unknown',  # Not available in this data
                     'description': comic.get('description', 'No description available'),
                     'source': 'Comick',
-                    'latest_chapter': 'N/A',  # Not available in this data
+                    'latest_chapter': f"{comic.get('last_chapter', 'N/A')} chapters" if comic.get('last_chapter') else 'N/A',
                     'rating': comic.get('bayesian_rating', 'N/A'),
                     'genres': ['Action'],
-                    'status': 'Ongoing'
+                    'status': comic.get('status', 'Ongoing')
                 }
                 
                 # Convert cover image to use proxy
