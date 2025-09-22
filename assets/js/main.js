@@ -622,7 +622,9 @@ async function handleDetailPage() {
     try {
         console.log('Making API request for manga details...');
         // Auto-detect source from URL
-        let source = 'AsuraScanz'; // default
+
+        let source = 'AsuraScanz';
+        
         if (detailUrl.includes('webtoons.com')) {
             source = 'Webtoons';
         } else if (detailUrl.includes('asurascanz.com')) {

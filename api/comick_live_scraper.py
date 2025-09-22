@@ -379,7 +379,9 @@ def scrape_comick_details(detail_url):
         author = comic_data.get('author', 'Unknown')
         
         # Extract chapters from JSON data in script tags
-        chapters = extract_comick_chapters_from_scripts(response.text)
+        comic_slug = comic_data.get('slug', '')
+        logger.info(f"Comic slug: '{comic_slug}'")
+        chapters = extract_comick_chapters_from_scripts(response.text, comic_slug)
         
         # Create detailed comic data
         comic_details = {
@@ -390,7 +392,8 @@ def scrape_comick_details(detail_url):
             'status': comic_data.get('status', 'Ongoing'),
             'genres': genres,
             'author': author,
-            'chapters': chapters
+            'chapters': chapters,
+            'slug': comic_slug
         }
         
         logger.info(f"Successfully scraped details for: {title}")
@@ -460,7 +463,8 @@ def extract_comick_detail_data_from_scripts(html_content):
             'genres': genres,
             'author': comic_data.get('origination', 'Unknown'),
             'rating': comic_data.get('bayesian_rating', 'N/A'),
-            'status': 'Ongoing' if comic_data.get('status') == 1 else 'Completed'
+            'status': 'Ongoing' if comic_data.get('status') == 1 else 'Completed',
+            'slug': comic_data.get('slug', '')
         }
         
         return processed_data
@@ -469,7 +473,7 @@ def extract_comick_detail_data_from_scripts(html_content):
         logger.error(f"Error extracting comic detail data from scripts: {e}")
         return {}
 
-def extract_comick_chapters_from_scripts(html_content):
+def extract_comick_chapters_from_scripts(html_content, comic_slug=''):
     """Extract chapter data from JSON embedded in script tags."""
     try:
         import re
@@ -481,16 +485,13 @@ def extract_comick_chapters_from_scripts(html_content):
         
         chapters = []
         for i, script in enumerate(scripts):
-            if 'chapter' in script and ('data' in script or 'chapters' in script):
+            if 'firstChapters' in script and '{"id":' in script:
                 logger.info(f"Found chapter data in script {i}")
                 
-                # Try to find the JSON object more carefully
-                # Look for the start of the JSON object
-                start_match = re.search(r'\{[^{}]*"chapter', script)
-                if start_match:
-                    start_pos = start_match.start()
-                    
-                    # Find the matching closing brace
+                # Find the start of the JSON object
+                start_pos = script.find('{"id":')
+                if start_pos != -1:
+                    # Find the matching closing brace by counting braces
                     brace_count = 0
                     end_pos = start_pos
                     for j, char in enumerate(script[start_pos:], start_pos):
@@ -506,13 +507,9 @@ def extract_comick_chapters_from_scripts(html_content):
                     
                     try:
                         data = json.loads(json_str)
-                        if 'data' in data and isinstance(data['data'], list):
-                            chapters = data['data']
-                            logger.info(f"Found {len(chapters)} chapters in the data")
-                            break
-                        elif 'chapters' in data and isinstance(data['chapters'], list):
-                            chapters = data['chapters']
-                            logger.info(f"Found {len(chapters)} chapters in the data")
+                        if 'firstChapters' in data and isinstance(data['firstChapters'], list):
+                            chapters = data['firstChapters']
+                            logger.info(f"Found {len(chapters)} chapters in firstChapters")
                             break
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to parse JSON in script {i}: {e}")
@@ -527,18 +524,18 @@ def extract_comick_chapters_from_scripts(html_content):
                 if chapter.get('title'):
                     chapter_title += f": {chapter['title']}"
                 
-                # Extract chapter URL
+                # Extract chapter URL - construct from the comic slug and chapter data
                 chapter_url = ""
                 if chapter.get('hid') and chapter.get('chap'):
-                    # Construct chapter URL from the pattern we see in the HTML
-                    comic_slug = chapter_url.split('/comic/')[-1].split('/')[0] if '/' in chapter_url else ''
-                    chapter_url = f"https://comick.live/comic/{comic_slug}/{chapter['hid']}-chapter-{chapter['chap']}-{chapter.get('lang', 'en')}"
+                    # Use the correct URL pattern: /comic/{comic_slug}/{chapter.hid}-chapter-{chapter.chap}-{chapter.lang}
+                    if comic_slug:
+                        chapter_url = f"https://comick.live/comic/{comic_slug}/{chapter['hid']}-chapter-{chapter['chap']}-{chapter.get('lang', 'en')}"
+                    else:
+                        chapter_url = f"https://comick.live/comic/{chapter['hid']}-chapter-{chapter['chap']}-{chapter.get('lang', 'en')}"
                 
                 # Extract date
                 chapter_date = "Unknown Date"
-                if chapter.get('updated_at'):
-                    chapter_date = chapter['updated_at']
-                elif chapter.get('created_at'):
+                if chapter.get('created_at'):
                     chapter_date = chapter['created_at']
                 
                 processed_chapters.append({
@@ -550,6 +547,11 @@ def extract_comick_chapters_from_scripts(html_content):
             except Exception as e:
                 logger.warning(f"Error processing chapter: {e}")
                 continue
+        
+        # Note: firstChapters only contains the first chapter as a preview
+        # The full chapter list is loaded dynamically via JavaScript
+        if len(processed_chapters) == 1:
+            logger.info("Note: Only first chapter available in initial load. Full chapter list requires dynamic loading.")
         
         return processed_chapters
         
