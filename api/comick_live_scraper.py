@@ -67,23 +67,43 @@ def scrape_comick_action_genre():
     try:
         logger.info("Starting Comick action genre scraping")
         
-        # Make request to action genre page
-        logger.info(f"Fetching: {ACTION_GENRE_URL}")
-        response = make_request(ACTION_GENRE_URL)
+        all_comics = []
+        max_pages = 5  # Load first 5 pages (75 comics total)
         
-        if not response:
-            logger.error("Failed to fetch Comick action genre page")
+        for page in range(1, max_pages + 1):
+            try:
+                if page == 1:
+                    url = ACTION_GENRE_URL
+                else:
+                    url = f"{ACTION_GENRE_URL}&page={page}"
+                
+                logger.info(f"Fetching page {page}: {url}")
+                response = make_request(url)
+                
+                if not response:
+                    logger.warning(f"Failed to fetch page {page}")
+                    continue
+                
+                # Extract JSON data from script tags
+                page_comics = extract_comick_data_from_scripts(response.text)
+                
+                if page_comics:
+                    all_comics.extend(page_comics)
+                    logger.info(f"Page {page}: Found {len(page_comics)} comics")
+                else:
+                    logger.warning(f"Page {page}: No comics found")
+                    break  # Stop if no comics found on a page
+                    
+            except Exception as e:
+                logger.warning(f"Error fetching page {page}: {e}")
+                continue
+        
+        if not all_comics:
+            logger.error("No comic data found in any page")
             return []
         
-        # Extract JSON data from script tags (Comick uses Alpine.js)
-        comics = extract_comick_data_from_scripts(response.text)
-        
-        if not comics:
-            logger.error("No comic data found in page scripts")
-            return []
-        
-        logger.info(f"Successfully scraped {len(comics)} comics")
-        return comics
+        logger.info(f"Successfully scraped {len(all_comics)} comics from {max_pages} pages")
+        return all_comics
         
     except Exception as e:
         logger.error(f"Error scraping Comick action genre: {e}")
