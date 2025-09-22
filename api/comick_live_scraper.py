@@ -396,36 +396,8 @@ def scrape_comick_details(detail_url):
                 author = text
                 break
         
-        # Extract chapters from table
-        chapters = []
-        tbody = soup.find('tbody')
-        if tbody:
-            chapter_rows = tbody.find_all('tr')
-            for row in chapter_rows:
-                try:
-                    # Extract chapter number/title
-                    chapter_title = "Unknown Chapter"
-                    title_span = row.find('span', class_=lambda x: x and 'font-semibold' in x)
-                    if title_span:
-                        chapter_title = title_span.get_text(strip=True)
-                    
-                    # Extract chapter URL
-                    chapter_url = ""
-                    link = row.find('a', href=True)
-                    if link:
-                        chapter_url = link['href']
-                        if chapter_url and not chapter_url.startswith('http'):
-                            chapter_url = urljoin(COMICK_BASE_URL, chapter_url)
-                    
-                    if chapter_url:
-                        chapters.append({
-                            'title': chapter_title,
-                            'url': chapter_url,
-                            'date': 'Unknown Date'
-                        })
-                except Exception as e:
-                    logger.warning(f"Error parsing chapter row: {e}")
-                    continue
+        # Extract chapters from JSON data in script tags
+        chapters = extract_comick_chapters_from_scripts(response.text)
         
         # Create detailed comic data
         comic_details = {
@@ -446,6 +418,90 @@ def scrape_comick_details(detail_url):
         logger.error(f"Error scraping Comick details for {detail_url}: {e}")
         logger.error(traceback.format_exc())
         return None
+
+def extract_comick_chapters_from_scripts(html_content):
+    """Extract chapter data from JSON embedded in script tags."""
+    try:
+        import re
+        import json
+        
+        # Look for the JSON data in script tags
+        script_pattern = r'<script[^>]*>(.*?)</script>'
+        scripts = re.findall(script_pattern, html_content, re.DOTALL)
+        
+        chapters = []
+        for i, script in enumerate(scripts):
+            if 'chapter' in script and 'data' in script:
+                logger.info(f"Found chapter data in script {i}")
+                
+                # Try to find the JSON object more carefully
+                # Look for the start of the JSON object
+                start_match = re.search(r'\{[^{}]*"chapter"', script)
+                if start_match:
+                    start_pos = start_match.start()
+                    
+                    # Find the matching closing brace
+                    brace_count = 0
+                    end_pos = start_pos
+                    for j, char in enumerate(script[start_pos:], start_pos):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_pos = j + 1
+                                break
+                    
+                    json_str = script[start_pos:end_pos]
+                    
+                    try:
+                        data = json.loads(json_str)
+                        if 'data' in data and isinstance(data['data'], list):
+                            chapters = data['data']
+                            logger.info(f"Found {len(chapters)} chapters in the data")
+                            break
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse JSON in script {i}: {e}")
+                        continue
+        
+        # Process the chapters
+        processed_chapters = []
+        for chapter in chapters:
+            try:
+                # Extract chapter information
+                chapter_title = f"Chapter {chapter.get('chap', 'Unknown')}"
+                if chapter.get('title'):
+                    chapter_title += f": {chapter['title']}"
+                
+                # Extract chapter URL
+                chapter_url = ""
+                if chapter.get('hid') and chapter.get('chap'):
+                    # Construct chapter URL from the pattern we see in the HTML
+                    comic_slug = chapter_url.split('/comic/')[-1].split('/')[0] if '/' in chapter_url else ''
+                    chapter_url = f"https://comick.live/comic/{comic_slug}/{chapter['hid']}-chapter-{chapter['chap']}-{chapter.get('lang', 'en')}"
+                
+                # Extract date
+                chapter_date = "Unknown Date"
+                if chapter.get('updated_at'):
+                    chapter_date = chapter['updated_at']
+                elif chapter.get('created_at'):
+                    chapter_date = chapter['created_at']
+                
+                processed_chapters.append({
+                    'title': chapter_title,
+                    'url': chapter_url,
+                    'date': chapter_date
+                })
+                
+            except Exception as e:
+                logger.warning(f"Error processing chapter: {e}")
+                continue
+        
+        return processed_chapters
+        
+    except Exception as e:
+        logger.error(f"Error extracting chapter data from scripts: {e}")
+        return []
 
 def scrape_comick_chapter_images(chapter_url):
     """Scrape chapter images from a Comick chapter URL."""
@@ -470,36 +526,8 @@ def scrape_comick_chapter_images(chapter_url):
             logger.error(f"Failed to fetch chapter URL: {chapter_url}")
             return []
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Find all chapter images
-        images = []
-        img_elements = soup.find_all('img', class_=lambda x: x and 'mx-auto' in x and 'select-none' in x and 'chapter' in x)
-        
-        for img in img_elements:
-            img_url = img.get('src')
-            if not img_url:
-                continue
-            
-            # Filter out placeholder/loading images
-            if any(placeholder in img_url.lower() for placeholder in [
-                'placeholder', 'default', 'loading', 'transparent',
-                'blank', 'empty', '1x1', 'pixel', 'spacer'
-            ]):
-                logger.debug(f"Skipping placeholder image: {img_url}")
-                continue
-            
-            # Ensure it's a full URL
-            if not img_url.startswith('http'):
-                img_url = urljoin(COMICK_BASE_URL, img_url)
-            
-            # Only add if it looks like a real Comick image URL
-            if 'cdn1.comicknew.pictures' in img_url:
-                # Convert to proxy URL
-                img_url = convert_comick_image_to_proxy_url(img_url, chapter_url)
-                images.append(img_url)
-            else:
-                logger.debug(f"Skipping non-Comick image: {img_url}")
+        # Extract images from JSON data in script tags
+        images = extract_comick_chapter_images_from_scripts(response.text, chapter_url)
         
         logger.info(f"Found {len(images)} chapter images")
         return images
@@ -507,6 +535,82 @@ def scrape_comick_chapter_images(chapter_url):
     except Exception as e:
         logger.error(f"Error scraping Comick chapter images: {e}")
         logger.error(traceback.format_exc())
+        return []
+
+def extract_comick_chapter_images_from_scripts(html_content, chapter_url):
+    """Extract chapter images from JSON embedded in script tags."""
+    try:
+        import re
+        import json
+        
+        # Look for the JSON data in script tags
+        script_pattern = r'<script[^>]*>(.*?)</script>'
+        scripts = re.findall(script_pattern, html_content, re.DOTALL)
+        
+        images = []
+        for i, script in enumerate(scripts):
+            if 'images' in script and 'chapter' in script:
+                logger.info(f"Found chapter images data in script {i}")
+                
+                # Try to find the JSON object more carefully
+                # Look for the start of the JSON object
+                start_match = re.search(r'\{[^{}]*"images"', script)
+                if start_match:
+                    start_pos = start_match.start()
+                    
+                    # Find the matching closing brace
+                    brace_count = 0
+                    end_pos = start_pos
+                    for j, char in enumerate(script[start_pos:], start_pos):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_pos = j + 1
+                                break
+                    
+                    json_str = script[start_pos:end_pos]
+                    
+                    try:
+                        data = json.loads(json_str)
+                        if 'images' in data and isinstance(data['images'], list):
+                            images = data['images']
+                            logger.info(f"Found {len(images)} images in the data")
+                            break
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse JSON in script {i}: {e}")
+                        continue
+        
+        # Process the images
+        processed_images = []
+        for image in images:
+            try:
+                # Extract image URL
+                img_url = image.get('url', '')
+                if not img_url:
+                    continue
+                
+                # Ensure it's a full URL
+                if not img_url.startswith('http'):
+                    img_url = urljoin(COMICK_BASE_URL, img_url)
+                
+                # Only add if it looks like a real Comick image URL
+                if 'cdn1.comicknew.pictures' in img_url:
+                    # Convert to proxy URL
+                    img_url = convert_comick_image_to_proxy_url(img_url, chapter_url)
+                    processed_images.append(img_url)
+                else:
+                    logger.debug(f"Skipping non-Comick image: {img_url}")
+                
+            except Exception as e:
+                logger.warning(f"Error processing image: {e}")
+                continue
+        
+        return processed_images
+        
+    except Exception as e:
+        logger.error(f"Error extracting chapter images from scripts: {e}")
         return []
 
 def convert_comick_image_to_proxy_url(img_url, chapter_url):
