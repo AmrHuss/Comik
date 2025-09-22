@@ -646,9 +646,11 @@ def extract_comick_chapters_from_html(html_content, comic_slug=''):
         print("🔍 Method 1: Extracting real chapter data from chapter page...")
         if sample_chapter:
             real_chapters = extract_real_chapters_from_chapter_page(comic_slug, sample_chapter)
-            if real_chapters and len(real_chapters) > 0:  # Use real chapters if any are found
+            if real_chapters and len(real_chapters) > 10:  # Only use if we have many chapters
                 print(f"✅ Found {len(real_chapters)} chapters with real hash IDs")
                 return real_chapters
+            elif real_chapters and len(real_chapters) > 0:
+                print(f"⚠️  Found only {len(real_chapters)} chapters from chapter page, will try other methods")
         
         # Method 2: Try to extract real chapter data from script first
         print("🔍 Method 2: Extracting real chapter data from script...")
