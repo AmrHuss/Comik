@@ -67,8 +67,8 @@ except ImportError:
 # Webtoons scraper
 from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
 
-# Comick scraper - DISABLED
-# from api.comick_scraper import scrape_comick_action_genre, scrape_comick_details, scrape_comick_chapter_images, search_comick_by_title
+# Comick scraper
+from api.comick_live_scraper import scrape_comick_action_genre, scrape_comick_details, scrape_comick_chapter_images, search_comick_by_title
 
 # --- Configuration ---
 logging.basicConfig(
@@ -1173,8 +1173,15 @@ def get_unified_popular():
                 return []
         
         def fetch_comick_manga():
-            # Comick disabled
-            return []
+            try:
+                logger.info("Fetching Comick popular manga")
+                comick_manga = scrape_comick_action_genre()
+                if comick_manga:
+                    logger.info(f"Fetched {len(comick_manga)} Comick manga")
+                return comick_manga or []
+            except Exception as e:
+                logger.warning(f"Failed to fetch Comick popular: {e}")
+                return []
         
         # Execute all tasks concurrently with timeout
         logger.info("Executing concurrent requests for popular manga")
@@ -1204,15 +1211,16 @@ def get_unified_popular():
                 logger.error(f"Error fetching {source} popular manga: {e}")
                 # Continue with other sources even if one fails
         
-        # Comick disabled - no fallback needed
+        # All sources processed
         
-        # Combine all manga (Comick disabled)
+        # Combine all manga
         
-        all_manga = asura_manga + webtoons_manga
+        all_manga = comick_manga + asura_manga + webtoons_manga
         response_data = {
             'success': True,
             'data': all_manga,
             'sources': {
+                'Comick': len(comick_manga),
                 'AsuraScanz': len(asura_manga),
                 'Webtoons': len(webtoons_manga)
             }
