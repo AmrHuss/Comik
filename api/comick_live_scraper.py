@@ -528,9 +528,12 @@ def extract_comick_chapters_from_html(html_content, comic_slug=''):
                         continue
         
         if sample_chapter:
-            print(f"Using sample chapter language: {sample_chapter.get('lang', 'N/A')}")
+            # Use the actual language from the sample chapter
+            sample_lang = sample_chapter.get('lang', 'en')
+            print(f"Sample chapter language: {sample_lang}, using this language for URLs")
         else:
             print("No sample chapter found, will use fallback URLs")
+            sample_lang = 'en'
 
         # Method 1: Try to extract real chapter data from script first
         print("🔍 Method 1: Extracting real chapter data from script...")
@@ -558,8 +561,8 @@ def extract_comick_chapters_from_html(html_content, comic_slug=''):
                 else:
                     last_chapter_num = int(last_chapter)
                 
-                # Create chapters from 1 to the last chapter
-                chapter_num = 1.0
+                # Create chapters from 0 to the last chapter (including decimals)
+                chapter_num = 0.0
                 while chapter_num <= last_chapter_num:
                     # Format chapter number
                     if chapter_num == int(chapter_num):
@@ -571,16 +574,64 @@ def extract_comick_chapters_from_html(html_content, comic_slug=''):
                     if sample_chapter:
                         # Use the sample chapter's language and create a realistic hash
                         sample_lang = sample_chapter.get('lang', 'en')
-                        # Create a hash pattern based on chapter number
-                        # Use a more realistic hash pattern
-                        chapter_hash = f"ch{chapter_str.zfill(3)}"  # e.g., ch001, ch002, etc.
+                        sample_hash = sample_chapter.get('hid', '')
                         
-                        chapter = {
-                            'title': f"Chapter {chapter_str}",
-                            'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{chapter_str}-{sample_lang}",
-                            'date': 'Unknown',
-                            'chapter_number': chapter_str
-                        }
+                        # Generate realistic hash IDs based on the pattern we see in real data
+                        # Real examples: Z91diXUG, 13oquvJEC, sTwO7_uA4laWl
+                        def generate_realistic_hash(chapter_num, group_type):
+                            """Generate a realistic hash ID based on real Comick patterns."""
+                            import random
+                            import string
+                            
+                            # Base the hash on chapter number and group type for consistency
+                            base_chars = string.ascii_letters + string.digits
+                            
+                            # Create a seed based on chapter number and group type
+                            seed = hash(f"{comic_slug}_{chapter_num}_{group_type}") % (2**32)
+                            random.seed(seed)
+                            
+                            # Generate hash with realistic length (8-12 characters)
+                            hash_length = random.randint(8, 12)
+                            hash_id = ''.join(random.choices(base_chars, k=hash_length))
+                            
+                            return hash_id
+                        
+                        # Use the real hash ID from the sample chapter for the first few chapters
+                        # For now, we'll use the same hash for all chapters as a temporary solution
+                        # This ensures at least the first chapter works
+                        real_hash = sample_chapter.get('hid', '')
+                        real_lang = sample_chapter.get('lang', 'en')
+                        sample_chap = sample_chapter.get('chap', '0')
+                        
+                        # Use the sample chapter's language for all chapters
+                        chapter_lang = real_lang
+                        
+                        # Use the real hash for all chapters (temporary solution)
+                        chapter_hash = real_hash if real_hash else f"ch{chapter_str.zfill(3)}"
+                        
+                        # For the sample chapter, use the exact URL that works
+                        if chapter_str == sample_chap:
+                            chapter = {
+                                'title': f"Chapter {chapter_str}",
+                                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{chapter_str}-{real_lang}",
+                                'date': 'Unknown',
+                                'chapter_number': chapter_str,
+                                'hid': chapter_hash
+                            }
+                        else:
+                            # For other chapters, use the same language as the sample
+                            chapter = {
+                                'title': f"Chapter {chapter_str}",
+                                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{chapter_str}-{chapter_lang}",
+                                'date': 'Unknown',
+                                'chapter_number': chapter_str,
+                                'hid': chapter_hash
+                            }
+                        chapters.append(chapter)
+                        
+                        # Move to next chapter
+                        chapter_num += 1.0
+                        continue
                     else:
                         # Fallback with placeholder
                         chapter = {
@@ -840,52 +891,77 @@ def extract_comick_chapter_images_from_scripts(html_content, chapter_url):
     try:
         import re
         import json
+        from bs4 import BeautifulSoup
         
-        # Look for the JSON data in script tags
+        # Look for images in script tags (JSON data)
         script_pattern = r'<script[^>]*>(.*?)</script>'
         scripts = re.findall(script_pattern, html_content, re.DOTALL)
         
         images = []
         for i, script in enumerate(scripts):
-            if 'images' in script and 'chapter' in script:
-                logger.info(f"Found chapter images data in script {i}")
+            # Look for various image patterns
+            if 'images' in script.lower() or 'image' in script.lower():
+                logger.info(f"Found images in script {i}")
                 
-                # Try to find the JSON object more carefully
-                # Look for the start of the JSON object
-                start_match = re.search(r'\{[^{}]*"images"', script)
-                if start_match:
-                    start_pos = start_match.start()
-                    
-                    # Find the matching closing brace
-                    brace_count = 0
-                    end_pos = start_pos
-                    for j, char in enumerate(script[start_pos:], start_pos):
-                        if char == '{':
-                            brace_count += 1
-                        elif char == '}':
-                            brace_count -= 1
-                            if brace_count == 0:
-                                end_pos = j + 1
-                                break
-                    
-                    json_str = script[start_pos:end_pos]
-                    
+                # Look for JSON objects with images
+                json_objects = re.findall(r'\{[^{}]*"images"[^{}]*\}', script)
+                for obj_str in json_objects:
                     try:
-                        data = json.loads(json_str)
-                        if 'images' in data and isinstance(data['images'], list):
-                            images = data['images']
-                            logger.info(f"Found {len(images)} images in the data")
-                            break
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to parse JSON in script {i}: {e}")
+                        obj = json.loads(obj_str)
+                        if 'images' in obj and isinstance(obj['images'], list):
+                            images.extend(obj['images'])
+                            logger.info(f"Found {len(obj['images'])} images in JSON object")
+                    except:
                         continue
+                
+                # Look for arrays of images
+                array_patterns = [
+                    r'"images"\s*:\s*\[(.*?)\]',
+                    r'images\s*:\s*\[(.*?)\]',
+                    r'\[(.*?)\]'
+                ]
+                
+                for pattern in array_patterns:
+                    matches = re.findall(pattern, script, re.DOTALL)
+                    for match in matches:
+                        if 'url' in match and ('http' in match or 'cdn' in match):
+                            logger.info(f"Found image array: {match[:100]}...")
+                            
+                            # Try to extract individual image objects
+                            img_objects = re.findall(r'\{[^}]*"url"[^}]*\}', match)
+                            for img_str in img_objects:
+                                try:
+                                    img_obj = json.loads(img_str)
+                                    if 'url' in img_obj:
+                                        images.append(img_obj)
+                                        logger.info(f"Added image: {img_obj['url']}")
+                                except:
+                                    continue
         
-        # Process the images
+        # Also look for images in HTML img tags
+        soup = BeautifulSoup(html_content, 'lxml')
+        img_tags = soup.find_all('img')
+        logger.info(f"Found {len(img_tags)} img tags in HTML")
+        
+        for img in img_tags:
+            src = img.get('src', '')
+            data_src = img.get('data-src', '')
+            
+            if src and 'cdn1.comicknew.pictures' in src:
+                images.append({'url': src})
+                logger.info(f"Added img tag image: {src}")
+            elif data_src and 'cdn1.comicknew.pictures' in data_src:
+                images.append({'url': data_src})
+                logger.info(f"Added data-src image: {data_src}")
+        
+        # Process and deduplicate images
         processed_images = []
+        seen_urls = set()
+        
         for image in images:
             try:
                 # Extract image URL
-                img_url = image.get('url', '')
+                img_url = image.get('url', '') if isinstance(image, dict) else str(image)
                 if not img_url:
                     continue
                 
@@ -893,18 +969,21 @@ def extract_comick_chapter_images_from_scripts(html_content, chapter_url):
                 if not img_url.startswith('http'):
                     img_url = urljoin(COMICK_BASE_URL, img_url)
                 
-                # Only add if it looks like a real Comick image URL
-                if 'cdn1.comicknew.pictures' in img_url:
+                # Only add if it looks like a real Comick image URL and not seen before
+                if 'cdn1.comicknew.pictures' in img_url and img_url not in seen_urls:
                     # Convert to proxy URL
                     img_url = convert_comick_image_to_proxy_url(img_url, chapter_url)
                     processed_images.append(img_url)
+                    seen_urls.add(img_url)
+                    logger.info(f"Added unique image: {img_url}")
                 else:
-                    logger.debug(f"Skipping non-Comick image: {img_url}")
+                    logger.debug(f"Skipping image: {img_url}")
                 
             except Exception as e:
                 logger.warning(f"Error processing image: {e}")
                 continue
         
+        logger.info(f"Final result: {len(processed_images)} unique images")
         return processed_images
         
     except Exception as e:
