@@ -378,10 +378,20 @@ def scrape_comick_details(detail_url):
         # Extract author
         author = comic_data.get('author', 'Unknown')
         
-        # Extract chapters from JSON data in script tags
+        # Extract chapters - try HTML first, then fall back to scripts
         comic_slug = comic_data.get('slug', '')
         logger.info(f"Comic slug: '{comic_slug}'")
-        chapters = extract_comick_chapters_from_scripts(response.text, comic_slug)
+        
+        # Try HTML extraction first (like Webtoons/AsuraScans)
+        chapters = extract_comick_chapters_from_html(response.text, comic_slug)
+        
+        # If HTML extraction didn't find many chapters, try script extraction as fallback
+        if len(chapters) < 10:  # If we found very few chapters from HTML
+            logger.info("HTML extraction found few chapters, trying script extraction as fallback")
+            script_chapters = extract_comick_chapters_from_scripts(response.text, comic_slug)
+            if len(script_chapters) > len(chapters):
+                chapters = script_chapters
+                logger.info(f"Using script extraction results: {len(chapters)} chapters")
         
         # Create detailed comic data
         comic_details = {
@@ -472,6 +482,168 @@ def extract_comick_detail_data_from_scripts(html_content):
     except Exception as e:
         logger.error(f"Error extracting comic detail data from scripts: {e}")
         return {}
+
+def extract_comick_chapters_from_html(html_content, comic_slug=''):
+    """Extract chapter data directly from HTML structure like Webtoons/AsuraScans."""
+    try:
+        from bs4 import BeautifulSoup
+        import re
+
+        soup = BeautifulSoup(html_content, 'lxml')
+        chapters = []
+
+        # Method 1: Look for last chapter number in HTML and create chapter list
+        print("🔍 Method 1: Looking for last chapter number in HTML...")
+        last_chapter_pattern = r'last chapter:\s*([\d.]+)'
+        last_chapter_match = re.search(last_chapter_pattern, html_content)
+        
+        if last_chapter_match:
+            last_chapter = last_chapter_match.group(1)
+            print(f"Found last chapter: {last_chapter}")
+            
+            # Create chapter list from 1 to last chapter
+            try:
+                if '.' in last_chapter:
+                    last_chapter_num = float(last_chapter)
+                else:
+                    last_chapter_num = int(last_chapter)
+                
+                # Create chapters from 1 to the last chapter
+                chapter_num = 1.0
+                while chapter_num <= last_chapter_num:
+                    # Format chapter number
+                    if chapter_num == int(chapter_num):
+                        chapter_str = str(int(chapter_num))
+                    else:
+                        chapter_str = str(chapter_num)
+                    
+                    # Create chapter data
+                    chapter = {
+                        'title': f"Chapter {chapter_str}",
+                        'url': f"https://comick.live/comic/{comic_slug}/chapter-{chapter_str}-en",
+                        'date': 'Unknown',
+                        'chapter_number': chapter_str
+                    }
+                    chapters.append(chapter)
+                    
+                    # Increment chapter number
+                    if chapter_num < last_chapter_num:
+                        chapter_num += 1.0
+                    else:
+                        break
+                
+                print(f"✅ Created {len(chapters)} chapters based on last chapter number")
+                return chapters
+                
+            except ValueError:
+                print(f"Could not parse last chapter number: {last_chapter}")
+
+        # Method 2: Try to extract from script data (fallback)
+        print("🔍 Method 2: Extracting from script data...")
+        script_chapters = extract_comick_chapters_from_scripts(html_content, comic_slug)
+        if script_chapters and len(script_chapters) > 0:
+            print(f"✅ Found {len(script_chapters)} chapters from script data")
+            return script_chapters
+
+        # Method 3: Look for hardcoded chapter links in HTML
+        print("🔍 Method 3: Looking for hardcoded chapter links...")
+        chapter_url_pattern = r'href="[^"]*comic/[^"]*chapter[^"]*"'
+        chapter_links = re.findall(chapter_url_pattern, html_content)
+        
+        print(f"Found {len(chapter_links)} potential chapter links")
+        
+        for i, link in enumerate(chapter_links):
+            # Extract the href value
+            href_match = re.search(r'href="([^"]*)"', link)
+            if href_match:
+                href = href_match.group(1)
+                if not href.startswith('http'):
+                    href = f"https://comick.live{href}"
+                
+                # Extract chapter number from URL
+                chapter_match = re.search(r'chapter-([\d.]+)-', href)
+                if chapter_match:
+                    chapter_num = chapter_match.group(1)
+                    chapters.append({
+                        'title': f"Chapter {chapter_num}",
+                        'url': href,
+                        'date': 'Unknown',
+                        'chapter_number': chapter_num
+                    })
+        
+        if chapters:
+            print(f"✅ Found {len(chapters)} chapters from hardcoded links")
+            return chapters
+
+        # Method 4: Look for table rows with chapter data (fallback)
+        print("🔍 Method 4: Looking for table rows...")
+        chapter_rows = soup.find_all('tr', class_='group')
+        print(f"Found {len(chapter_rows)} chapter rows in HTML")
+
+        for row in chapter_rows:
+            try:
+                # Find the chapter link
+                chapter_link = row.find('a', href=True)
+                if not chapter_link:
+                    continue
+
+                # Extract chapter information
+                chapter_url = chapter_link.get('href', '')
+                if not chapter_url.startswith('http'):
+                    chapter_url = f"https://comick.live{chapter_url}"
+
+                # Extract chapter title and number
+                chapter_title = "Unknown Chapter"
+                chapter_number = "Unknown"
+
+                # Look for chapter number in various places
+                title_span = row.find('span', {'title': True})
+                if title_span:
+                    title_text = title_span.get('title', '')
+                    if 'Chapter' in title_text:
+                        chapter_title = title_text
+                        # Extract chapter number
+                        match = re.search(r'Chapter\s+([\d.]+)', title_text)
+                        if match:
+                            chapter_number = match.group(1)
+
+                # If no title found, try to get it from the text content
+                if chapter_title == "Unknown Chapter":
+                    text_content = row.get_text(strip=True)
+                    if 'Ch.' in text_content:
+                        # Extract chapter info from text
+                        match = re.search(r'Ch\.\s+([\d.]+)', text_content)
+                        if match:
+                            chapter_number = match.group(1)
+                            chapter_title = f"Chapter {chapter_number}"
+
+                # Extract chapter date
+                chapter_date = "Unknown"
+                date_elem = row.find('div', class_='text-sm')
+                if date_elem:
+                    chapter_date = date_elem.get_text(strip=True)
+
+                chapters.append({
+                    'title': chapter_title,
+                    'url': chapter_url,
+                    'date': chapter_date,
+                    'chapter_number': chapter_number
+                })
+
+            except Exception as e:
+                logger.warning(f"Error processing chapter row: {e}")
+                continue
+
+        if chapters:
+            print(f"✅ Found {len(chapters)} chapters from table rows")
+            return chapters
+
+        logger.info(f"Extracted {len(chapters)} chapters from HTML structure")
+        return chapters
+
+    except Exception as e:
+        logger.error(f"Error extracting chapters from HTML: {e}")
+        return []
 
 def extract_comick_chapters_from_scripts(html_content, comic_slug=''):
     """Extract chapter data from JSON embedded in script tags."""
