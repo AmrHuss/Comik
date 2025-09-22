@@ -354,47 +354,29 @@ def scrape_comick_details(detail_url):
             logger.error("Failed to fetch Comick detail page")
             return None
         
-        # Parse with BeautifulSoup
-        soup = BeautifulSoup(response.content, 'lxml')
+        # Extract data from JSON in script tags
+        comic_data = extract_comick_detail_data_from_scripts(response.text)
+        
+        if not comic_data:
+            logger.error("No comic data found in detail page")
+            return None
         
         # Extract title
-        title = "Unknown Title"
-        title_element = soup.find('h1')
-        if title_element:
-            title = title_element.get_text(strip=True)
+        title = comic_data.get('title', 'Unknown Title')
         
         # Extract cover image
-        cover_image = ""
-        img_element = soup.find('img', class_=lambda x: x and 'select-none' in x and 'rounded-md' in x)
-        if img_element:
-            cover_image = img_element.get('src', '')
-            if cover_image and not cover_image.startswith('http'):
-                cover_image = urljoin(COMICK_BASE_URL, cover_image)
-        
-        # Convert cover image to use proxy if it's a Comick CDN image
+        cover_image = comic_data.get('cover_image', '')
         if cover_image and 'cdn1.comicknew.pictures' in cover_image:
             cover_image = convert_comick_cover_to_proxy_url(cover_image)
         
         # Extract description
-        description = "No description available"
-        desc_element = soup.find('p', class_=lambda x: x and 'prose' in x)
-        if desc_element:
-            description = desc_element.get_text(strip=True)
+        description = comic_data.get('description', 'No description available')
         
         # Extract genres
-        genres = ['Action']  # Default to Action since we're scraping action genre
-        genre_elements = soup.find_all('span', class_=lambda x: x and 'genre' in x.lower())
-        if genre_elements:
-            genres = [elem.get_text(strip=True) for elem in genre_elements]
+        genres = comic_data.get('genres', ['Action'])
         
         # Extract author
-        author = "Unknown"
-        author_elements = soup.find_all('span', class_=lambda x: x and 'text-gray' in x)
-        for elem in author_elements:
-            text = elem.get_text(strip=True)
-            if text and not any(keyword in text.lower() for keyword in ['chapters', 'chapter', 'uploaded', 'rating', 'follow']):
-                author = text
-                break
+        author = comic_data.get('author', 'Unknown')
         
         # Extract chapters from JSON data in script tags
         chapters = extract_comick_chapters_from_scripts(response.text)
@@ -404,8 +386,8 @@ def scrape_comick_details(detail_url):
             'title': title,
             'cover_image': cover_image,
             'description': description,
-            'rating': 'N/A',
-            'status': 'Ongoing',
+            'rating': comic_data.get('rating', 'N/A'),
+            'status': comic_data.get('status', 'Ongoing'),
             'genres': genres,
             'author': author,
             'chapters': chapters
@@ -419,6 +401,74 @@ def scrape_comick_details(detail_url):
         logger.error(traceback.format_exc())
         return None
 
+def extract_comick_detail_data_from_scripts(html_content):
+    """Extract comic detail data from JSON embedded in script tags."""
+    try:
+        import re
+        import json
+        
+        # Look for the JSON data in script tags
+        script_pattern = r'<script[^>]*>(.*?)</script>'
+        scripts = re.findall(script_pattern, html_content, re.DOTALL)
+        
+        comic_data = {}
+        for i, script in enumerate(scripts):
+            if 'title' in script and 'hid' in script:
+                logger.info(f"Found comic detail data in script {i}")
+                
+                # Try to find the JSON object more carefully
+                # Look for the start of the JSON object
+                start_match = re.search(r'\{[^{}]*"title"', script)
+                if start_match:
+                    start_pos = start_match.start()
+                    
+                    # Find the matching closing brace
+                    brace_count = 0
+                    end_pos = start_pos
+                    for j, char in enumerate(script[start_pos:], start_pos):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_pos = j + 1
+                                break
+                    
+                    json_str = script[start_pos:end_pos]
+                    
+                    try:
+                        comic_data = json.loads(json_str)
+                        logger.info(f"Found comic data: {comic_data.get('title', 'Unknown')}")
+                        break
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse JSON in script {i}: {e}")
+                        continue
+        
+        # Process the comic data
+        # Extract genres from the complex structure
+        genres = ['Action']  # Default
+        if comic_data.get('md_comic_md_genres'):
+            try:
+                genres = [genre['md_genres']['name'] for genre in comic_data['md_comic_md_genres'] if isinstance(genre, dict) and 'md_genres' in genre]
+            except:
+                genres = ['Action']
+        
+        processed_data = {
+            'title': comic_data.get('title', 'Unknown Title'),
+            'cover_image': comic_data.get('default_thumbnail', ''),
+            'description': comic_data.get('desc', 'No description available'),
+            'genres': genres,
+            'author': comic_data.get('origination', 'Unknown'),
+            'rating': comic_data.get('bayesian_rating', 'N/A'),
+            'status': 'Ongoing' if comic_data.get('status') == 1 else 'Completed'
+        }
+        
+        return processed_data
+        
+    except Exception as e:
+        logger.error(f"Error extracting comic detail data from scripts: {e}")
+        return {}
+
 def extract_comick_chapters_from_scripts(html_content):
     """Extract chapter data from JSON embedded in script tags."""
     try:
@@ -431,12 +481,12 @@ def extract_comick_chapters_from_scripts(html_content):
         
         chapters = []
         for i, script in enumerate(scripts):
-            if 'chapter' in script and 'data' in script:
+            if 'chapter' in script and ('data' in script or 'chapters' in script):
                 logger.info(f"Found chapter data in script {i}")
                 
                 # Try to find the JSON object more carefully
                 # Look for the start of the JSON object
-                start_match = re.search(r'\{[^{}]*"chapter"', script)
+                start_match = re.search(r'\{[^{}]*"chapter', script)
                 if start_match:
                     start_pos = start_match.start()
                     
@@ -458,6 +508,10 @@ def extract_comick_chapters_from_scripts(html_content):
                         data = json.loads(json_str)
                         if 'data' in data and isinstance(data['data'], list):
                             chapters = data['data']
+                            logger.info(f"Found {len(chapters)} chapters in the data")
+                            break
+                        elif 'chapters' in data and isinstance(data['chapters'], list):
+                            chapters = data['chapters']
                             logger.info(f"Found {len(chapters)} chapters in the data")
                             break
                     except json.JSONDecodeError as e:
