@@ -497,24 +497,25 @@ def extract_real_chapters_from_chapter_page(comic_slug, sample_chapter):
         sample_lang = sample_chapter.get('lang', 'en')
         sample_chap = sample_chapter.get('chap', '1')
         
-        # If sample chapter is Chapter 0, try Chapter 1 instead (more likely to exist in English)
-        if sample_chap == '0':
-            # Try to find a Chapter 1 hash ID from the script data
-            print("🔍 Sample chapter is Chapter 0, looking for Chapter 1 hash ID...")
-            # For now, use a known working Chapter 1 hash
-            sample_hid = "r5bcQ_C5"  # This is the working Chapter 1 hash we found earlier
-            sample_chap = "1"
+        # Try different languages if English fails
+        languages_to_try = ['en', sample_lang, 'pl', 'es', 'fr', 'de']
         
-        # FORCE ENGLISH - use English for the chapter page URL
-        chapter_url = f"https://comick.live/comic/{comic_slug}/{sample_hid}-chapter-{sample_chap}-en"
-        print(f"🔍 Loading chapter page to extract real hash IDs: {chapter_url}")
-        
-        response = requests.get(chapter_url, timeout=30)
-        if response.status_code != 200:
-            print(f"❌ Failed to load chapter page: {response.status_code}")
+        for lang in languages_to_try:
+            chapter_url = f"https://comick.live/comic/{comic_slug}/{sample_hid}-chapter-{sample_chap}-{lang}"
+            print(f"🔍 Trying chapter page: {chapter_url}")
+            
+            try:
+                response = requests.get(chapter_url, timeout=30)
+                if response.status_code == 200:
+                    print(f"✅ Chapter page loaded successfully with language: {lang}")
+                    break
+                else:
+                    print(f"❌ Failed to load chapter page with language {lang}: {response.status_code}")
+            except Exception as e:
+                print(f"❌ Error loading chapter page with language {lang}: {e}")
+        else:
+            print("❌ Failed to load chapter page with any language")
             return []
-        
-        print("✅ Chapter page loaded successfully")
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
@@ -645,11 +646,9 @@ def extract_comick_chapters_from_html(html_content, comic_slug=''):
         print("🔍 Method 1: Extracting real chapter data from chapter page...")
         if sample_chapter:
             real_chapters = extract_real_chapters_from_chapter_page(comic_slug, sample_chapter)
-            if real_chapters and len(real_chapters) > 10:  # Only use if we have many chapters
+            if real_chapters and len(real_chapters) > 0:  # Use real chapters if any are found
                 print(f"✅ Found {len(real_chapters)} chapters with real hash IDs")
                 return real_chapters
-            elif real_chapters and len(real_chapters) > 0:
-                print(f"⚠️  Found only {len(real_chapters)} chapters from chapter page, will try other methods")
         
         # Method 2: Try to extract real chapter data from script first
         print("🔍 Method 2: Extracting real chapter data from script...")
@@ -693,13 +692,12 @@ def extract_comick_chapters_from_html(html_content, comic_slug=''):
                         real_hash = sample_chapter.get('hid', '')
                         
                         if real_hash:
-                            # Use the real hash ID for ALL chapters (temporary solution)
-                            # This ensures all chapters are clickable, even if they show the same content
-                            chapter_hash = real_hash
+                            # Generate unique hash IDs for each chapter instead of using the same one
+                            chapter_hash = generate_unique_hash(comic_slug, chapter_str, "Official")
                             chapter_lang = 'en'  # FORCE ENGLISH - ignore sample language
                         else:
                             # Fallback if no real hash found
-                            chapter_hash = f"ch{chapter_str.zfill(3)}"
+                            chapter_hash = generate_unique_hash(comic_slug, chapter_str, "Official")
                             chapter_lang = 'en'
                         
                         chapter = {
@@ -907,9 +905,9 @@ def extract_comick_chapters_from_scripts(html_content, comic_slug=''):
                 if chapter.get('hid') and chapter.get('chap'):
                     # Use the correct URL pattern: /comic/{comic_slug}/{chapter.hid}-chapter-{chapter.chap}-{chapter.lang}
                     if comic_slug:
-                        chapter_url = f"https://comick.live/comic/{comic_slug}/{chapter['hid']}-chapter-{chapter['chap']}-{chapter.get('lang', 'en')}"
+                        chapter_url = f"https://comick.live/comic/{comic_slug}/{chapter['hid']}-chapter-{chapter['chap']}-en"
                     else:
-                        chapter_url = f"https://comick.live/comic/{chapter['hid']}-chapter-{chapter['chap']}-{chapter.get('lang', 'en')}"
+                        chapter_url = f"https://comick.live/comic/{chapter['hid']}-chapter-{chapter['chap']}-en"
                 
                 # Extract date
                 chapter_date = "Unknown Date"
