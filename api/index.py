@@ -743,6 +743,8 @@ def get_manga_details():
                 source = 'Webtoons'
             elif 'asurascanz.com' in detail_url:
                 source = 'AsuraScanz'
+            elif 'comick.live' in detail_url:
+                source = 'Comick'
             else:
                 source = 'AsuraScanz'  # Default fallback
         
@@ -765,6 +767,9 @@ def get_manga_details():
             if source.lower() == 'webtoons':
                 # Use fast loading for Webtoons to improve performance
                 return scrape_webtoons_details_fast(detail_url)
+            elif source.lower() == 'comick':
+                # Use Comick details scraper
+                return scrape_comick_details(detail_url)
             else:
                 return scrape_manga_details(detail_url)
         

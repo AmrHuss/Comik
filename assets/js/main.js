@@ -627,6 +627,8 @@ async function handleDetailPage() {
             source = 'Webtoons';
         } else if (detailUrl.includes('asurascanz.com')) {
             source = 'AsuraScanz';
+        } else if (detailUrl.includes('comick.live')) {
+            source = 'Comick';
         }
         
         // Use fast endpoint for Webtoons to improve loading speed
@@ -1147,6 +1149,8 @@ async function handleReaderPage() {
         source = 'Webtoons';
     } else if (chapterUrl && chapterUrl.includes('asurascanz.com')) {
         source = 'AsuraScanz';
+    } else if (chapterUrl && chapterUrl.includes('comick.live')) {
+        source = 'Comick';
     }
     const container = document.getElementById('reader-content');
     const prevHeaderBtn = document.getElementById('prev-chapter-header');
