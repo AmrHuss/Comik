@@ -561,6 +561,80 @@ def extract_real_chapters_from_chapter_page(comic_slug, sample_chapter):
         print(f"❌ Error extracting real chapters: {e}")
         return []
 
+def generate_full_chapter_list_from_real_hashes(real_chapters, comic_slug, html_content):
+    """Generate full chapter list using real hash IDs and last chapter number."""
+    import re
+    try:
+        # Get the last chapter number from HTML
+        last_chapter_pattern = r'last chapter:\s*([\d.]+)'
+        last_chapter_match = re.search(last_chapter_pattern, html_content)
+        
+        if not last_chapter_match:
+            print("❌ No last chapter number found in HTML")
+            return real_chapters  # Return what we have
+        
+        last_chapter = last_chapter_match.group(1)
+        print(f"📖 Found last chapter: {last_chapter}")
+        
+        # Create a mapping of chapter numbers to hash IDs from real chapters
+        hash_mapping = {}
+        for chapter in real_chapters:
+            chapter_num = chapter['chapter_number']
+            hash_mapping[chapter_num] = chapter['hid']
+        
+        print(f"📋 Real hash mapping: {hash_mapping}")
+        
+        # Generate full chapter list
+        full_chapters = []
+        last_chapter_float = float(last_chapter)
+        
+        # Generate chapters from 0 to last chapter (in ascending order)
+        for i in range(int(last_chapter_float) + 1):
+            chapter_str = str(i)
+            
+            # Use real hash if available, otherwise generate unique one
+            if chapter_str in hash_mapping:
+                chapter_hash = hash_mapping[chapter_str]
+                print(f"✅ Using real hash for Chapter {chapter_str}: {chapter_hash}")
+            else:
+                chapter_hash = generate_unique_hash(comic_slug, chapter_str, "Official")
+                print(f"🔧 Generated hash for Chapter {chapter_str}: {chapter_hash}")
+            
+            chapter = {
+                'title': f"Chapter {chapter_str}",
+                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{chapter_str}-en",
+                'date': 'Unknown',
+                'chapter_number': chapter_str,
+                'hid': chapter_hash,
+                'lang': 'en'
+            }
+            full_chapters.append(chapter)
+        
+        # Handle decimal chapters (like 225.5)
+        if last_chapter_float != int(last_chapter_float):
+            decimal_chapter = last_chapter
+            if decimal_chapter in hash_mapping:
+                chapter_hash = hash_mapping[decimal_chapter]
+            else:
+                chapter_hash = generate_unique_hash(comic_slug, decimal_chapter, "Official")
+            
+            chapter = {
+                'title': f"Chapter {decimal_chapter}",
+                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{decimal_chapter}-en",
+                'date': 'Unknown',
+                'chapter_number': decimal_chapter,
+                'hid': chapter_hash,
+                'lang': 'en'
+            }
+            full_chapters.append(chapter)
+        
+        print(f"✅ Generated {len(full_chapters)} chapters using real hash IDs")
+        return full_chapters
+        
+    except Exception as e:
+        print(f"❌ Error generating full chapter list: {e}")
+        return real_chapters  # Return what we have
+
 def generate_unique_hash(comic_slug, chapter_num, group_type="Official"):
     """Generate a unique hash ID for each chapter based on real Comick patterns."""
     import hashlib
@@ -646,11 +720,10 @@ def extract_comick_chapters_from_html(html_content, comic_slug=''):
         print("🔍 Method 1: Extracting real chapter data from chapter page...")
         if sample_chapter:
             real_chapters = extract_real_chapters_from_chapter_page(comic_slug, sample_chapter)
-            if real_chapters and len(real_chapters) > 10:  # Only use if we have many chapters
+            if real_chapters and len(real_chapters) > 0:  # Use real chapters if any are found
                 print(f"✅ Found {len(real_chapters)} chapters with real hash IDs")
-                return real_chapters
-            elif real_chapters and len(real_chapters) > 0:
-                print(f"⚠️  Found only {len(real_chapters)} chapters from chapter page, will try other methods")
+                # Use these real hash IDs to generate the full chapter list
+                return generate_full_chapter_list_from_real_hashes(real_chapters, comic_slug, html_content)
         
         # Method 2: Try to extract real chapter data from script first
         print("🔍 Method 2: Extracting real chapter data from script...")
@@ -1020,7 +1093,7 @@ def extract_comick_chapter_images_from_scripts(html_content, chapter_url):
                                     if 'url' in img_obj:
                                         images.append(img_obj)
                                         logger.info(f"Added image: {img_obj['url']}")
-                                except:   
+                                except:
                                     continue
         
         # Also look for images in HTML img tags
