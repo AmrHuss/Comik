@@ -367,12 +367,12 @@ async function loadComickGenres() {
     
     // Define all Comick genres with their endpoints
     const comickGenres = [
-        { name: 'Action', endpoint: '/api/comick/action', color: '#ff6b6b' },
-        { name: 'Romance', endpoint: '/api/comick/romance', color: '#ff9ff3' },
-        { name: 'Drama', endpoint: '/api/comick/drama', color: '#54a0ff' },
-        { name: 'Comedy', endpoint: '/api/comick/comedy', color: '#5f27cd' },
-        { name: 'Fantasy', endpoint: '/api/comick/fantasy', color: '#00d2d3' },
-        { name: 'Isekai', endpoint: '/api/comick/isekai', color: '#ff9f43' }
+        { name: 'Action', endpoint: '/comick/action', color: '#ff6b6b' },
+        { name: 'Romance', endpoint: '/comick/romance', color: '#ff9ff3' },
+        { name: 'Drama', endpoint: '/comick/drama', color: '#54a0ff' },
+        { name: 'Comedy', endpoint: '/comick/comedy', color: '#5f27cd' },
+        { name: 'Fantasy', endpoint: '/comick/fantasy', color: '#00d2d3' },
+        { name: 'Isekai', endpoint: '/comick/isekai', color: '#ff9f43' }
     ];
     
     try {
