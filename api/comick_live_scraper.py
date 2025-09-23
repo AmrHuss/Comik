@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Constants
 COMICK_BASE_URL = "https://comick.live"
-ACTION_GENRE_URL = "https://comick.live/search?genres=action&order_by=user_follow_count"
+ACTION_GENRE_URL = "https://comick.live/search?genres=romance&order_by=user_follow_count"
 REQUEST_TIMEOUT = 30
 MAX_RETRIES = 3
 
@@ -68,7 +68,7 @@ def scrape_comick_action_genre():
         logger.info("Starting Comick action genre scraping")
         
         all_comics = []
-        max_pages = 10  # Load first 7 pages (105 comics total)
+        max_pages = 15  # Load first 7 pages (105 comics total)
         
         for page in range(1, max_pages + 1):
             try:
