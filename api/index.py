@@ -31,7 +31,7 @@ try:
     CACHETOOLS_AVAILABLE = True
 except ImportError:
     CACHETOOLS_AVAILABLE = False
-    # Logger will be defined later, so we'll log this after logger is initialized
+    # Logger will be defined later, so we'll log this after logger is initializedss
     
     class TTLCache:
         def __init__(self, maxsize=100, ttl=3600):
