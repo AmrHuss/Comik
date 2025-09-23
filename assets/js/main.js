@@ -270,21 +270,17 @@ async function loadHomepageContent() {
         showLoadingState(updatesGrid, 'Loading latest updates...');
     }
     
-    // Load Comick genres for the genre section
-    loadComickGenres();
+    // Load Comick genres as manga cards in trending section
+    await loadComickGenres();
     
     try {
-        // Try quick-load first for instant display
+        // Try quick-load first for instant display (only for updates section)
         let quickResult = null;
         try {
             console.log('⚡ Quick-load attempt...');
             quickResult = await makeApiRequest(`${API_BASE_URL}/quick-load`);
             if (quickResult && quickResult.data && quickResult.data.length > 0) {
                 console.log('⚡ Quick-load success!');
-                // Display trending (first 6 items) immediately
-                if (trendingGrid) {
-                    displayEnhancedMangaGrid(quickResult.data.slice(0, 6), trendingGrid);
-                }
                 // Display updates (first 10 items) immediately
                 if (updatesGrid) {
                     displayEnhancedMangaGrid(quickResult.data.slice(0, 10), updatesGrid);
@@ -312,13 +308,8 @@ async function loadHomepageContent() {
             // Update with full data if quick load didn't work or was incomplete
             if (!quickResult || quickResult.data.length < 20) {
                 console.log('Updating with full data...');
-                // Display trending (first 6 items)
-        if (trendingGrid) {
-                    displayEnhancedMangaGrid(result.data.slice(0, 6), trendingGrid);
-        }
-                
                 // Display updates (first 20 items initially)
-        if (updatesGrid) {
+                if (updatesGrid) {
                     displayEnhancedMangaGrid(result.data.slice(0, 20), updatesGrid);
                     
                     // Set up progressive scroll for loading more
@@ -332,9 +323,6 @@ async function loadHomepageContent() {
             }
         } else {
             console.log('No data received from API');
-            if (trendingGrid) {
-                showErrorState(trendingGrid, 'No trending manga available', true);
-            }
             if (updatesGrid) {
                 showErrorState(updatesGrid, 'No updates available', true);
             }
@@ -343,9 +331,6 @@ async function loadHomepageContent() {
     } catch (error) {
         console.error('Error loading homepage content:', error);
         
-        if (trendingGrid) {
-            showErrorState(trendingGrid, 'Failed to load trending manga.', true);
-        }
         if (updatesGrid) {
             showErrorState(updatesGrid, 'Failed to load latest updates.', true);
         }
@@ -353,17 +338,17 @@ async function loadHomepageContent() {
 }
 
 /**
- * Load Comick genres and display them in the genre section
+ * Load Comick genres and display them as manga cards
  */
 async function loadComickGenres() {
-    const genreGrid = document.querySelector('.genre-grid');
+    const trendingGrid = document.querySelector('.trending-grid');
     
-    if (!genreGrid) {
-        console.log('Genre grid not found, skipping Comick genres');
+    if (!trendingGrid) {
+        console.log('Trending grid not found, skipping Comick genres');
         return;
     }
     
-    console.log('🎭 Loading Comick genres...');
+    console.log('🎭 Loading Comick genres as manga cards...');
     
     // Define all Comick genres with their endpoints
     const comickGenres = [
@@ -375,46 +360,52 @@ async function loadComickGenres() {
         { name: 'Isekai', endpoint: '/comick/isekai', color: '#ff9f43' }
     ];
     
-    // Always show all genres immediately, then try to load counts in background
-    const genreButtons = comickGenres.map(genre => {
-        return `
-            <a href="mangalist.html?source=comick&genre=${genre.name.toLowerCase()}" 
-               class="genre-btn" 
-               role="listitem" 
-               aria-label="Browse ${genre.name} manhwa from Comick"
-               style="background: linear-gradient(135deg, ${genre.color}, ${genre.color}dd); border-color: ${genre.color};">
-                <span class="genre-name">${genre.name}</span>
-                <span class="genre-count" id="count-${genre.name.toLowerCase()}">(~15)</span>
-            </a>
-        `;
-    }).join('');
-    
-    // Replace the entire genre grid with Comick genres immediately
-    genreGrid.innerHTML = genreButtons;
-    console.log('✅ Comick genres displayed immediately');
-    
-    // Try to load real counts in background
     try {
+        // Load all genres concurrently
         const genrePromises = comickGenres.map(async (genre) => {
             try {
                 const response = await makeApiRequest(`${API_BASE_URL}${genre.endpoint}`);
-                const count = response?.data?.length || 15;
-                const countElement = document.getElementById(`count-${genre.name.toLowerCase()}`);
-                if (countElement) {
-                    countElement.textContent = `(${count})`;
-                }
-                return { genre: genre.name, count, success: true };
+                return {
+                    ...genre,
+                    comics: response?.data || [],
+                    success: response?.success || false
+                };
             } catch (error) {
                 console.warn(`Failed to load ${genre.name} genre:`, error);
-                return { genre: genre.name, count: 15, success: false };
+                return {
+                    ...genre,
+                    comics: [],
+                    success: false
+                };
             }
         });
         
-        await Promise.all(genrePromises);
-        console.log('✅ Comick genre counts updated');
+        const genreResults = await Promise.all(genrePromises);
+        
+        // Collect all comics from all genres
+        let allComickComics = [];
+        genreResults.forEach(genreResult => {
+            if (genreResult.comics && genreResult.comics.length > 0) {
+                allComickComics = allComickComics.concat(genreResult.comics);
+            }
+        });
+        
+        // If we have Comick comics, display them in the trending grid
+        if (allComickComics.length > 0) {
+            console.log(`✅ Found ${allComickComics.length} Comick comics across all genres`);
+            
+            // Take first 6 comics for trending display
+            const displayComics = allComickComics.slice(0, 6);
+            displayEnhancedMangaGrid(displayComics, trendingGrid);
+            
+            // Store all comics for potential use
+            window.allComickComics = allComickComics;
+        } else {
+            console.log('⚠️ No Comick comics found, keeping existing trending content');
+        }
         
     } catch (error) {
-        console.error('Error loading Comick genre counts:', error);
+        console.error('Error loading Comick genres:', error);
     }
 }
 
