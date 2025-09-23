@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Constants
 COMICK_BASE_URL = "https://comick.live"
-ACTION_GENRE_URL = "https://comick.live/search?genres=action&order_by=user_follow_count"
+ACTION_GENRE_URL = "https://comick.live/search?genres=romance&order_by=user_follow_count"
 ROMANCE_GENRE_URL = "https://comick.live/search?genres=romance&order_by=user_follow_count"
 DRAMA_GENRE_URL = "https://comick.live/search?genres=drama&order_by=user_follow_count"
 COMEDY_GENRE_URL = "https://comick.live/search?genres=comedy&order_by=user_follow_count"
