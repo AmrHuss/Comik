@@ -628,6 +628,19 @@ body {
     transform: translateY(-2px);
 }
 
+.genre-btn .genre-name {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.genre-btn .genre-count {
+    display: block;
+    font-size: var(--font-size-xs);
+    opacity: 0.8;
+    font-weight: 500;
+}
+
 /* Filter Bar */
 .filter-bar {
     display: flex;

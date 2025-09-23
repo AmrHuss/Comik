@@ -270,6 +270,9 @@ async function loadHomepageContent() {
         showLoadingState(updatesGrid, 'Loading latest updates...');
     }
     
+    // Load Comick genres for the genre section
+    loadComickGenres();
+    
     try {
         // Try quick-load first for instant display
         let quickResult = null;
@@ -346,6 +349,76 @@ async function loadHomepageContent() {
         if (updatesGrid) {
             showErrorState(updatesGrid, 'Failed to load latest updates.', true);
         }
+    }
+}
+
+/**
+ * Load Comick genres and display them in the genre section
+ */
+async function loadComickGenres() {
+    const genreGrid = document.querySelector('.genre-grid');
+    
+    if (!genreGrid) {
+        console.log('Genre grid not found, skipping Comick genres');
+        return;
+    }
+    
+    console.log('🎭 Loading Comick genres...');
+    
+    // Define all Comick genres with their endpoints
+    const comickGenres = [
+        { name: 'Action', endpoint: '/api/comick/action', color: '#ff6b6b' },
+        { name: 'Romance', endpoint: '/api/comick/romance', color: '#ff9ff3' },
+        { name: 'Drama', endpoint: '/api/comick/drama', color: '#54a0ff' },
+        { name: 'Comedy', endpoint: '/api/comick/comedy', color: '#5f27cd' },
+        { name: 'Fantasy', endpoint: '/api/comick/fantasy', color: '#00d2d3' },
+        { name: 'Isekai', endpoint: '/api/comick/isekai', color: '#ff9f43' }
+    ];
+    
+    try {
+        // Load all genres concurrently
+        const genrePromises = comickGenres.map(async (genre) => {
+            try {
+                const response = await makeApiRequest(`${API_BASE_URL}${genre.endpoint}`);
+                return {
+                    ...genre,
+                    count: response?.data?.length || 0,
+                    success: response?.success || false
+                };
+            } catch (error) {
+                console.warn(`Failed to load ${genre.name} genre:`, error);
+                return {
+                    ...genre,
+                    count: 0,
+                    success: false
+                };
+            }
+        });
+        
+        const genreResults = await Promise.all(genrePromises);
+        
+        // Create genre buttons with counts
+        const genreButtons = genreResults.map(genre => {
+            const countText = genre.success ? `(${genre.count})` : '(0)';
+            return `
+                <a href="mangalist.html?source=comick&genre=${genre.name.toLowerCase()}" 
+                   class="genre-btn" 
+                   role="listitem" 
+                   aria-label="Browse ${genre.name} manhwa from Comick"
+                   style="background: linear-gradient(135deg, ${genre.color}, ${genre.color}dd); border-color: ${genre.color};">
+                    <span class="genre-name">${genre.name}</span>
+                    <span class="genre-count">${countText}</span>
+                </a>
+            `;
+        }).join('');
+        
+        // Replace the entire genre grid with Comick genres
+        genreGrid.innerHTML = genreButtons;
+        
+        console.log('✅ Comick genres loaded successfully');
+        
+    } catch (error) {
+        console.error('Error loading Comick genres:', error);
     }
 }
 
