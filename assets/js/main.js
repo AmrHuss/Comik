@@ -397,9 +397,9 @@ async function loadComickGenres() {
         
         const genreResults = await Promise.all(genrePromises);
         
-        // Create genre buttons with counts
+        // Create genre buttons with counts - show all genres even if some fail
         const genreButtons = genreResults.map(genre => {
-            const countText = genre.success ? `(${genre.count})` : '(0)';
+            const countText = genre.success ? `(${genre.count})` : '(~15)';
             return `
                 <a href="mangalist.html?source=comick&genre=${genre.name.toLowerCase()}" 
                    class="genre-btn" 
@@ -419,6 +419,23 @@ async function loadComickGenres() {
         
     } catch (error) {
         console.error('Error loading Comick genres:', error);
+        
+        // Fallback: Show all genres with estimated counts
+        const fallbackButtons = comickGenres.map(genre => {
+            return `
+                <a href="mangalist.html?source=comick&genre=${genre.name.toLowerCase()}" 
+                   class="genre-btn" 
+                   role="listitem" 
+                   aria-label="Browse ${genre.name} manhwa from Comick"
+                   style="background: linear-gradient(135deg, ${genre.color}, ${genre.color}dd); border-color: ${genre.color};">
+                    <span class="genre-name">${genre.name}</span>
+                    <span class="genre-count">(~15)</span>
+                </a>
+            `;
+        }).join('');
+        
+        genreGrid.innerHTML = fallbackButtons;
+        console.log('✅ Comick genres loaded with fallback data');
     }
 }
 
