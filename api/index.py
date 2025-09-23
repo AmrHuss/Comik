@@ -1183,11 +1183,30 @@ def get_unified_popular():
         
         def fetch_comick_manga():
             try:
-                logger.info("Fetching Comick popular manga")
-                comick_manga = scrape_comick_action_genre()
-                if comick_manga:
-                    logger.info(f"Fetched {len(comick_manga)} Comick manga")
-                return comick_manga or []
+                logger.info("Fetching Comick popular manga from all genres")
+                # Load all Comick genres
+                all_comick_manga = []
+                genres = [
+                    scrape_comick_action_genre,
+                    scrape_comick_romance_genre,
+                    scrape_comick_drama_genre,
+                    scrape_comick_comedy_genre,
+                    scrape_comick_fantasy_genre,
+                    scrape_comick_isekai_genre
+                ]
+                
+                for genre_func in genres:
+                    try:
+                        genre_manga = genre_func()
+                        if genre_manga:
+                            all_comick_manga.extend(genre_manga)
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch {genre_func.__name__}: {e}")
+                        continue
+                
+                if all_comick_manga:
+                    logger.info(f"Fetched {len(all_comick_manga)} Comick manga from all genres")
+                return all_comick_manga
             except Exception as e:
                 logger.warning(f"Failed to fetch Comick popular: {e}")
                 return []
