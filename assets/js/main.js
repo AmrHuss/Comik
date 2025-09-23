@@ -375,67 +375,46 @@ async function loadComickGenres() {
         { name: 'Isekai', endpoint: '/comick/isekai', color: '#ff9f43' }
     ];
     
+    // Always show all genres immediately, then try to load counts in background
+    const genreButtons = comickGenres.map(genre => {
+        return `
+            <a href="mangalist.html?source=comick&genre=${genre.name.toLowerCase()}" 
+               class="genre-btn" 
+               role="listitem" 
+               aria-label="Browse ${genre.name} manhwa from Comick"
+               style="background: linear-gradient(135deg, ${genre.color}, ${genre.color}dd); border-color: ${genre.color};">
+                <span class="genre-name">${genre.name}</span>
+                <span class="genre-count" id="count-${genre.name.toLowerCase()}">(~15)</span>
+            </a>
+        `;
+    }).join('');
+    
+    // Replace the entire genre grid with Comick genres immediately
+    genreGrid.innerHTML = genreButtons;
+    console.log('✅ Comick genres displayed immediately');
+    
+    // Try to load real counts in background
     try {
-        // Load all genres concurrently
         const genrePromises = comickGenres.map(async (genre) => {
             try {
                 const response = await makeApiRequest(`${API_BASE_URL}${genre.endpoint}`);
-                return {
-                    ...genre,
-                    count: response?.data?.length || 0,
-                    success: response?.success || false
-                };
+                const count = response?.data?.length || 15;
+                const countElement = document.getElementById(`count-${genre.name.toLowerCase()}`);
+                if (countElement) {
+                    countElement.textContent = `(${count})`;
+                }
+                return { genre: genre.name, count, success: true };
             } catch (error) {
                 console.warn(`Failed to load ${genre.name} genre:`, error);
-                return {
-                    ...genre,
-                    count: 0,
-                    success: false
-                };
+                return { genre: genre.name, count: 15, success: false };
             }
         });
         
-        const genreResults = await Promise.all(genrePromises);
-        
-        // Create genre buttons with counts - show all genres even if some fail
-        const genreButtons = genreResults.map(genre => {
-            const countText = genre.success ? `(${genre.count})` : '(~15)';
-            return `
-                <a href="mangalist.html?source=comick&genre=${genre.name.toLowerCase()}" 
-                   class="genre-btn" 
-                   role="listitem" 
-                   aria-label="Browse ${genre.name} manhwa from Comick"
-                   style="background: linear-gradient(135deg, ${genre.color}, ${genre.color}dd); border-color: ${genre.color};">
-                    <span class="genre-name">${genre.name}</span>
-                    <span class="genre-count">${countText}</span>
-                </a>
-            `;
-        }).join('');
-        
-        // Replace the entire genre grid with Comick genres
-        genreGrid.innerHTML = genreButtons;
-        
-        console.log('✅ Comick genres loaded successfully');
+        await Promise.all(genrePromises);
+        console.log('✅ Comick genre counts updated');
         
     } catch (error) {
-        console.error('Error loading Comick genres:', error);
-        
-        // Fallback: Show all genres with estimated counts
-        const fallbackButtons = comickGenres.map(genre => {
-            return `
-                <a href="mangalist.html?source=comick&genre=${genre.name.toLowerCase()}" 
-                   class="genre-btn" 
-                   role="listitem" 
-                   aria-label="Browse ${genre.name} manhwa from Comick"
-                   style="background: linear-gradient(135deg, ${genre.color}, ${genre.color}dd); border-color: ${genre.color};">
-                    <span class="genre-name">${genre.name}</span>
-                    <span class="genre-count">(~15)</span>
-                </a>
-            `;
-        }).join('');
-        
-        genreGrid.innerHTML = fallbackButtons;
-        console.log('✅ Comick genres loaded with fallback data');
+        console.error('Error loading Comick genre counts:', error);
     }
 }
 
