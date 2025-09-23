@@ -68,7 +68,7 @@ def scrape_comick_action_genre():
         logger.info("Starting Comick action genre scraping")
         
         all_comics = []
-        max_pages = 5  # Load first 5 pages (75 comics total)
+        max_pages = 10  # Load first 7 pages (105 comics total)
         
         for page in range(1, max_pages + 1):
             try:
