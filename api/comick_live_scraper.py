@@ -25,7 +25,12 @@ logger = logging.getLogger(__name__)
 
 # Constants
 COMICK_BASE_URL = "https://comick.live"
-ACTION_GENRE_URL = "https://comick.live/search?genres=romance&order_by=user_follow_count"
+ACTION_GENRE_URL = "https://comick.live/search?genres=action&order_by=user_follow_count"
+ROMANCE_GENRE_URL = "https://comick.live/search?genres=romance&order_by=user_follow_count"
+DRAMA_GENRE_URL = "https://comick.live/search?genres=drama&order_by=user_follow_count"
+COMEDY_GENRE_URL = "https://comick.live/search?genres=comedy&order_by=user_follow_count"
+FANTASY_GENRE_URL = "https://comick.live/search?genres=fantasy&order_by=user_follow_count"
+ISEKAI_GENRE_URL = "https://comick.live/search?genres=isekai&order_by=user_follow_count"
 REQUEST_TIMEOUT = 30
 MAX_RETRIES = 3
 
@@ -68,7 +73,7 @@ def scrape_comick_action_genre():
         logger.info("Starting Comick action genre scraping")
         
         all_comics = []
-        max_pages = 15  # Load first 7 pages (105 comics total)
+        max_pages = 15  # Load first 15 pages (225 comics total)
         
         for page in range(1, max_pages + 1):
             try:
@@ -85,7 +90,7 @@ def scrape_comick_action_genre():
                     continue
                 
                 # Extract JSON data from script tags
-                page_comics = extract_comick_data_from_scripts(response.text)
+                page_comics = extract_comick_data_from_scripts(response.text, "Action")
                 
                 if page_comics:
                     all_comics.extend(page_comics)
@@ -110,7 +115,242 @@ def scrape_comick_action_genre():
         logger.error(traceback.format_exc())
         return []
 
-def extract_comick_data_from_scripts(html_content):
+def scrape_comick_romance_genre():
+    """Scrape romance genre comics from comick.live."""
+    try:
+        logger.info("Starting Comick romance genre scraping")
+        
+        all_comics = []
+        max_pages = 15
+        
+        for page in range(1, max_pages + 1):
+            try:
+                if page == 1:
+                    url = ROMANCE_GENRE_URL
+                else:
+                    url = f"{ROMANCE_GENRE_URL}&page={page}"
+                
+                logger.info(f"Fetching page {page}: {url}")
+                response = make_request(url)
+                
+                if not response:
+                    logger.warning(f"Failed to fetch page {page}")
+                    continue
+                
+                page_comics = extract_comick_data_from_scripts(response.text, "Romance")
+                
+                if page_comics:
+                    all_comics.extend(page_comics)
+                    logger.info(f"Page {page}: Found {len(page_comics)} comics")
+                else:
+                    logger.warning(f"Page {page}: No comics found")
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"Error fetching page {page}: {e}")
+                continue
+        
+        if not all_comics:
+            logger.error("No comic data found in any page")
+            return []
+        
+        logger.info(f"Successfully scraped {len(all_comics)} comics from {max_pages} pages")
+        return all_comics
+        
+    except Exception as e:
+        logger.error(f"Error scraping Comick romance genre: {e}")
+        logger.error(traceback.format_exc())
+        return []
+
+def scrape_comick_drama_genre():
+    """Scrape drama genre comics from comick.live."""
+    try:
+        logger.info("Starting Comick drama genre scraping")
+        
+        all_comics = []
+        max_pages = 15
+        
+        for page in range(1, max_pages + 1):
+            try:
+                if page == 1:
+                    url = DRAMA_GENRE_URL
+                else:
+                    url = f"{DRAMA_GENRE_URL}&page={page}"
+                
+                logger.info(f"Fetching page {page}: {url}")
+                response = make_request(url)
+                
+                if not response:
+                    logger.warning(f"Failed to fetch page {page}")
+                    continue
+                
+                page_comics = extract_comick_data_from_scripts(response.text, "Drama")
+                
+                if page_comics:
+                    all_comics.extend(page_comics)
+                    logger.info(f"Page {page}: Found {len(page_comics)} comics")
+                else:
+                    logger.warning(f"Page {page}: No comics found")
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"Error fetching page {page}: {e}")
+                continue
+        
+        if not all_comics:
+            logger.error("No comic data found in any page")
+            return []
+        
+        logger.info(f"Successfully scraped {len(all_comics)} comics from {max_pages} pages")
+        return all_comics
+        
+    except Exception as e:
+        logger.error(f"Error scraping Comick drama genre: {e}")
+        logger.error(traceback.format_exc())
+        return []
+
+def scrape_comick_comedy_genre():
+    """Scrape comedy genre comics from comick.live."""
+    try:
+        logger.info("Starting Comick comedy genre scraping")
+        
+        all_comics = []
+        max_pages = 15
+        
+        for page in range(1, max_pages + 1):
+            try:
+                if page == 1:
+                    url = COMEDY_GENRE_URL
+                else:
+                    url = f"{COMEDY_GENRE_URL}&page={page}"
+                
+                logger.info(f"Fetching page {page}: {url}")
+                response = make_request(url)
+                
+                if not response:
+                    logger.warning(f"Failed to fetch page {page}")
+                    continue
+                
+                page_comics = extract_comick_data_from_scripts(response.text, "Comedy")
+                
+                if page_comics:
+                    all_comics.extend(page_comics)
+                    logger.info(f"Page {page}: Found {len(page_comics)} comics")
+                else:
+                    logger.warning(f"Page {page}: No comics found")
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"Error fetching page {page}: {e}")
+                continue
+        
+        if not all_comics:
+            logger.error("No comic data found in any page")
+            return []
+        
+        logger.info(f"Successfully scraped {len(all_comics)} comics from {max_pages} pages")
+        return all_comics
+        
+    except Exception as e:
+        logger.error(f"Error scraping Comick comedy genre: {e}")
+        logger.error(traceback.format_exc())
+        return []
+
+def scrape_comick_fantasy_genre():
+    """Scrape fantasy genre comics from comick.live."""
+    try:
+        logger.info("Starting Comick fantasy genre scraping")
+        
+        all_comics = []
+        max_pages = 15
+        
+        for page in range(1, max_pages + 1):
+            try:
+                if page == 1:
+                    url = FANTASY_GENRE_URL
+                else:
+                    url = f"{FANTASY_GENRE_URL}&page={page}"
+                
+                logger.info(f"Fetching page {page}: {url}")
+                response = make_request(url)
+                
+                if not response:
+                    logger.warning(f"Failed to fetch page {page}")
+                    continue
+                
+                page_comics = extract_comick_data_from_scripts(response.text, "Fantasy")
+                
+                if page_comics:
+                    all_comics.extend(page_comics)
+                    logger.info(f"Page {page}: Found {len(page_comics)} comics")
+                else:
+                    logger.warning(f"Page {page}: No comics found")
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"Error fetching page {page}: {e}")
+                continue
+        
+        if not all_comics:
+            logger.error("No comic data found in any page")
+            return []
+        
+        logger.info(f"Successfully scraped {len(all_comics)} comics from {max_pages} pages")
+        return all_comics
+        
+    except Exception as e:
+        logger.error(f"Error scraping Comick fantasy genre: {e}")
+        logger.error(traceback.format_exc())
+        return []
+
+def scrape_comick_isekai_genre():
+    """Scrape isekai genre comics from comick.live."""
+    try:
+        logger.info("Starting Comick isekai genre scraping")
+        
+        all_comics = []
+        max_pages = 15
+        
+        for page in range(1, max_pages + 1):
+            try:
+                if page == 1:
+                    url = ISEKAI_GENRE_URL
+                else:
+                    url = f"{ISEKAI_GENRE_URL}&page={page}"
+                
+                logger.info(f"Fetching page {page}: {url}")
+                response = make_request(url)
+                
+                if not response:
+                    logger.warning(f"Failed to fetch page {page}")
+                    continue
+                
+                page_comics = extract_comick_data_from_scripts(response.text, "Isekai")
+                
+                if page_comics:
+                    all_comics.extend(page_comics)
+                    logger.info(f"Page {page}: Found {len(page_comics)} comics")
+                else:
+                    logger.warning(f"Page {page}: No comics found")
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"Error fetching page {page}: {e}")
+                continue
+        
+        if not all_comics:
+            logger.error("No comic data found in any page")
+            return []
+        
+        logger.info(f"Successfully scraped {len(all_comics)} comics from {max_pages} pages")
+        return all_comics
+        
+    except Exception as e:
+        logger.error(f"Error scraping Comick isekai genre: {e}")
+        logger.error(traceback.format_exc())
+        return []
+
+def extract_comick_data_from_scripts(html_content, genre_name="Action"):
     """Extract comic data from JSON embedded in script tags."""
     try:
         import re
@@ -169,7 +409,7 @@ def extract_comick_data_from_scripts(html_content):
                     'source': 'Comick',
                     'latest_chapter': f"{comic.get('last_chapter', 'N/A')} chapters" if comic.get('last_chapter') else 'N/A',
                     'rating': comic.get('bayesian_rating', 'N/A'),
-                    'genres': ['Action'],
+                    'genres': [genre_name],
                     'status': comic.get('status', 'Ongoing')
                 }
                 

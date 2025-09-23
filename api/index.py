@@ -68,7 +68,11 @@ except ImportError:
 from api.webtoons_scraper import scrape_webtoons_action_genre, scrape_webtoons_details, scrape_webtoons_details_fast, search_webtoons_by_title, scrape_webtoons_chapter_images
 
 # Comick scraper
-from api.comick_live_scraper import scrape_comick_action_genre, scrape_comick_details, scrape_comick_chapter_images, search_comick_by_title
+from api.comick_live_scraper import (
+    scrape_comick_action_genre, scrape_comick_romance_genre, scrape_comick_drama_genre,
+    scrape_comick_comedy_genre, scrape_comick_fantasy_genre, scrape_comick_isekai_genre,
+    scrape_comick_details, scrape_comick_chapter_images, search_comick_by_title
+)
 
 # --- Configuration ---
 logging.basicConfig(
@@ -2200,6 +2204,175 @@ def search_comick():
         
     except Exception as e:
         logger.error(f"Error searching Comick: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Comick Genre Endpoints
+@app.route('/api/comick/action', methods=['GET'])
+def get_comick_action():
+    """Get action genre comics from Comick.live."""
+    try:
+        logger.info("Fetching action comics from Comick.live")
+        manga_data = scrape_comick_action_genre()
+        
+        if not manga_data:
+            return jsonify({
+                'success': False,
+                'error': 'No action comics found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_data,
+            'source': 'Comick',
+            'genre': 'Action',
+            'count': len(manga_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick action comics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick/romance', methods=['GET'])
+def get_comick_romance():
+    """Get romance genre comics from Comick.live."""
+    try:
+        logger.info("Fetching romance comics from Comick.live")
+        manga_data = scrape_comick_romance_genre()
+        
+        if not manga_data:
+            return jsonify({
+                'success': False,
+                'error': 'No romance comics found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_data,
+            'source': 'Comick',
+            'genre': 'Romance',
+            'count': len(manga_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick romance comics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick/drama', methods=['GET'])
+def get_comick_drama():
+    """Get drama genre comics from Comick.live."""
+    try:
+        logger.info("Fetching drama comics from Comick.live")
+        manga_data = scrape_comick_drama_genre()
+        
+        if not manga_data:
+            return jsonify({
+                'success': False,
+                'error': 'No drama comics found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_data,
+            'source': 'Comick',
+            'genre': 'Drama',
+            'count': len(manga_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick drama comics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick/comedy', methods=['GET'])
+def get_comick_comedy():
+    """Get comedy genre comics from Comick.live."""
+    try:
+        logger.info("Fetching comedy comics from Comick.live")
+        manga_data = scrape_comick_comedy_genre()
+        
+        if not manga_data:
+            return jsonify({
+                'success': False,
+                'error': 'No comedy comics found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_data,
+            'source': 'Comick',
+            'genre': 'Comedy',
+            'count': len(manga_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick comedy comics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick/fantasy', methods=['GET'])
+def get_comick_fantasy():
+    """Get fantasy genre comics from Comick.live."""
+    try:
+        logger.info("Fetching fantasy comics from Comick.live")
+        manga_data = scrape_comick_fantasy_genre()
+        
+        if not manga_data:
+            return jsonify({
+                'success': False,
+                'error': 'No fantasy comics found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_data,
+            'source': 'Comick',
+            'genre': 'Fantasy',
+            'count': len(manga_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick fantasy comics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/comick/isekai', methods=['GET'])
+def get_comick_isekai():
+    """Get isekai genre comics from Comick.live."""
+    try:
+        logger.info("Fetching isekai comics from Comick.live")
+        manga_data = scrape_comick_isekai_genre()
+        
+        if not manga_data:
+            return jsonify({
+                'success': False,
+                'error': 'No isekai comics found'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'data': manga_data,
+            'source': 'Comick',
+            'genre': 'Isekai',
+            'count': len(manga_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error fetching Comick isekai comics: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
