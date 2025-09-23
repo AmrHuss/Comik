@@ -497,6 +497,58 @@ def extract_real_chapters_from_chapter_page(comic_slug, sample_chapter):
         sample_lang = sample_chapter.get('lang', 'en')
         sample_chap = sample_chapter.get('chap', '1')
         
+        # Try to find an English chapter first by checking the script data
+        # Look for English chapters in the original HTML
+        english_chapter = None
+        try:
+            from bs4 import BeautifulSoup
+            import requests
+            response = requests.get(f"https://comick.live/comic/{comic_slug}", timeout=30)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                scripts = soup.find_all('script')
+                for script in scripts:
+                    if script.string and 'firstChapters' in script.string:
+                        import json
+                        import re
+                        # Look for firstChapters data - find the complete array
+                        start_pos = script.string.find('"firstChapters":')
+                        if start_pos != -1:
+                            bracket_pos = script.string.find('[', start_pos)
+                            if bracket_pos != -1:
+                                # Count brackets to find the end
+                                bracket_count = 0
+                                end_pos = bracket_pos
+                                for j, char in enumerate(script.string[bracket_pos:], bracket_pos):
+                                    if char == '[':
+                                        bracket_count += 1
+                                    elif char == ']':
+                                        bracket_count -= 1
+                                        if bracket_count == 0:
+                                            end_pos = j + 1
+                                            break
+                                
+                                try:
+                                    first_chapters_str = script.string[bracket_pos:end_pos]
+                                    first_chapters_data = json.loads(first_chapters_str)
+                                    for chapter_data in first_chapters_data:
+                                        if chapter_data.get('lang') == 'en':
+                                            english_chapter = chapter_data
+                                            print(f"✅ Found English chapter: {english_chapter}")
+                                            break
+                                except:
+                                    pass
+        except:
+            pass
+        
+        # Use English chapter if found, otherwise fall back to sample chapter
+        if english_chapter:
+            sample_hid = english_chapter.get('hid')
+            sample_lang = 'en'
+            sample_chap = english_chapter.get('chap', '1')
+        else:
+            print("⚠️  No English chapter found, using sample chapter")
+        
         # Try different languages if English fails
         languages_to_try = ['en', sample_lang, 'pl', 'es', 'fr', 'de']
         
@@ -524,35 +576,52 @@ def extract_real_chapters_from_chapter_page(comic_slug, sample_chapter):
         
         for script in scripts:
             if script.string and 'chapterList' in script.string:
-                # Look for chapterList data
-                chapter_list_match = re.search(r'"chapterList":\s*(\[.*?\])', script.string)
-                if chapter_list_match:
-                    try:
-                        chapter_list_data = json.loads(chapter_list_match.group(1))
-                        print(f"✅ Found chapterList with {len(chapter_list_data)} chapters")
+                # Look for chapterList data - find the complete array
+                start_pos = script.string.find('"chapterList":')
+                if start_pos != -1:
+                    bracket_pos = script.string.find('[', start_pos)
+                    if bracket_pos != -1:
+                        # Count brackets to find the end
+                        bracket_count = 0
+                        end_pos = bracket_pos
+                        for j, char in enumerate(script.string[bracket_pos:], bracket_pos):
+                            if char == '[':
+                                bracket_count += 1
+                            elif char == ']':
+                                bracket_count -= 1
+                                if bracket_count == 0:
+                                    end_pos = j + 1
+                                    break
                         
-                        chapters = []
-                        for chapter_data in chapter_list_data:
-                            hid = chapter_data.get('hid', '')
-                            chap = chapter_data.get('chap', '')
+                        try:
+                            chapter_list_str = script.string[bracket_pos:end_pos]
+                            chapter_list_data = json.loads(chapter_list_str)
+                            print(f"✅ Found chapterList with {len(chapter_list_data)} chapters")
                             
-                            if hid and chap:
-                                chapter = {
-                                    'title': f"Chapter {chap}",
-                                    'url': f"https://comick.live/comic/{comic_slug}/{hid}-chapter-{chap}-en",
-                                    'date': 'Unknown',
-                                    'chapter_number': chap,
-                                    'hid': hid,
-                                    'lang': 'en'  # Force English
-                                }
-                                chapters.append(chapter)
-                        
-                        print(f"✅ Extracted {len(chapters)} chapters with real hash IDs")
-                        return chapters
-                        
-                    except json.JSONDecodeError as e:
-                        print(f"❌ Failed to parse chapterList JSON: {e}")
-                        continue
+                            chapters = []
+                            for chapter_data in chapter_list_data:
+                                hid = chapter_data.get('hid', '')
+                                chap = chapter_data.get('chap', '')
+                                chapter_lang = chapter_data.get('lang', '')
+                                
+                                # Only include English chapters
+                                if hid and chap and chapter_lang == 'en':
+                                    chapter = {
+                                        'title': f"Chapter {chap}",
+                                        'url': f"https://comick.live/comic/{comic_slug}/{hid}-chapter-{chap}-en",
+                                        'date': 'Unknown',
+                                        'chapter_number': chap,
+                                        'hid': hid,
+                                        'lang': 'en'
+                                    }
+                                    chapters.append(chapter)
+                            
+                            print(f"✅ Extracted {len(chapters)} chapters with real hash IDs")
+                            return chapters
+                            
+                        except json.JSONDecodeError as e:
+                            print(f"❌ Failed to parse chapterList JSON: {e}")
+                            continue
         
         print("❌ No chapterList found in script tags")
         return []
@@ -584,47 +653,60 @@ def generate_full_chapter_list_from_real_hashes(real_chapters, comic_slug, html_
         
         print(f"📋 Real hash mapping: {hash_mapping}")
         
-        # Generate full chapter list
+        # Generate full chapter list using the correct hash ID for each chapter
         full_chapters = []
         last_chapter_float = float(last_chapter)
         
-        # Generate chapters from 0 to last chapter (in ascending order)
+        # Get the language from the first real chapter
+        first_real_lang = 'en'  # Default to English
+        for chapter in real_chapters:
+            if chapter.get('lang'):
+                first_real_lang = chapter.get('lang')
+                break
+        
+        print(f"🔧 Using language: {first_real_lang}")
+        
+        # Generate chapters from 0 to last chapter using the correct hash ID for each
         for i in range(int(last_chapter_float) + 1):
             chapter_str = str(i)
             
-            # Use real hash if available, otherwise generate unique one
+            # Use the correct hash ID for this chapter if available
             if chapter_str in hash_mapping:
                 chapter_hash = hash_mapping[chapter_str]
                 print(f"✅ Using real hash for Chapter {chapter_str}: {chapter_hash}")
             else:
-                chapter_hash = generate_unique_hash(comic_slug, chapter_str, "Official")
-                print(f"🔧 Generated hash for Chapter {chapter_str}: {chapter_hash}")
+                # For chapters not in the real list, use the first available hash
+                chapter_hash = list(hash_mapping.values())[0] if hash_mapping else 'unknown'
+                print(f"🔧 Using fallback hash for Chapter {chapter_str}: {chapter_hash}")
             
             chapter = {
                 'title': f"Chapter {chapter_str}",
-                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{chapter_str}-en",
+                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{chapter_str}-{first_real_lang}",
                 'date': 'Unknown',
                 'chapter_number': chapter_str,
                 'hid': chapter_hash,
-                'lang': 'en'
+                'lang': first_real_lang
             }
             full_chapters.append(chapter)
         
         # Handle decimal chapters (like 225.5)
         if last_chapter_float != int(last_chapter_float):
             decimal_chapter = last_chapter
+            
+            # Use the correct hash ID for this decimal chapter if available
             if decimal_chapter in hash_mapping:
                 chapter_hash = hash_mapping[decimal_chapter]
             else:
-                chapter_hash = generate_unique_hash(comic_slug, decimal_chapter, "Official")
+                # Use the first available hash as fallback
+                chapter_hash = list(hash_mapping.values())[0] if hash_mapping else 'unknown'
             
             chapter = {
                 'title': f"Chapter {decimal_chapter}",
-                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{decimal_chapter}-en",
+                'url': f"https://comick.live/comic/{comic_slug}/{chapter_hash}-chapter-{decimal_chapter}-{first_real_lang}",
                 'date': 'Unknown',
                 'chapter_number': decimal_chapter,
                 'hid': chapter_hash,
-                'lang': 'en'
+                'lang': first_real_lang
             }
             full_chapters.append(chapter)
         
