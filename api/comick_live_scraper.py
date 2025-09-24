@@ -31,8 +31,8 @@ DRAMA_GENRE_URL = "https://comick.live/search?genres=drama&order_by=user_follow_
 COMEDY_GENRE_URL = "https://comick.live/search?genres=comedy&order_by=user_follow_count"
 FANTASY_GENRE_URL = "https://comick.live/search?genres=fantasy&order_by=user_follow_count"
 ISEKAI_GENRE_URL = "https://comick.live/search?genres=isekai&order_by=user_follow_count"
-REQUEST_TIMEOUT = 30
-MAX_RETRIES = 3
+REQUEST_TIMEOUT = 10  # Reduced from 30 to 10 seconds
+MAX_RETRIES = 2  # Reduced from 3 to 2 retries
 
 def get_headers():
     """Get standardized headers for HTTP requests."""

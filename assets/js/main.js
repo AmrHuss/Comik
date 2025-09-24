@@ -14,7 +14,7 @@
 const API_BASE_URL = '/api';
 const DEBOUNCE_DELAY = 300;
 const MAX_SEARCH_RESULTS = 7;
-const REQUEST_TIMEOUT = 15000;
+const REQUEST_TIMEOUT = 8000; // Reduced from 15s to 8s for faster failure detection
 
 // --- Initialize Storage and Components ---
 let storageManager, uiComponents;
@@ -361,26 +361,39 @@ async function loadComickGenres() {
     ];
     
     try {
-        // Load all genres concurrently
-        const genrePromises = comickGenres.map(async (genre) => {
+        // Load genres with progressive loading - show results as they come in
+        const genreResults = [];
+        const genrePromises = comickGenres.map(async (genre, index) => {
             try {
                 const response = await makeApiRequest(`${API_BASE_URL}${genre.endpoint}`);
-                return {
+                const result = {
                     ...genre,
                     comics: response?.data || [],
                     success: response?.success || false
                 };
+                
+                // Update results array immediately
+                genreResults[index] = result;
+                
+                // If this is one of the first 2 genres, update the UI immediately
+                if (index < 2 && result.comics.length > 0) {
+                    updateTrendingGridWithPartialData(genreResults);
+                }
+                
+                return result;
             } catch (error) {
                 console.warn(`Failed to load ${genre.name} genre:`, error);
-                return {
+                const result = {
                     ...genre,
                     comics: [],
                     success: false
                 };
+                genreResults[index] = result;
+                return result;
             }
         });
         
-        const genreResults = await Promise.all(genrePromises);
+        await Promise.all(genrePromises);
         
         // Collect all comics from all genres
         let allComickComics = [];
@@ -406,6 +419,27 @@ async function loadComickGenres() {
         
     } catch (error) {
         console.error('Error loading Comick genres:', error);
+    }
+}
+
+// Helper function to update trending grid with partial data
+function updateTrendingGridWithPartialData(genreResults) {
+    const trendingGrid = document.getElementById('trending-grid');
+    if (!trendingGrid) return;
+    
+    // Collect all available comics
+    let allComics = [];
+    genreResults.forEach(genreResult => {
+        if (genreResult && genreResult.comics && genreResult.comics.length > 0) {
+            allComics = allComics.concat(genreResult.comics);
+        }
+    });
+    
+    if (allComics.length > 0) {
+        // Take first 6 comics for trending display
+        const displayComics = allComics.slice(0, 6);
+        displayEnhancedMangaGrid(displayComics, trendingGrid);
+        console.log(`⚡ Progressive load: Showing ${displayComics.length} comics from ${genreResults.filter(r => r && r.comics && r.comics.length > 0).length} genres`);
     }
 }
 

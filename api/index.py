@@ -24,6 +24,8 @@ import traceback
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import random
+from functools import wraps
 
 # Fallback cache implementation if cachetools is not available
 try:
@@ -81,9 +83,95 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Circuit Breaker Implementation
+class CircuitBreaker:
+    def __init__(self, failure_threshold=5, recovery_timeout=60):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
+    
+    def call(self, func, *args, **kwargs):
+        if self.state == 'OPEN':
+            if time.time() - self.last_failure_time > self.recovery_timeout:
+                self.state = 'HALF_OPEN'
+            else:
+                raise Exception("Circuit breaker is OPEN")
+        
+        try:
+            result = func(*args, **kwargs)
+            if self.state == 'HALF_OPEN':
+                self.state = 'CLOSED'
+                self.failure_count = 0
+            return result
+        except Exception as e:
+            self.failure_count += 1
+            self.last_failure_time = time.time()
+            
+            if self.failure_count >= self.failure_threshold:
+                self.state = 'OPEN'
+            
+            raise e
+
+# Global circuit breakers for different endpoints
+circuit_breakers = {
+    'comick': CircuitBreaker(failure_threshold=3, recovery_timeout=30),
+    'asura': CircuitBreaker(failure_threshold=3, recovery_timeout=30),
+    'webtoons': CircuitBreaker(failure_threshold=3, recovery_timeout=30)
+}
+
+
+# Retry decorator with exponential backoff
+def retry_with_backoff(max_retries=3, base_delay=1, max_delay=10):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise e
+                    
+                    delay = min(base_delay * (2 ** attempt) + random.uniform(0, 1), max_delay)
+                    logger.warning(f"Attempt {attempt + 1} failed for {func.__name__}: {e}. Retrying in {delay:.2f}s")
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+
+# Quick response cache for instant loading
+quick_response_cache = {}
+
+@app.route('/api/quick-load', methods=['GET'])
+def get_quick_load():
+    """Get quick loading data for immediate display."""
+    try:
+        # Return cached data if available
+        if 'quick_data' in quick_response_cache:
+            return jsonify(quick_response_cache['quick_data'])
+        
+        # Return minimal data for instant loading
+        quick_data = {
+            'success': True,
+            'data': [],
+            'message': 'Loading full data...',
+            'status': 'loading'
+        }
+        
+        return jsonify(quick_data)
+        
+    except Exception as e:
+        logger.error(f"Error in quick-load endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # Log cachetools availability after logger is initialized
 if not CACHETOOLS_AVAILABLE:
@@ -2230,8 +2318,9 @@ def search_comick():
 
 # Comick Genre Endpoints
 @app.route('/api/comick/action', methods=['GET'])
+@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_action():
-    """Get action genre comics from Comick.live."""
+    """Get action genre comics from Comick.live with retry logic."""
     try:
         logger.info("Fetching action comics from Comick.live")
         manga_data = scrape_comick_action_genre()
@@ -2258,6 +2347,7 @@ def get_comick_action():
         }), 500
 
 @app.route('/api/comick/romance', methods=['GET'])
+@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_romance():
     """Get romance genre comics from Comick.live."""
     try:
@@ -2286,6 +2376,7 @@ def get_comick_romance():
         }), 500
 
 @app.route('/api/comick/drama', methods=['GET'])
+@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_drama():
     """Get drama genre comics from Comick.live."""
     try:
@@ -2314,6 +2405,7 @@ def get_comick_drama():
         }), 500
 
 @app.route('/api/comick/comedy', methods=['GET'])
+@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_comedy():
     """Get comedy genre comics from Comick.live."""
     try:
@@ -2342,6 +2434,7 @@ def get_comick_comedy():
         }), 500
 
 @app.route('/api/comick/fantasy', methods=['GET'])
+@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_fantasy():
     """Get fantasy genre comics from Comick.live."""
     try:
@@ -2370,6 +2463,7 @@ def get_comick_fantasy():
         }), 500
 
 @app.route('/api/comick/isekai', methods=['GET'])
+@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_isekai():
     """Get isekai genre comics from Comick.live."""
     try:

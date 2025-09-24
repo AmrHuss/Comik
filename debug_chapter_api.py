@@ -6,7 +6,7 @@ Debug script to find and test the Comick chapter API endpoint.
 import requests
 import re
 import json
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoups
 
 def make_request(url):
     """Make a request with proper headers."""
