@@ -148,30 +148,6 @@ CORS(app)
 # Quick response cache for instant loading
 quick_response_cache = {}
 
-@app.route('/api/quick-load', methods=['GET'])
-def get_quick_load():
-    """Get quick loading data for immediate display."""
-    try:
-        # Return cached data if available
-        if 'quick_data' in quick_response_cache:
-            return jsonify(quick_response_cache['quick_data'])
-        
-        # Return minimal data for instant loading
-        quick_data = {
-            'success': True,
-            'data': [],
-            'message': 'Loading full data...',
-            'status': 'loading'
-        }
-        
-        return jsonify(quick_data)
-        
-    except Exception as e:
-        logger.error(f"Error in quick-load endpoint: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 # Log cachetools availability after logger is initialized
 if not CACHETOOLS_AVAILABLE:
