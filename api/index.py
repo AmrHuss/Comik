@@ -1240,86 +1240,47 @@ def get_unified_popular():
         with cache_lock:
             performance_stats['cache_misses'] += 1
         
-        # Define concurrent tasks
-        def fetch_asura_manga():
+        # Only use Comick data - it's fast and reliable with caching
+        logger.info("Fetching Comick popular manga from cached data")
+        all_comick_manga = []
+        genres = ['action', 'romance', 'drama', 'comedy', 'fantasy', 'isekai']
+        
+        for genre in genres:
             try:
-                asura_response = make_request('https://asurascanz.com/')
-                if asura_response:
-                    asura_soup = BeautifulSoup(asura_response.content, 'lxml')
-                    asura_manga = parse_manga_cards_from_soup(asura_soup)
-                    # Add source flag
-                    for manga in asura_manga:
-                        manga['source'] = 'AsuraScanz'
-                    return asura_manga
-                return []
+                # Get cached data for this genre
+                cached_data = get_cached_comick_data(genre)
+                if cached_data and cached_data.get('data'):
+                    all_comick_manga.extend(cached_data['data'])
+                    logger.info(f"Added {len(cached_data['data'])} {genre} comics from cache")
+                else:
+                    # If no cache, try to scrape just this one genre
+                    logger.info(f"No cache for {genre}, scraping...")
+                    if genre == 'action':
+                        genre_manga = scrape_comick_action_genre()
+                    elif genre == 'romance':
+                        genre_manga = scrape_comick_romance_genre()
+                    elif genre == 'drama':
+                        genre_manga = scrape_comick_drama_genre()
+                    elif genre == 'comedy':
+                        genre_manga = scrape_comick_comedy_genre()
+                    elif genre == 'fantasy':
+                        genre_manga = scrape_comick_fantasy_genre()
+                    elif genre == 'isekai':
+                        genre_manga = scrape_comick_isekai_genre()
+                    
+                    if genre_manga:
+                        all_comick_manga.extend(genre_manga)
             except Exception as e:
-                logger.warning(f"Failed to fetch AsuraScanz popular: {e}")
-                return []
+                logger.warning(f"Failed to fetch {genre}: {e}")
+                continue
         
-        def fetch_webtoons_manga():
-            try:
-                return scrape_webtoons_action_genre()
-            except Exception as e:
-                logger.warning(f"Failed to fetch Webtoons popular: {e}")
-                return []
+        if all_comick_manga:
+            logger.info(f"Fetched {len(all_comick_manga)} Comick manga total")
         
-        def fetch_comick_manga():
-            try:
-                logger.info("Fetching Comick popular manga from all genres")
-                # Load all Comick genres
-                all_comick_manga = []
-                genres = [
-                    scrape_comick_action_genre,
-                    scrape_comick_romance_genre,
-                    scrape_comick_drama_genre,
-                    scrape_comick_comedy_genre,
-                    scrape_comick_fantasy_genre,
-                    scrape_comick_isekai_genre
-                ]
-                
-                for genre_func in genres:
-                    try:
-                        genre_manga = genre_func()
-                        if genre_manga:
-                            all_comick_manga.extend(genre_manga)
-                    except Exception as e:
-                        logger.warning(f"Failed to fetch {genre_func.__name__}: {e}")
-                        continue
-                
-                if all_comick_manga:
-                    logger.info(f"Fetched {len(all_comick_manga)} Comick manga from all genres")
-                return all_comick_manga
-            except Exception as e:
-                logger.warning(f"Failed to fetch Comick popular: {e}")
-                return []
-        
-        # Execute all tasks concurrently with timeout
-        logger.info("Executing concurrent requests for popular manga")
-        future_to_source = {
-            thread_pool.submit(fetch_asura_manga): 'AsuraScanz',
-            thread_pool.submit(fetch_webtoons_manga): 'Webtoons',
-            thread_pool.submit(fetch_comick_manga): 'Comick'
-        }
-        
+        # Set empty arrays for other sources since we're only using Comick
         asura_manga = []
         webtoons_manga = []
-        comick_manga = []
-        
-        # Collect results as they complete with timeout
-        for future in as_completed(future_to_source, timeout=15):  # 15 second timeout
-            source = future_to_source[future]
-            try:
-                result = future.result()
-                if source == 'AsuraScanz':
-                    asura_manga = result
-                elif source == 'Webtoons':
-                    webtoons_manga = result
-                else:  # Comick
-                    comick_manga = result
-                logger.info(f"Completed {source} popular manga fetch: {len(result)} items")
-            except Exception as e:
-                logger.error(f"Error fetching {source} popular manga: {e}")
-                # Continue with other sources even if one fails
+        comick_manga = all_comick_manga
         
         # All sources processed
         
@@ -1331,8 +1292,8 @@ def get_unified_popular():
             'data': all_manga,
             'sources': {
                 'Comick': len(comick_manga),
-                'AsuraScanz': len(asura_manga),
-                'Webtoons': len(webtoons_manga)
+                'AsuraScanz': 0,  # Disabled for speed
+                'Webtoons': 0     # Disabled for speed
             }
         }
         
