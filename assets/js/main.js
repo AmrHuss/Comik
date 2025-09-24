@@ -14,7 +14,7 @@
 const API_BASE_URL = '/api';
 const DEBOUNCE_DELAY = 300;
 const MAX_SEARCH_RESULTS = 7;
-const REQUEST_TIMEOUT = 5000; // Reduced to 5s for Vercel compatibility
+const REQUEST_TIMEOUT = 10000; // Increased to 10s for Vercel cold start compatibility
 
 // --- Initialize Storage and Components ---
 let storageManager, uiComponents;
@@ -86,8 +86,11 @@ function showEmptyState(container, message = 'No content found.') {
 /**
  * Make API request with proper error handling
  */
-async function makeApiRequest(url, options = {}) {
-    console.log('Making API request to:', url);
+async function makeApiRequest(url, options = {}, retryCount = 0) {
+    const maxRetries = 2;
+    const baseDelay = 1000; // 1 second
+    
+    console.log(`Making API request to: ${url} (attempt ${retryCount + 1}/${maxRetries + 1})`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     
@@ -99,14 +102,11 @@ async function makeApiRequest(url, options = {}) {
         
         clearTimeout(timeoutId);
         
-        // Response status and ok status logged only in debug mode
-        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const data = await response.json();
-        // Response data logged only in debug mode
         
         if (!data.success) {
             throw new Error(data.error || 'API request failed');
@@ -120,7 +120,16 @@ async function makeApiRequest(url, options = {}) {
             throw new Error('Request timed out. Please try again.');
         }
         
-        console.error('API request failed:', error);
+        // Retry logic with exponential backoff
+        if (retryCount < maxRetries) {
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 1000;
+            console.warn(`API request failed (attempt ${retryCount + 1}), retrying in ${Math.round(delay)}ms:`, error.message);
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return makeApiRequest(url, options, retryCount + 1);
+        }
+        
+        console.error('API request failed after all retries:', error);
         throw error;
     }
 }
@@ -290,13 +299,36 @@ async function loadHomepageContent() {
             console.log('⚡ Quick-load failed, loading full data...');
         }
         
-        // Load full data in background
-        let result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+        // Load full data in background with multiple fallbacks
+        let result = null;
         
-        // Fallback to regular popular endpoint if unified fails
-        if (!result || !result.data || result.data.length === 0) {
-            console.log('🔄 Fallback to regular endpoint...');
-            result = await makeApiRequest(`${API_BASE_URL}/popular`);
+        try {
+            result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+        } catch (error) {
+            console.warn('Unified-popular failed, trying fallbacks...', error.message);
+            
+            // Fallback 1: Try regular popular endpoint
+            try {
+                console.log('🔄 Fallback 1: Regular popular endpoint...');
+                result = await makeApiRequest(`${API_BASE_URL}/popular`);
+            } catch (error2) {
+                console.warn('Popular endpoint failed, trying Comick action...', error2.message);
+                
+                // Fallback 2: Use Comick action data as last resort
+                try {
+                    console.log('🔄 Fallback 2: Comick action endpoint...');
+                    const comickResult = await makeApiRequest(`${API_BASE_URL}/comick/action`);
+                    if (comickResult && comickResult.data) {
+                        result = {
+                            success: true,
+                            data: comickResult.data,
+                            sources: { Comick: comickResult.data.length }
+                        };
+                    }
+                } catch (error3) {
+                    console.error('All fallbacks failed:', error3.message);
+                }
+            }
         }
         
         if (result && result.data && result.data.length > 0) {
@@ -361,7 +393,7 @@ async function loadComickGenres() {
     ];
     
     try {
-        // Load genres with progressive loading - show results as they come in
+        // Load genres with progressive loading and graceful degradation
         const genreResults = [];
         const genrePromises = comickGenres.map(async (genre, index) => {
             try {
@@ -383,10 +415,12 @@ async function loadComickGenres() {
                 return result;
             } catch (error) {
                 console.warn(`Failed to load ${genre.name} genre:`, error);
+                // Don't fail completely - return empty result and continue
                 const result = {
                     ...genre,
                     comics: [],
-                    success: false
+                    success: false,
+                    error: error.message
                 };
                 genreResults[index] = result;
                 return result;

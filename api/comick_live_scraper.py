@@ -31,8 +31,8 @@ DRAMA_GENRE_URL = "https://comick.live/search?genres=drama&order_by=user_follow_
 COMEDY_GENRE_URL = "https://comick.live/search?genres=comedy&order_by=user_follow_count"
 FANTASY_GENRE_URL = "https://comick.live/search?genres=fantasy&order_by=user_follow_count"
 ISEKAI_GENRE_URL = "https://comick.live/search?genres=isekai&order_by=user_follow_count"
-REQUEST_TIMEOUT = 5  # Reduced to 5 seconds for Vercel
-MAX_RETRIES = 1  # Only 1 retry for speed
+REQUEST_TIMEOUT = 8  # Increased to 8 seconds for Vercel cold start
+MAX_RETRIES = 2  # 2 retries for reliability
 
 def get_headers():
     """Get standardized headers for HTTP requests."""
