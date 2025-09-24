@@ -14,7 +14,7 @@
 const API_BASE_URL = '/api';
 const DEBOUNCE_DELAY = 300;
 const MAX_SEARCH_RESULTS = 7;
-const REQUEST_TIMEOUT = 8000; // Reduced from 15s to 8s for faster failure detection
+const REQUEST_TIMEOUT = 5000; // Reduced to 5s for Vercel compatibility
 
 // --- Initialize Storage and Components ---
 let storageManager, uiComponents;

@@ -148,6 +148,24 @@ CORS(app)
 # Quick response cache for instant loading
 quick_response_cache = {}
 
+# Simple in-memory cache for Comick data (5 minute TTL)
+comick_cache = {}
+CACHE_TTL = 300  # 5 minutes
+
+def get_cached_comick_data(genre):
+    """Get cached data for a genre if it's still valid."""
+    if genre in comick_cache:
+        data, timestamp = comick_cache[genre]
+        if time.time() - timestamp < CACHE_TTL:
+            return data
+        else:
+            del comick_cache[genre]
+    return None
+
+def set_cached_comick_data(genre, data):
+    """Cache data for a genre."""
+    comick_cache[genre] = (data, time.time())
+
 
 # Log cachetools availability after logger is initialized
 if not CACHETOOLS_AVAILABLE:
@@ -2294,10 +2312,15 @@ def search_comick():
 
 # Comick Genre Endpoints
 @app.route('/api/comick/action', methods=['GET'])
-@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_action():
-    """Get action genre comics from Comick.live with retry logic."""
+    """Get action genre comics from Comick.live with caching."""
     try:
+        # Check cache first
+        cached_data = get_cached_comick_data('action')
+        if cached_data:
+            logger.info("Action comics: cache hit")
+            return jsonify(cached_data)
+        
         logger.info("Fetching action comics from Comick.live")
         manga_data = scrape_comick_action_genre()
         
@@ -2307,13 +2330,18 @@ def get_comick_action():
                 'error': 'No action comics found'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True,
             'data': manga_data,
             'source': 'Comick',
             'genre': 'Action',
             'count': len(manga_data)
-        })
+        }
+        
+        # Cache the response
+        set_cached_comick_data('action', response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error fetching Comick action comics: {e}")
@@ -2323,10 +2351,15 @@ def get_comick_action():
         }), 500
 
 @app.route('/api/comick/romance', methods=['GET'])
-@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_romance():
-    """Get romance genre comics from Comick.live."""
+    """Get romance genre comics from Comick.live with caching."""
     try:
+        # Check cache first
+        cached_data = get_cached_comick_data('romance')
+        if cached_data:
+            logger.info("Romance comics: cache hit")
+            return jsonify(cached_data)
+        
         logger.info("Fetching romance comics from Comick.live")
         manga_data = scrape_comick_romance_genre()
         
@@ -2336,13 +2369,18 @@ def get_comick_romance():
                 'error': 'No romance comics found'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True,
             'data': manga_data,
             'source': 'Comick',
             'genre': 'Romance',
             'count': len(manga_data)
-        })
+        }
+        
+        # Cache the response
+        set_cached_comick_data('romance', response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error fetching Comick romance comics: {e}")
@@ -2352,10 +2390,15 @@ def get_comick_romance():
         }), 500
 
 @app.route('/api/comick/drama', methods=['GET'])
-@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_drama():
-    """Get drama genre comics from Comick.live."""
+    """Get drama genre comics from Comick.live with caching."""
     try:
+        # Check cache first
+        cached_data = get_cached_comick_data('drama')
+        if cached_data:
+            logger.info("Drama comics: cache hit")
+            return jsonify(cached_data)
+        
         logger.info("Fetching drama comics from Comick.live")
         manga_data = scrape_comick_drama_genre()
         
@@ -2365,13 +2408,18 @@ def get_comick_drama():
                 'error': 'No drama comics found'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True,
             'data': manga_data,
             'source': 'Comick',
             'genre': 'Drama',
             'count': len(manga_data)
-        })
+        }
+        
+        # Cache the response
+        set_cached_comick_data('drama', response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error fetching Comick drama comics: {e}")
@@ -2381,10 +2429,15 @@ def get_comick_drama():
         }), 500
 
 @app.route('/api/comick/comedy', methods=['GET'])
-@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_comedy():
-    """Get comedy genre comics from Comick.live."""
+    """Get comedy genre comics from Comick.live with caching."""
     try:
+        # Check cache first
+        cached_data = get_cached_comick_data('comedy')
+        if cached_data:
+            logger.info("Comedy comics: cache hit")
+            return jsonify(cached_data)
+        
         logger.info("Fetching comedy comics from Comick.live")
         manga_data = scrape_comick_comedy_genre()
         
@@ -2394,13 +2447,18 @@ def get_comick_comedy():
                 'error': 'No comedy comics found'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True,
             'data': manga_data,
             'source': 'Comick',
             'genre': 'Comedy',
             'count': len(manga_data)
-        })
+        }
+        
+        # Cache the response
+        set_cached_comick_data('comedy', response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error fetching Comick comedy comics: {e}")
@@ -2410,10 +2468,15 @@ def get_comick_comedy():
         }), 500
 
 @app.route('/api/comick/fantasy', methods=['GET'])
-@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_fantasy():
-    """Get fantasy genre comics from Comick.live."""
+    """Get fantasy genre comics from Comick.live with caching."""
     try:
+        # Check cache first
+        cached_data = get_cached_comick_data('fantasy')
+        if cached_data:
+            logger.info("Fantasy comics: cache hit")
+            return jsonify(cached_data)
+        
         logger.info("Fetching fantasy comics from Comick.live")
         manga_data = scrape_comick_fantasy_genre()
         
@@ -2423,13 +2486,18 @@ def get_comick_fantasy():
                 'error': 'No fantasy comics found'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True,
             'data': manga_data,
             'source': 'Comick',
             'genre': 'Fantasy',
             'count': len(manga_data)
-        })
+        }
+        
+        # Cache the response
+        set_cached_comick_data('fantasy', response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error fetching Comick fantasy comics: {e}")
@@ -2439,10 +2507,15 @@ def get_comick_fantasy():
         }), 500
 
 @app.route('/api/comick/isekai', methods=['GET'])
-@retry_with_backoff(max_retries=2, base_delay=0.5, max_delay=3)
 def get_comick_isekai():
-    """Get isekai genre comics from Comick.live."""
+    """Get isekai genre comics from Comick.live with caching."""
     try:
+        # Check cache first
+        cached_data = get_cached_comick_data('isekai')
+        if cached_data:
+            logger.info("Isekai comics: cache hit")
+            return jsonify(cached_data)
+        
         logger.info("Fetching isekai comics from Comick.live")
         manga_data = scrape_comick_isekai_genre()
         
@@ -2452,13 +2525,18 @@ def get_comick_isekai():
                 'error': 'No isekai comics found'
             }), 404
         
-        return jsonify({
+        response_data = {
             'success': True,
             'data': manga_data,
             'source': 'Comick',
             'genre': 'Isekai',
             'count': len(manga_data)
-        })
+        }
+        
+        # Cache the response
+        set_cached_comick_data('isekai', response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logger.error(f"Error fetching Comick isekai comics: {e}")
