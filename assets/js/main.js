@@ -14,7 +14,7 @@
 const API_BASE_URL = '/api';
 const DEBOUNCE_DELAY = 300;
 const MAX_SEARCH_RESULTS = 7;
-const REQUEST_TIMEOUT = 10000; // Increased to 10s for Vercel cold start compatibility
+const REQUEST_TIMEOUT = 8000; // 8s timeout for better Vercel cold start handling
 
 // --- Client-Side Caching ---
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -486,13 +486,76 @@ async function loadComickGenres() {
             </div>
         `;
         
-        // Single unified API call - much faster and more reliable!
+        // Try unified API first, but with shorter timeout for Vercel cold starts
         console.log('Making unified API request to /api/comick-all-genres');
-        const response = await makeApiRequest(`${API_BASE_URL}/comick-all-genres`);
+        let response;
+        
+        try {
+            // Use shorter timeout for unified endpoint to fail fast
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second timeout
+            
+            const unifiedResponse = await fetch(`${API_BASE_URL}/comick-all-genres`, {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (unifiedResponse.ok) {
+                response = await unifiedResponse.json();
+                if (response && response.success && response.data) {
+                    console.log(`✅ Loaded ${response.total_comics} comics from unified API (cached: ${response.cached})`);
+                } else {
+                    throw new Error('Invalid unified response');
+                }
+            } else {
+                throw new Error(`Unified API failed: ${unifiedResponse.status}`);
+            }
+        } catch (unifiedError) {
+            console.warn('Unified API failed, falling back to individual genre calls:', unifiedError.message);
+            
+            // Fallback: Load individual genres with shorter timeouts
+            const genrePromises = comickGenres.map(async (genre) => {
+                try {
+                    const genreResponse = await makeApiRequest(`${API_BASE_URL}/comick/${genre.key}`, {}, 0);
+                    return {
+                        key: genre.key,
+                        name: genre.name,
+                        comics: genreResponse.data || []
+                    };
+                } catch (error) {
+                    console.warn(`Failed to load ${genre.name} genre:`, error.message);
+                    return {
+                        key: genre.key,
+                        name: genre.name,
+                        comics: []
+                    };
+                }
+            });
+            
+            const genreResults = await Promise.all(genrePromises);
+            
+            // Convert to unified format
+            const unifiedData = {};
+            let totalComics = 0;
+            
+            genreResults.forEach(genreResult => {
+                unifiedData[genreResult.key] = genreResult.comics;
+                totalComics += genreResult.comics.length;
+            });
+            
+            response = {
+                success: true,
+                data: unifiedData,
+                total_comics: totalComics,
+                cached: false,
+                source: 'Comick'
+            };
+            
+            console.log(`✅ Fallback loaded ${totalComics} comics from individual genre calls`);
+        }
         
         if (response && response.success && response.data) {
-            console.log(`✅ Loaded ${response.total_comics} comics from all genres (cached: ${response.cached})`);
-            
             // Cache the response for future visits
             setCachedData(CACHE_KEYS.COMICK_GENRES, response);
             
@@ -500,7 +563,7 @@ async function loadComickGenres() {
             displayCachedComickGenres(response, trendingGrid, comickGenres);
             
         } else {
-            throw new Error('Invalid response from unified API');
+            throw new Error('Failed to load any Comick data');
         }
         
     } catch (error) {
