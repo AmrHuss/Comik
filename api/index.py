@@ -2506,6 +2506,96 @@ def get_comick_isekai():
             'error': str(e)
         }), 500
 
+@app.route('/api/comick-all-genres', methods=['GET'])
+def get_comick_all_genres():
+    """Get all Comick genres in one unified response - optimized for Vercel."""
+    try:
+        start_time = time.time()
+        logger.info("Fetching all Comick genres in unified response")
+        
+        # Check if we have cached data for all genres
+        all_cached = True
+        cached_genres = {}
+        
+        genres = ['action', 'romance', 'drama', 'comedy', 'fantasy', 'isekai']
+        
+        for genre in genres:
+            cached_data = get_cached_comick_data(genre)
+            if cached_data and cached_data.get('data'):
+                cached_genres[genre] = cached_data['data']
+            else:
+                all_cached = False
+                break
+        
+        if all_cached:
+            logger.info("All genres: cache hit")
+            response_data = {
+                'success': True,
+                'data': cached_genres,
+                'source': 'Comick',
+                'total_comics': sum(len(comics) for comics in cached_genres.values()),
+                'cached': True
+            }
+        else:
+            # Scrape all genres sequentially to avoid overwhelming Vercel
+            logger.info("Scraping all genres sequentially...")
+            scraped_genres = {}
+            
+            for genre in genres:
+                try:
+                    logger.info(f"Scraping {genre} genre...")
+                    if genre == 'action':
+                        manga_data = scrape_comick_action_genre()
+                    elif genre == 'romance':
+                        manga_data = scrape_comick_romance_genre()
+                    elif genre == 'drama':
+                        manga_data = scrape_comick_drama_genre()
+                    elif genre == 'comedy':
+                        manga_data = scrape_comick_comedy_genre()
+                    elif genre == 'fantasy':
+                        manga_data = scrape_comick_fantasy_genre()
+                    elif genre == 'isekai':
+                        manga_data = scrape_comick_isekai_genre()
+                    
+                    if manga_data:
+                        scraped_genres[genre] = manga_data
+                        # Cache individual genre
+                        genre_response = {
+                            'success': True,
+                            'data': manga_data,
+                            'source': 'Comick',
+                            'genre': genre.title(),
+                            'count': len(manga_data)
+                        }
+                        set_cached_comick_data(genre, genre_response)
+                    
+                    # Small delay to prevent overwhelming Vercel
+                    time.sleep(0.1)
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to scrape {genre}: {e}")
+                    scraped_genres[genre] = []
+            
+            response_data = {
+                'success': True,
+                'data': scraped_genres,
+                'source': 'Comick',
+                'total_comics': sum(len(comics) for comics in scraped_genres.values()),
+                'cached': False
+            }
+        
+        total_time = time.time() - start_time
+        logger.info(f"Unified genres response in {total_time:.2f}s - {response_data['total_comics']} comics")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"Error in unified genres endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch all genres'
+        }), 500
+
 @app.route('/api/comick-image-proxy', methods=['GET'])
 def comick_image_proxy():
     """Specialized proxy endpoint for Comick images with Cloudflare bypass."""

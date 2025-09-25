@@ -380,79 +380,66 @@ async function loadComickGenres() {
         return;
     }
     
-    console.log('🎭 Loading Comick genres as manga cards...');
+    console.log('🎭 Loading all Comick genres in one unified call...');
     
-    // Define all Comick genres with their endpoints
+    // Define all Comick genres with their keys for unified response
     const comickGenres = [
-        { name: 'Action', endpoint: '/comick/action', color: '#ff6b6b' },
-        { name: 'Romance', endpoint: '/comick/romance', color: '#ff9ff3' },
-        { name: 'Drama', endpoint: '/comick/drama', color: '#54a0ff' },
-        { name: 'Comedy', endpoint: '/comick/comedy', color: '#5f27cd' },
-        { name: 'Fantasy', endpoint: '/comick/fantasy', color: '#00d2d3' },
-        { name: 'Isekai', endpoint: '/comick/isekai', color: '#ff9f43' }
+        { name: 'Action', key: 'action', color: '#ff6b6b' },
+        { name: 'Romance', key: 'romance', color: '#ff9ff3' },
+        { name: 'Drama', key: 'drama', color: '#54a0ff' },
+        { name: 'Comedy', key: 'comedy', color: '#5f27cd' },
+        { name: 'Fantasy', key: 'fantasy', color: '#00d2d3' },
+        { name: 'Isekai', key: 'isekai', color: '#ff9f43' }
     ];
     
     try {
-        // Load genres with progressive loading and graceful degradation
-        const genreResults = [];
-        const genrePromises = comickGenres.map(async (genre, index) => {
-            try {
-                const response = await makeApiRequest(`${API_BASE_URL}${genre.endpoint}`);
-                const result = {
-                    ...genre,
-                    comics: response?.data || [],
-                    success: response?.success || false
-                };
-                
-                // Update results array immediately
-                genreResults[index] = result;
-                
-                // If this is one of the first 2 genres, update the UI immediately
-                if (index < 2 && result.comics.length > 0) {
-                    updateTrendingGridWithPartialData(genreResults);
-                }
-                
-                return result;
-            } catch (error) {
-                console.warn(`Failed to load ${genre.name} genre:`, error);
-                // Don't fail completely - return empty result and continue
-                const result = {
-                    ...genre,
-                    comics: [],
-                    success: false,
-                    error: error.message
-                };
-                genreResults[index] = result;
-                return result;
-            }
-        });
+        // Show loading state
+        trendingGrid.innerHTML = `
+            <div class="loading-placeholder">
+                <div class="loading-spinner"></div>
+                <p>Loading trending manga...</p>
+            </div>
+        `;
         
-        await Promise.all(genrePromises);
+        // Single unified API call - much faster and more reliable!
+        console.log('Making unified API request to /api/comick-all-genres');
+        const response = await makeApiRequest(`${API_BASE_URL}/comick-all-genres`);
         
-        // Collect all comics from all genres
-        let allComickComics = [];
-        genreResults.forEach(genreResult => {
-            if (genreResult.comics && genreResult.comics.length > 0) {
-                allComickComics = allComickComics.concat(genreResult.comics);
-            }
-        });
-        
-        // If we have Comick comics, display them in the trending grid
-        if (allComickComics.length > 0) {
-            console.log(`✅ Found ${allComickComics.length} Comick comics across all genres`);
+        if (response && response.success && response.data) {
+            console.log(`✅ Loaded ${response.total_comics} comics from all genres (cached: ${response.cached})`);
             
-            // Take first 6 comics for trending display
-            const displayComics = allComickComics.slice(0, 6);
-            displayEnhancedMangaGrid(displayComics, trendingGrid);
+            // Collect all comics from all genres
+            let allComickComics = [];
+            comickGenres.forEach(genre => {
+                const genreComics = response.data[genre.key] || [];
+                allComickComics = allComickComics.concat(genreComics);
+            });
             
-            // Store all comics for potential use
-            window.allComickComics = allComickComics;
+            // Display first 6 comics for trending
+            if (allComickComics.length > 0) {
+                const displayComics = allComickComics.slice(0, 6);
+                displayEnhancedMangaGrid(displayComics, trendingGrid);
+                
+                // Store all comics for potential use
+                window.allComickComics = allComickComics;
+            } else {
+                trendingGrid.innerHTML = '<p>No trending manga found</p>';
+            }
+            
         } else {
-            console.log('⚠️ No Comick comics found, keeping existing trending content');
+            throw new Error('Invalid response from unified API');
         }
         
     } catch (error) {
         console.error('Error loading Comick genres:', error);
+        
+        // Show error state but don't break the page
+        trendingGrid.innerHTML = `
+            <div class="loading-placeholder">
+                <p>Failed to load trending manga. Please try again.</p>
+                <button onclick="loadComickGenres()" class="retry-btn">Retry</button>
+            </div>
+        `;
     }
 }
 
@@ -769,12 +756,29 @@ async function handleDetailPage() {
         
         const result = await makeApiRequest(apiEndpoint);
         console.log('Manga details API response:', result);
-        console.log('Calling displayMangaDetails with data:', result.data);
-        displayMangaDetails(result.data);
-        console.log('displayMangaDetails call completed');
+        
+        if (result && result.data) {
+            console.log('Calling displayMangaDetails with data:', result.data);
+            displayMangaDetails(result.data);
+            console.log('displayMangaDetails call completed');
+        } else {
+            throw new Error('Invalid response from manga details API');
+        }
+        
     } catch (error) {
         console.error('Error loading manga details:', error);
-        showErrorState(container, `Failed to load manga details: ${error.message}`, true);
+        
+        // Show error with retry button
+        if (mangaContent) {
+            mangaContent.innerHTML = `
+                <div class="loading-placeholder">
+                    <p>Failed to load manga details: ${error.message}</p>
+                    <button onclick="loadMangaDetails('${detailUrl}')" class="retry-btn">Retry</button>
+                </div>
+            `;
+        } else {
+            showErrorState(container, `Failed to load manga details: ${error.message}`, true);
+        }
     }
 }
 
