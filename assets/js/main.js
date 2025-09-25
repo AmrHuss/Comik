@@ -16,8 +16,73 @@ const DEBOUNCE_DELAY = 300;
 const MAX_SEARCH_RESULTS = 7;
 const REQUEST_TIMEOUT = 10000; // Increased to 10s for Vercel cold start compatibility
 
+// --- Client-Side Caching ---
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+const CACHE_KEYS = {
+    COMICK_GENRES: 'comick_genres_cache',
+    POPULAR_MANGA: 'popular_manga_cache',
+    MANGA_DETAILS: 'manga_details_cache'
+};
+
 // --- Initialize Storage and Components ---
 let storageManager, uiComponents;
+
+// --- Cache Management Functions ---
+function getCachedData(key) {
+    try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+            const data = JSON.parse(cached);
+            const now = Date.now();
+            
+            // Check if cache is still valid
+            if (now - data.timestamp < CACHE_TTL) {
+                console.log(`📦 Cache hit for ${key}`);
+                return data.data;
+            } else {
+                console.log(`⏰ Cache expired for ${key}`);
+                localStorage.removeItem(key);
+            }
+        }
+    } catch (error) {
+        console.warn(`Cache error for ${key}:`, error);
+        localStorage.removeItem(key);
+    }
+    return null;
+}
+
+function setCachedData(key, data) {
+    try {
+        const cacheData = {
+            data: data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(key, JSON.stringify(cacheData));
+        console.log(`💾 Cached data for ${key}`);
+    } catch (error) {
+        console.warn(`Failed to cache ${key}:`, error);
+    }
+}
+
+function clearCache(key = null) {
+    if (key) {
+        localStorage.removeItem(key);
+        console.log(`🗑️ Cleared cache for ${key}`);
+    } else {
+        Object.values(CACHE_KEYS).forEach(cacheKey => {
+            localStorage.removeItem(cacheKey);
+        });
+        console.log(`🗑️ Cleared all caches`);
+    }
+}
+
+// Add cache management to global scope for debugging
+window.cacheManager = {
+    clear: clearCache,
+    get: getCachedData,
+    set: setCachedData,
+    clearAll: () => clearCache()
+};
 
 // --- State Management ---
 const AppState = {
@@ -299,35 +364,47 @@ async function loadHomepageContent() {
             console.log('⚡ Quick-load failed, loading full data...');
         }
         
-        // Load full data in background with multiple fallbacks
-        let result = null;
-        
-        try {
-            result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
-        } catch (error) {
-            console.warn('Unified-popular failed, trying fallbacks...', error.message);
+        // Check client-side cache first
+        const cachedPopularData = getCachedData(CACHE_KEYS.POPULAR_MANGA);
+        if (cachedPopularData) {
+            console.log('⚡ Using cached popular manga data');
+            result = cachedPopularData;
+        } else {
+            // Load full data in background with multiple fallbacks
+            result = null;
             
-            // Fallback 1: Try regular popular endpoint
             try {
-                console.log('🔄 Fallback 1: Regular popular endpoint...');
-                result = await makeApiRequest(`${API_BASE_URL}/popular`);
-            } catch (error2) {
-                console.warn('Popular endpoint failed, trying Comick action...', error2.message);
+                result = await makeApiRequest(`${API_BASE_URL}/unified-popular`);
+            } catch (error) {
+                console.warn('Unified-popular failed, trying fallbacks...', error.message);
                 
-                // Fallback 2: Use Comick action data as last resort
+                // Fallback 1: Try regular popular endpoint
                 try {
-                    console.log('🔄 Fallback 2: Comick action endpoint...');
-                    const comickResult = await makeApiRequest(`${API_BASE_URL}/comick/action`);
-                    if (comickResult && comickResult.data) {
-                        result = {
-                            success: true,
-                            data: comickResult.data,
-                            sources: { Comick: comickResult.data.length }
-                        };
+                    console.log('🔄 Fallback 1: Regular popular endpoint...');
+                    result = await makeApiRequest(`${API_BASE_URL}/popular`);
+                } catch (error2) {
+                    console.warn('Popular endpoint failed, trying Comick action...', error2.message);
+                    
+                    // Fallback 2: Use Comick action data as last resort
+                    try {
+                        console.log('🔄 Fallback 2: Comick action endpoint...');
+                        const comickResult = await makeApiRequest(`${API_BASE_URL}/comick/action`);
+                        if (comickResult && comickResult.data) {
+                            result = {
+                                success: true,
+                                data: comickResult.data,
+                                sources: { Comick: comickResult.data.length }
+                            };
+                        }
+                    } catch (error3) {
+                        console.error('All fallbacks failed:', error3.message);
                     }
-                } catch (error3) {
-                    console.error('All fallbacks failed:', error3.message);
                 }
+            }
+            
+            // Cache the result for future visits
+            if (result && result.data) {
+                setCachedData(CACHE_KEYS.POPULAR_MANGA, result);
             }
         }
         
@@ -380,7 +457,7 @@ async function loadComickGenres() {
         return;
     }
     
-    console.log('🎭 Loading all Comick genres in one unified call...');
+    console.log('🎭 Loading Comick genres with client-side caching...');
     
     // Define all Comick genres with their keys for unified response
     const comickGenres = [
@@ -393,7 +470,15 @@ async function loadComickGenres() {
     ];
     
     try {
-        // Show loading state
+        // Check client-side cache first
+        const cachedData = getCachedData(CACHE_KEYS.COMICK_GENRES);
+        if (cachedData) {
+            console.log('⚡ Using cached Comick genres data');
+            displayCachedComickGenres(cachedData, trendingGrid, comickGenres);
+            return;
+        }
+        
+        // Show loading state only if no cache
         trendingGrid.innerHTML = `
             <div class="loading-placeholder">
                 <div class="loading-spinner"></div>
@@ -408,23 +493,11 @@ async function loadComickGenres() {
         if (response && response.success && response.data) {
             console.log(`✅ Loaded ${response.total_comics} comics from all genres (cached: ${response.cached})`);
             
-            // Collect all comics from all genres
-            let allComickComics = [];
-            comickGenres.forEach(genre => {
-                const genreComics = response.data[genre.key] || [];
-                allComickComics = allComickComics.concat(genreComics);
-            });
+            // Cache the response for future visits
+            setCachedData(CACHE_KEYS.COMICK_GENRES, response);
             
-            // Display first 6 comics for trending
-            if (allComickComics.length > 0) {
-                const displayComics = allComickComics.slice(0, 6);
-                displayEnhancedMangaGrid(displayComics, trendingGrid);
-                
-                // Store all comics for potential use
-                window.allComickComics = allComickComics;
-            } else {
-                trendingGrid.innerHTML = '<p>No trending manga found</p>';
-            }
+            // Display the data
+            displayCachedComickGenres(response, trendingGrid, comickGenres);
             
         } else {
             throw new Error('Invalid response from unified API');
@@ -440,6 +513,26 @@ async function loadComickGenres() {
                 <button onclick="loadComickGenres()" class="retry-btn">Retry</button>
             </div>
         `;
+    }
+}
+
+function displayCachedComickGenres(response, trendingGrid, comickGenres) {
+    // Collect all comics from all genres
+    let allComickComics = [];
+    comickGenres.forEach(genre => {
+        const genreComics = response.data[genre.key] || [];
+        allComickComics = allComickComics.concat(genreComics);
+    });
+    
+    // Display first 6 comics for trending
+    if (allComickComics.length > 0) {
+        const displayComics = allComickComics.slice(0, 6);
+        displayEnhancedMangaGrid(displayComics, trendingGrid);
+        
+        // Store all comics for potential use
+        window.allComickComics = allComickComics;
+    } else {
+        trendingGrid.innerHTML = '<p>No trending manga found</p>';
     }
 }
 
@@ -735,6 +828,16 @@ async function handleDetailPage() {
     }
     
     try {
+        // Check client-side cache first
+        const cacheKey = `${CACHE_KEYS.MANGA_DETAILS}_${btoa(detailUrl)}`;
+        const cachedDetails = getCachedData(cacheKey);
+        
+        if (cachedDetails) {
+            console.log('⚡ Using cached manga details');
+            displayMangaDetails(cachedDetails);
+            return;
+        }
+        
         console.log('Making API request for manga details...');
         // Auto-detect source from URL
 
@@ -758,6 +861,9 @@ async function handleDetailPage() {
         console.log('Manga details API response:', result);
         
         if (result && result.data) {
+            // Cache the manga details
+            setCachedData(cacheKey, result.data);
+            
             console.log('Calling displayMangaDetails with data:', result.data);
             displayMangaDetails(result.data);
             console.log('displayMangaDetails call completed');
