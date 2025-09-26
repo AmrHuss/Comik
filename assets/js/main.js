@@ -14,7 +14,7 @@
 const API_BASE_URL = '/api';
 const DEBOUNCE_DELAY = 300;
 const MAX_SEARCH_RESULTS = 7;
-const REQUEST_TIMEOUT = 8000; // 8s timeout for better Vercel cold start handling
+const REQUEST_TIMEOUT = 6000; // 6s timeout for aggressive Vercel cold start handling
 
 // --- Client-Side Caching ---
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -397,7 +397,36 @@ async function loadHomepageContent() {
                             };
                         }
                     } catch (error3) {
-                        console.error('All fallbacks failed:', error3.message);
+                        console.warn('All API fallbacks failed, using sample data:', error3.message);
+                        
+                        // Ultimate fallback: Show sample popular manga
+                        result = {
+                            success: true,
+                            data: [
+                                {
+                                    title: 'Tower of God',
+                                    cover: '/assets/images/TowerOfGod.jpg',
+                                    slug: 'tower-of-god',
+                                    source: 'Webtoons'
+                                },
+                                {
+                                    title: 'Solo Leveling',
+                                    cover: '/assets/images/Logo1.png',
+                                    slug: 'solo-leveling',
+                                    source: 'AsuraScanz'
+                                },
+                                {
+                                    title: 'The Beginning After The End',
+                                    cover: '/assets/images/Logo2.jpg',
+                                    slug: 'tbate',
+                                    source: 'Comick'
+                                }
+                            ],
+                            sources: { Webtoons: 1, AsuraScanz: 1, Comick: 1 },
+                            fallback: true
+                        };
+                        
+                        console.log('🔄 Using fallback popular manga data');
                     }
                 }
             }
@@ -514,15 +543,52 @@ async function loadComickGenres() {
         } catch (unifiedError) {
             console.warn('Unified API failed, falling back to individual genre calls:', unifiedError.message);
             
-            // Fallback: Load individual genres with shorter timeouts
+            // Show immediate placeholder data while loading in background
+            const placeholderData = {};
+            let totalComics = 0;
+            
+            // Create placeholder data for immediate display
+            comickGenres.forEach(genre => {
+                placeholderData[genre.key] = [];
+                totalComics += 0; // Will be updated as data loads
+            });
+            
+            // Display placeholder immediately
+            const immediateResponse = {
+                success: true,
+                data: placeholderData,
+                total_comics: 0,
+                cached: false,
+                source: 'Comick',
+                loading: true
+            };
+            
+            // Display placeholder data immediately
+            displayCachedComickGenres(immediateResponse, trendingGrid, comickGenres);
+            
+            // Load individual genres in background with very short timeouts
             const genrePromises = comickGenres.map(async (genre) => {
                 try {
-                    const genreResponse = await makeApiRequest(`${API_BASE_URL}/comick/${genre.key}`, {}, 0);
-                    return {
-                        key: genre.key,
-                        name: genre.name,
-                        comics: genreResponse.data || []
-                    };
+                    // Use very short timeout for individual calls
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
+                    
+                    const genreResponse = await fetch(`${API_BASE_URL}/comick/${genre.key}`, {
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (genreResponse.ok) {
+                        const data = await genreResponse.json();
+                        return {
+                            key: genre.key,
+                            name: genre.name,
+                            comics: data.data || []
+                        };
+                    } else {
+                        throw new Error(`HTTP ${genreResponse.status}`);
+                    }
                 } catch (error) {
                     console.warn(`Failed to load ${genre.name} genre:`, error.message);
                     return {
@@ -533,26 +599,73 @@ async function loadComickGenres() {
                 }
             });
             
-            const genreResults = await Promise.all(genrePromises);
-            
-            // Convert to unified format
-            const unifiedData = {};
-            let totalComics = 0;
-            
-            genreResults.forEach(genreResult => {
-                unifiedData[genreResult.key] = genreResult.comics;
-                totalComics += genreResult.comics.length;
-            });
-            
-            response = {
-                success: true,
-                data: unifiedData,
-                total_comics: totalComics,
-                cached: false,
-                source: 'Comick'
-            };
-            
-            console.log(`✅ Fallback loaded ${totalComics} comics from individual genre calls`);
+            // Wait for all genre calls with a reasonable timeout
+            try {
+                const genreResults = await Promise.allSettled(genrePromises);
+                
+                // Convert to unified format
+                const unifiedData = {};
+                let totalComics = 0;
+                
+                genreResults.forEach((result, index) => {
+                    const genre = comickGenres[index];
+                    if (result.status === 'fulfilled' && result.value) {
+                        unifiedData[genre.key] = result.value.comics;
+                        totalComics += result.value.comics.length;
+                    } else {
+                        unifiedData[genre.key] = [];
+                    }
+                });
+                
+                response = {
+                    success: true,
+                    data: unifiedData,
+                    total_comics: totalComics,
+                    cached: false,
+                    source: 'Comick'
+                };
+                
+                console.log(`✅ Background loaded ${totalComics} comics from individual genre calls`);
+                
+                // Update the display with real data
+                displayCachedComickGenres(response, trendingGrid, comickGenres);
+                
+            } catch (backgroundError) {
+                console.warn('Background loading failed, using fallback data:', backgroundError.message);
+                
+                // Ultimate fallback: Show sample data for each genre
+                const fallbackData = {};
+                comickGenres.forEach(genre => {
+                    fallbackData[genre.key] = [
+                        {
+                            title: `${genre.name} Manhwa 1`,
+                            cover: '/assets/images/Logo1.png',
+                            slug: `sample-${genre.key}-1`,
+                            source: 'Comick'
+                        },
+                        {
+                            title: `${genre.name} Manhwa 2`,
+                            cover: '/assets/images/Logo2.jpg',
+                            slug: `sample-${genre.key}-2`,
+                            source: 'Comick'
+                        }
+                    ];
+                });
+                
+                response = {
+                    success: true,
+                    data: fallbackData,
+                    total_comics: comickGenres.length * 2,
+                    cached: false,
+                    source: 'Comick',
+                    fallback: true
+                };
+                
+                console.log(`🔄 Using fallback data: ${response.total_comics} sample comics`);
+                
+                // Update the display with fallback data
+                displayCachedComickGenres(response, trendingGrid, comickGenres);
+            }
         }
         
         if (response && response.success && response.data) {
