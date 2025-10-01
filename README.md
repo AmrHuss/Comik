@@ -5,3 +5,12 @@
 
 
 
+
+
+
+TO DO: 
+Add account system
+
+Add Bookmark system
+
+Add recently read
